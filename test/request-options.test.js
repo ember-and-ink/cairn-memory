@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EFFORTS, NO_REASONING, effortsFor, isBadRequest, memoryProfile, profileSource, refusalKey, requestOverrides } from '../src/pipeline/request-options.js';
+import { EFFORTS, FICTION_FRAME, NO_REASONING, effortsFor, framedMessages, isBadRequest, memoryProfile, profileSource, refusalKey, requestOverrides } from '../src/pipeline/request-options.js';
 import { createContext } from './mocks/sillytavern.js';
 
 /**
@@ -72,5 +72,21 @@ describe('the reasoning setting (D-0088)', () => {
     it('asks for low, or nothing, when set to', () => {
         expect(requestOverrides(context(), OPENROUTER, new Set(), 'low')).toEqual({ reasoning_effort: 'low' });
         expect(requestOverrides(context(), OPENROUTER, new Set(), 'preset')).toEqual({});
+    });
+});
+
+/** The fiction frame (docs/decisions.md D-0095). */
+describe('framing a request as fiction', () => {
+    const task = [{ role: 'user', content: 'Index these summaries.' }];
+
+    it('puts the frame ahead of the task as a system message, unless the setting is off', () => {
+        expect(framedMessages(task, true)).toEqual([{ role: 'system', content: FICTION_FRAME }, ...task]);
+        expect(framedMessages(task, undefined)).toEqual([{ role: 'system', content: FICTION_FRAME }, ...task]);
+        expect(framedMessages(task, false)).toBe(task);
+    });
+
+    it('says what the material is, and never asks the model to set its limits aside', () => {
+        expect(FICTION_FRAME).toMatch(/fiction/);
+        expect(FICTION_FRAME).not.toMatch(/jailbreak|ignore|guideline|polic|refus|restrict|filter|uncensor/i);
     });
 });

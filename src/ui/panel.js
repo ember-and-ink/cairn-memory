@@ -42,6 +42,7 @@ export async function renderSettingsPanel(context, handlers = {}) {
     // these need no handler: a changed slot count makes the next plan's pick due (pipeline/canon-pick.js).
     bind(context, 'canonSlots', wholeNumber());
     bind(context, 'dropExamples', CHECKBOX);
+    bind(context, 'fictionFrame', CHECKBOX);
     for (const key of ['memoryFraction', 'canonFraction', 'compactFraction']) bind(context, key, PERCENT);
     bind(context, 'rawWindow', wholeNumber({ min: 1 }));
     bind(context, 'step', wholeNumber());

@@ -8,6 +8,50 @@ what we believed and why it changed.
 
 ---
 
+## D-0095 — Mend a finished reply's bracket slip; tell the memory model the chat is fiction
+**2026-10-14.** D-0094's reopen condition was met. Its logging covered 13 chats and 679
+memory calls, with 30 failures. None of the failures it logged was an unescaped quote.
+
+- **6 "truncated" failures were not cut off** (state ×4, canon ×2). Each one was ~100–600
+  tokens against a 2,048–4,096 cap, and each `reply_tail` ended on a closer. State replies
+  ended `"}}` where `}}}` was needed, and canon replies ended `}\n}` with the array's `]`
+  left out. `closingIndex` counted `{` and `[` as one depth, so a dropped bracket looked
+  like an open one. The toast then blamed reasoning.
+- **1 index `format` failure was a full-width `，`** between two fields
+  (`reply_error: Unrecognized token '，'`). The 4 Aleanna redo index failures predate the
+  logging. They are likely the same kind, but this is unconfirmed.
+- **10 were content refusals** by GLM-5.3: one chat accounted for 9, another for 1. The
+  model's own words name the content. These were not short batches: early index calls
+  (message ≤10) succeeded 34 of 40 times, and every early failure was a refusal, a
+  transport error or the `，` above.
+- 6 transport errors (4 at a 90s timeout). They retry on the next reply, and nothing
+  changed for them.
+
+**Two changes.**
+1. **`repairJson` mends a finished reply once before it is skipped.** It turns full-width
+   `，` and `：` outside strings into ASCII and inserts **at most one** closer, either where
+   a closer meets the wrong open bracket or at the end of the reply. It applies only when
+   the reply ends on a closer outside a string. One missing bracket is a slip. Two missing,
+   or a reply that stops anywhere else, is a cut, and mending it would store half an
+   answer as a whole one. Each parser still checks the shape afterwards. `closingIndex` now
+   keeps a stack, so a mismatched closer it cannot mend is `format`, not `truncated`.
+2. **A fiction frame, the `fictionFrame` setting, on by default.** A system message ahead
+   of every memory request says that the material is collaborative fiction written in
+   SillyTavern, that nothing in it happened to anyone real, and that the task is
+   bookkeeping, not writing the story. **It is not a jailbreak and must not become one**
+   (Matt): it says what the material is and never asks the model to set its limits
+   aside. A model that refuses anyway is not argued with, and a test fails if the text
+   mentions guidelines, policies or refusals. It is a separate message, so the summary
+   prompt held under P5 is untouched. It is a setting so someone can turn it off.
+
+**Not done:** treating a refusal as a property of the chat. The refusing chat was asked
+9 times because each pass is a new job key. That is a separate call.
+
+**Would reopen it:** a mended reply that stored something wrong, a logged `truncated`
+failure whose tail ends on a closer, or refusals that continue unchanged with the frame on.
+
+---
+
 ## D-0094 — Failed calls keep where they broke; JSON prompts end on a whole example
 **2026-09-29.** Redoing Aleanna Nightingale on GLM-5.3 lost 4 of 22 index batches to
 `format` and one canon pick to `truncated`. Every failed reply was as long as the successful

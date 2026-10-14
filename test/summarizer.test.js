@@ -8,6 +8,7 @@ import { QVINK_EXTENSION } from '../src/interop/qvink.js';
 import { readScene } from '../src/store/chat-store.js';
 import { STORE_VERSION } from '../src/store/schema.js';
 import { hashString } from '../src/util/hash.js';
+import { FICTION_FRAME } from '../src/pipeline/request-options.js';
 import { badOutputs, createRequestService, deferred } from './mocks/llm.js';
 import { makeMixedChat } from './mocks/cairn.js';
 import { makeProse, makeSummary } from './mocks/qvink.js';
@@ -70,6 +71,19 @@ describe('summarising the queue', () => {
         expect(pendingScenes(context.chat)).toEqual([]);
         expect(service.pending).toBe(0);
         expect(context.saved.chat).toBe(3);
+    });
+
+    it('says the chat is fiction ahead of the task by default, and not once the setting is off (D-0095)', async () => {
+        const on = harness({ responses: [summary(10), summary(11), summary(12)], settings: { fictionFrame: undefined } });
+        on.summarizer.start();
+        await on.summarizer.idle();
+        expect(on.service.calls[0].prompt[0]).toEqual({ role: 'system', content: FICTION_FRAME });
+        expect(on.service.calls[0].prompt[1].content).toContain('Message to summarize:');
+
+        const off = harness({ responses: [summary(10), summary(11), summary(12)], settings: { fictionFrame: false } });
+        off.summarizer.start();
+        await off.summarizer.idle();
+        expect(off.service.calls[0].prompt.map((message) => message.role)).toEqual(['user']);
     });
 
     it('sends the strategy\'s request through the memory profile, with an abort signal', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeReply, readJsonReply } from '../src/memory/model-reply.js';
+import { describeReply, readJsonReply, repairJson } from '../src/memory/model-reply.js';
 import { badStateOutputs } from './mocks/llm.js';
 
 /** Where a failed reply broke, for the call log (docs/decisions.md D-0094). */
@@ -66,5 +66,46 @@ describe('readJsonReply', () => {
         expect(readJsonReply(badStateOutputs.prose())).toEqual({ ok: false, reason: 'format' });
         expect(readJsonReply(badStateOutputs.empty())).toEqual({ ok: false, reason: 'empty' });
         expect(readJsonReply(undefined)).toEqual({ ok: false, reason: 'empty' });
+    });
+});
+
+/** The slips a finished reply makes, mended; and the cut-offs that must stay rejected (D-0095). */
+describe('repairJson', () => {
+    it('closes the one bracket a finished reply left open', () => {
+        expect(repairJson('{"characters":{"Wren":{"hair":"Tied back"}}')).toBe('{"characters":{"Wren":{"hair":"Tied back"}}}');
+    });
+
+    it('closes an array the model skipped on its way to the outer brace', () => {
+        expect(repairJson('{"canon":[\n{"fact":"x","from":[1]}\n}')).toBe('{"canon":[\n{"fact":"x","from":[1]}\n]}');
+    });
+
+    it('reads full-width punctuation between values, and keeps it inside them', () => {
+        expect(repairJson('{"a"："Wren，Aster"，"b":1}')).toBe('{"a":"Wren，Aster","b":1}');
+    });
+
+    it('mends nothing in a reply that was cut off', () => {
+        expect(repairJson('{"records":[{"n":1,"what":"Wren crossed')).toBeNull();
+        expect(repairJson('{"records":[{"n":1},')).toBeNull();
+        expect(repairJson('{"records":[{"n":1}')).toBeNull();
+    });
+
+    it('mends nothing in JSON that needs no mending, or a closer that matches nothing', () => {
+        expect(repairJson('{"a":[1]}')).toBeNull();
+        expect(repairJson('[Current scene]')).toBeNull();
+        expect(repairJson('{"a":1]}')).toBeNull();
+    });
+
+    it('steps over escaped quotes inside a string', () => {
+        expect(repairJson('{"a":{"b":"say \\"no\\"}"}')).toBe('{"a":{"b":"say \\"no\\"}"}}');
+    });
+});
+
+describe('readJsonReply on a mended reply', () => {
+    it('calls a wrong closer malformed, not cut off, when it cannot be mended', () => {
+        expect(readJsonReply('{"a":[[{"b":1}}')).toEqual({ ok: false, reason: 'format' });
+    });
+
+    it('never takes an inner object for the reply when the outer one is mended', () => {
+        expect(readJsonReply('{"records":[{"n":1}，{"n":2}]}')).toEqual({ ok: true, value: { records: [{ n: 1 }, { n: 2 }] } });
     });
 });

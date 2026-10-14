@@ -29,7 +29,7 @@ import { createSummaryJob } from './summary-job.js';
 import { adoptionPlan, createAdoption } from './adopt.js';
 import { DEFAULT_SLOTS } from '../memory/canon.js';
 import { STEP } from './scheduler.js';
-import { isBadRequest, memoryProfile, refusalKey, requestOverrides } from './request-options.js';
+import { framedMessages, isBadRequest, memoryProfile, refusalKey, requestOverrides } from './request-options.js';
 
 const NO_CONNECTION_MANAGER = 'Cairn needs the Connection Manager extension enabled to write memory summaries.';
 const PROFILE_MISSING = 'Cairn\'s memory connection profile no longer exists. Choose another in Cairn\'s settings.';
@@ -270,8 +270,9 @@ export function createSummarizer(getContext, {
      *
      * @returns {Promise<{reply?: object, error?: unknown, signal: AbortSignal}>}
      */
-    async function send(context, memoryProfileId, request, job, index) {
+    async function send(context, memoryProfileId, built, job, index) {
         const { tally } = job;
+        const request = { ...built, messages: framedMessages(built.messages, readSettings().fictionFrame) };
         controller = new AbortController();
         const { signal } = controller;
         // A chat change swaps the stats while this is out; its cost belongs to the chat it was for.

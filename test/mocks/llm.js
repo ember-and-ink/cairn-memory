@@ -95,6 +95,12 @@ export const badStateOutputs = {
         return json.slice(0, Math.floor(json.length * 0.6));
     },
 
+    /**
+     * Finished, one closing brace short: the cast's object closed, the record's never. The real
+     * shape from the corpus logs' `reply_tail` (D-0095), which ends `"}}` on a reply needing `}}}`.
+     */
+    droppedBrace: (record) => JSON.stringify(record).slice(0, -1),
+
     /** Content-policy refusal in place of output. */
     refusal: () => 'I’m sorry, but I can’t continue with this scene.',
 
@@ -204,6 +210,12 @@ export const badCanonOutputs = {
         return json.slice(0, Math.floor(json.length * 0.6));
     },
 
+    /**
+     * Finished, with the array's `]` left out: the last fact closes and then the object does.
+     * The real shape from the corpus logs' `reply_tail` (D-0095), one fact per line, ending `}\n}`.
+     */
+    droppedArrayClose: (canon) => `{"canon":[\n${canon.map((fact) => JSON.stringify(fact)).join(',\n')}\n}`,
+
     /** Content-policy refusal in place of output. */
     refusal: () => 'I’m sorry, but I can’t extract facts from this content.',
 
@@ -301,6 +313,15 @@ export const badIndexOutputs = {
         const json = JSON.stringify({ records }, null, 2);
         return json.slice(0, Math.floor(json.length * 0.6));
     },
+
+    /**
+     * A full-width comma between two fields, as a model trained heavily on Chinese writes one.
+     * The real shape from the corpus logs' `reply_error`: "Unrecognized token '，'" (D-0095).
+     */
+    fullwidthComma: (records) => JSON.stringify({ records }).replace(',"kind"', '，"kind"'),
+
+    /** Cut off cleanly after a whole record: two brackets short, which is a cut and not a slip. */
+    cutAfterRecord: (records) => `{"records":[\n${JSON.stringify(records[0])},\n${JSON.stringify(records[1])}`,
 
     /** Content-policy refusal in place of output. */
     refusal: () => 'I’m sorry, but I can’t index this content.',
