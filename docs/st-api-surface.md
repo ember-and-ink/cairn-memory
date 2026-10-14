@@ -135,6 +135,9 @@ literally against the cited line.
 | `ConnectionManagerRequestService` | Profile-routed summary calls | `public/scripts/st-context.js` | 294 |
 | `ConnectionManagerRequestService` | Class definition and `sendRequest` contract | `public/scripts/extensions/shared.js` | 392 |
 | `static async sendRequest` | Summary calls; takes `ChatCompletionMessage[]`, which is what `perMessage.build` returns | `public/scripts/extensions/shared.js` | 423 |
+| `const messages = Array.isArray(prompt) ? prompt : [{ role: 'user', content: prompt }];` | Chat completion sends the fiction frame's `system` message as it is (D-0095) | `public/scripts/extensions/shared.js` | 443 |
+| `message.role === 'system',` | Text completion formats a `system` message as the instruct preset's system turn (D-0095) | `public/scripts/custom-request.js` | 232 |
+| `return instruct.system_same_as_user ? instruct.input_sequence : instruct.system_sequence;` | ...with the system sequence, or the user's where the preset folds the two | `public/scripts/instruct-mode.js` | 397 |
 | `...overridePayload,` | The fifth argument goes into a chat completion request as it is: Cairn's `reasoning_effort` (D-0086) | `public/scripts/extensions/shared.js` | 460 |
 | `return this.createRequestData({ ...payload, ...overridePayload });` | ...after the profile's preset, so it wins over the preset's own reasoning setting | `public/scripts/custom-request.js` | 605 |
 | `bodyParams['reasoning']['effort'] = request.body.reasoning_effort;` | OpenRouter's backend sends it as `reasoning.effort` | `src/endpoints/backends/chat-completions.js` | 2349 |

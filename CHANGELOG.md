@@ -11,6 +11,11 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Added
 
+- **Tell it the chat is fiction**, under Memory model, on by default: each memory
+  request starts by telling the memory model that the chat is a collaborative story,
+  and that the task is to keep a record of it. It only says what the material is. If
+  the model still declines, Cairn does not argue with it.
+
 - **Drop example dialogue once summarised**, a switch for what Cairn already did:
   on by default; off leaves SillyTavern's own example-messages setting alone.
 
@@ -77,6 +82,12 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
   summaries, the index and canon), so a missing world state can be explained.
 
 ### Fixed
+
+- **Fewer failed index, canon and world state calls.** A model that finished its reply
+  but dropped one closing bracket, or wrote a full-width `，` between fields, now has
+  its reply read as meant. A reply that was really cut off is still rejected.
+- A reply with mismatched brackets is reported as unreadable, not as cut off, so its
+  toast no longer advises turning reasoning off.
 
 - The inspector's "Cap from" line said the block's share was 35% whatever the setting
   held. It now names the share you set.

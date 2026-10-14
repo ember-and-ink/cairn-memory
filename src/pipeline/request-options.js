@@ -74,6 +74,26 @@ export function requestOverrides(context, profile, refused = new Set(), setting 
     return effort ? { reasoning_effort: effort } : {};
 }
 
+/**
+ * Said ahead of every memory request while `fictionFrame` is on (docs/decisions.md D-0095).
+ * It says what the material is and nothing else: a model that declines the story knowing
+ * it is fiction is not argued with.
+ */
+export const FICTION_FRAME = 'The material in this request comes from a work of collaborative fiction: an interactive story that a writer and an AI storyteller are writing together in SillyTavern, a roleplay application. Its characters, places and events are invented, and nothing in it happened to anyone real. The task that follows is bookkeeping for that story: recording what happens in it so that it can be continued consistently. It does not ask you to write any of the story.';
+
+/**
+ * A request's messages with the frame ahead of them as a system message. Chat completion
+ * sends it as it is (public/scripts/extensions/shared.js:443); text completion formats it
+ * as the instruct preset's system turn (public/scripts/custom-request.js:232,
+ * public/scripts/instruct-mode.js:396-397).
+ *
+ * @param {Array<{role: string, content: string}>} messages
+ * @param {boolean} [setting] The `fictionFrame` setting; only `false` leaves the frame out.
+ */
+export function framedMessages(messages, setting) {
+    return setting === false ? messages : [{ role: 'system', content: FICTION_FRAME }, ...messages];
+}
+
 /** Refusals are remembered per profile and model: another model on the same profile may accept. */
 export function refusalKey(profile) {
     return `${profile?.id ?? ''}\n${profile?.model ?? ''}`;

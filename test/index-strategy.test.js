@@ -274,8 +274,14 @@ describe('parsing an index reply — the mess suite (CLAUDE.md §3.12)', () => {
         }
     });
 
+    it('reads a full-width comma between fields as a comma (D-0095)', () => {
+        expect(indexes(ok(badIndexOutputs.fullwidthComma(MEANT)))).toEqual([1, 2, 3]);
+    });
+
     it('rejects a truncated reply rather than storing half a batch', () => {
         expect(parseIndexReply(badIndexOutputs.truncated(MEANT))).toEqual({ ok: false, reason: 'truncated' });
+        // Cut cleanly between records is two brackets short: a cut, not a slip to mend.
+        expect(parseIndexReply(badIndexOutputs.cutAfterRecord(MEANT))).toEqual({ ok: false, reason: 'truncated' });
         expect(parseIndexReply(badIndexOutputs.unterminatedReasoning())).toEqual({ ok: false, reason: 'truncated' });
     });
 
@@ -297,6 +303,7 @@ describe('parsing an index reply — the mess suite (CLAUDE.md §3.12)', () => {
             'wrongWrapper', 'nullRecords', 'duplicateIndex', 'outOfBatch', 'shuffled',
             'noIndex', 'short', 'unknownKind', 'shoutedKind', 'nullSlots', 'missingSlots',
             'overlong', 'manyNames', 'whoAsString', 'judged', 'mood', 'empty',
+            'fullwidthComma', 'cutAfterRecord',
         ]);
         expect([...Object.keys(badIndexOutputs)].filter((shape) => !covered.has(shape))).toEqual([]);
     });

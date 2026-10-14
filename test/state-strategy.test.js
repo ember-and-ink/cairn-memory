@@ -223,6 +223,8 @@ describe('parsing and applying a state reply', () => {
             ['location', 'characters.left', 'characters.outfit'],
             [{ field: 'weather', reason: 'blank' }],
         ),
+        // A finished reply one brace short is a slip, read as meant (D-0095).
+        droppedBrace: applied(AFTER, moved),
         truncated: rejected('truncated'),
         unterminatedReasoning: rejected('truncated'),
         refusal: rejected('refusal'),

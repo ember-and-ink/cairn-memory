@@ -33,7 +33,8 @@ export function queueHarness({
         ...contextOptions,
     });
     const summarizer = createSummarizer(() => context, {
-        settings: () => ({ memoryProfileId: MEMORY.id, ...defaults, ...settings }),
+        // The frame is off here so `prompt[0]` is the task; test/summarizer.test.js sends it.
+        settings: () => ({ memoryProfileId: MEMORY.id, fictionFrame: false, ...defaults, ...settings }),
         ...rest,
     });
     if (start) startActive(summarizer, context);

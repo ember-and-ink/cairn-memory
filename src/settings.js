@@ -98,6 +98,11 @@ export const DEFAULT_SETTINGS = Object.freeze({
      * the refusal again (D-0088). Cleared when `memoryReasoning` changes.
      */
     reasoningRefused: {},
+    /**
+     * Tell the memory model that the chat is collaborative fiction before each request
+     * (docs/decisions.md D-0095). It says what the material is; it does not argue with a refusal.
+     */
+    fictionFrame: true,
 });
 
 /**

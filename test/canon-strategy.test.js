@@ -191,6 +191,11 @@ describe('reading the replies a model actually sends', () => {
             .toEqual(MEANT.map((fact) => fact.fact));
     });
 
+    it('reads a finished reply that left out the array\'s closing bracket (D-0095)', () => {
+        expect(picked(parseCanonReply(badCanonOutputs.droppedArrayClose(MEANT), limits)))
+            .toEqual(MEANT.map((fact) => fact.fact));
+    });
+
     it('rejects a reply that ran out of tokens', () => {
         expect(parseCanonReply(badCanonOutputs.truncated(MEANT), limits)).toEqual({ ok: false, reason: 'truncated' });
         expect(parseCanonReply(badCanonOutputs.unterminatedReasoning(), limits)).toEqual({ ok: false, reason: 'truncated' });

@@ -50,9 +50,11 @@ export function straightQuotes(text) {
  * `[Current scene]` echoed in a preamble, are skipped whole, so an object nested
  * inside a broken one is never taken for the reply. Not "first `{` to last `}`":
  * that read a preamble's punctuation as structure (docs/decisions.md D-0044).
+ * A span that fails is given one `repairJson` before it is skipped (D-0095).
  *
  * `unclosed` is a bracket still open when the reply ends — a cut-off reply, since ST
- * returns no finish reason (public/scripts/custom-request.js:60).
+ * returns no finish reason (public/scripts/custom-request.js:60). A closer of the wrong
+ * kind is a malformed reply, not a cut-off one.
  *
  * @param {string} text
  * @returns {{parsed: true, value: unknown} | {parsed: false, unclosed: boolean}}
@@ -60,15 +62,83 @@ export function straightQuotes(text) {
 export function firstJson(text) {
     for (let start = text.search(/[{[]/); start >= 0;) {
         const end = closingIndex(text, start);
-        if (end < 0) return { parsed: false, unclosed: true };
-        try {
-            return { parsed: true, value: JSON.parse(text.slice(start, end + 1)) };
-        } catch {
-            const next = text.slice(end + 1).search(/[{[]/);
-            start = next < 0 ? -1 : end + 1 + next;
-        }
+        const span = end < 0 ? text.slice(start) : text.slice(start, end + 1);
+        const value = parseOrRepair(span);
+        if (value.parsed) return value;
+        if (end === UNCLOSED) return { parsed: false, unclosed: true };
+        if (end === MISMATCHED) return { parsed: false, unclosed: false };
+        const next = text.slice(end + 1).search(/[{[]/);
+        start = next < 0 ? -1 : end + 1 + next;
     }
     return { parsed: false, unclosed: false };
+}
+
+function parseOrRepair(span) {
+    for (const candidate of [span, repairJson(span)]) {
+        if (candidate === null) continue;
+        try {
+            return { parsed: true, value: JSON.parse(candidate) };
+        } catch {
+            // Try the next candidate.
+        }
+    }
+    return { parsed: false };
+}
+
+/** Full-width punctuation a model writes in place of JSON's own, outside a string. */
+const FULLWIDTH = Object.freeze({ '，': ',', '：': ':' });
+
+/**
+ * A finished reply's JSON with the slips a lighter model makes put right (docs/decisions.md
+ * D-0095): full-width `，` and `：` between values, and one missing closing bracket. One is a
+ * slip; a reply missing two, or stopping inside a string or after anything but a closer, was
+ * cut off, and closing it would store half an answer as a whole one.
+ *
+ * @param {string} text Starts at the opening bracket.
+ * @returns {string|null} The repaired JSON, or null when there was nothing this can mend.
+ */
+export function repairJson(text) {
+    const out = [];
+    const open = [];
+    let inString = false;
+    let mended = false;
+    let added = 0;
+    let last = '';
+    for (let i = 0; i < text.length; i++) {
+        let ch = text[i];
+        if (inString) {
+            if (ch === '\\') out.push(ch, text[++i] ?? '');
+            else out.push(ch);
+            if (ch === '"') inString = false;
+            continue;
+        }
+        if (FULLWIDTH[ch]) {
+            ch = FULLWIDTH[ch];
+            mended = true;
+        }
+        if (ch === '"') {
+            inString = true;
+        } else if (ch === '{' || ch === '[') {
+            open.push(ch === '{' ? '}' : ']');
+        } else if (ch === '}' || ch === ']') {
+            if (!open.includes(ch)) return null;
+            // A closer for a bracket further out: the model skipped the inner one's.
+            while (open.at(-1) !== ch) {
+                out.push(open.pop());
+                added++;
+            }
+            open.pop();
+        }
+        out.push(ch);
+        if (!/\s/.test(ch)) last = ch;
+        if (!open.length) break;
+    }
+    if (open.length) {
+        if (inString || (last !== '}' && last !== ']')) return null;
+        added += open.length;
+        out.push(...open.reverse());
+    }
+    return (mended || added) && added <= 1 ? out.join('') : null;
 }
 
 /**
@@ -90,9 +160,15 @@ export function readJsonReply(content) {
     return reject(found.unclosed ? 'truncated' : 'format');
 }
 
-/** Where the bracket at `start` closes, skipping brackets inside JSON strings; -1 if it never does. */
+const UNCLOSED = -1;
+const MISMATCHED = -2;
+
+/**
+ * Where the bracket at `start` closes, skipping brackets inside JSON strings: UNCLOSED if
+ * it never does, MISMATCHED at a `}` that meets an open `[` or the other way round.
+ */
 function closingIndex(text, start) {
-    let depth = 0;
+    const open = [];
     let inString = false;
     for (let i = start; i < text.length; i++) {
         const ch = text[i];
@@ -102,12 +178,13 @@ function closingIndex(text, start) {
         } else if (ch === '"') {
             inString = true;
         } else if (ch === '{' || ch === '[') {
-            depth++;
-        } else if ((ch === '}' || ch === ']') && --depth === 0) {
-            return i;
+            open.push(ch === '{' ? '}' : ']');
+        } else if (ch === '}' || ch === ']') {
+            if (open.pop() !== ch) return MISMATCHED;
+            if (!open.length) return i;
         }
     }
-    return -1;
+    return UNCLOSED;
 }
 
 /**
