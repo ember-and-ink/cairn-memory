@@ -83,6 +83,12 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Fixed
 
+- **The world state always has the same shape.** Location, weather, and each present
+  character's hair and outfit always get a line, reading "Not described" where nothing is
+  known yet. Before, a present character could have no line at all. A memory model's
+  "Unspecified" or "Not mentioned" no longer overwrites a detail the story already
+  established. The world state prompt also tells the model not to guess, and to give the
+  weather outside when the scene is indoors.
 - **Fewer failed index, canon and world state calls.** A model that finished its reply
   but dropped one closing bracket, or wrote a full-width `，` between fields, now has
   its reply read as meant. A reply that was really cut off is still rejected.

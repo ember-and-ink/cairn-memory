@@ -7,6 +7,8 @@ import {
     MAX_STATE_CHARS,
     STATE_HEADER,
     TEXT_FIELDS,
+    UNSET_TEXT,
+    isPlaceholder,
     mergeReply,
     renderState,
     validState,
@@ -120,6 +122,32 @@ describe('merging a reply', () => {
             { field: 'weather', reason: 'blank' },
             { field: 'characters.hair', reason: 'blank' },
         ]);
+    });
+
+    it('never lets a placeholder overwrite a value, whatever the model calls it (D-0096)', () => {
+        const { value, changed, dropped } = mergeReply(TERMINAL, {
+            location: 'Unspecified',
+            weather: 'Not described.',
+            characters: cast({ Aster: { hair: 'Not explicitly described', outfit: 'N/A' } }),
+        });
+
+        expect(value).toEqual(TERMINAL);
+        expect(changed).toEqual([]);
+        expect(dropped.map((drop) => drop.reason)).toEqual(['placeholder', 'placeholder', 'placeholder', 'placeholder']);
+    });
+
+    it.each([
+        'Unspecified', 'Unknown', 'Not mentioned', 'Not described', 'Not explicitly described',
+        'not yet established', 'Not described in the messages', 'N/A', 'n / a', '—', '?',
+    ])('recognises %j as a placeholder', (text) => {
+        expect(isPlaceholder(text)).toBe(true);
+    });
+
+    it.each([
+        'None', 'Nothing', 'Not wearing anything', 'Unspecified; smells of ink and leather',
+        'Unknown inn on the coast road', 'Damp, not yet dry',
+    ])('keeps %j, which says something', (text) => {
+        expect(isPlaceholder(text)).toBe(false);
     });
 
     it('fills a field the record is missing, which is how a hole heals (D-0053)', () => {
@@ -326,19 +354,38 @@ describe('rendering', () => {
         const lines = renderState(mergeReply(TERMINAL, { characters: cast({ Brannock: { outfit: 'Harbour uniform' } }) }).value).split('\n');
 
         expect(lines).toContain('Present: Aster, Wren, Brannock');
-        expect(lines.at(-1)).toBe('Brannock — outfit: Harbour uniform');
+        expect(lines.at(-1)).toBe(`Brannock — hair: ${UNSET_TEXT}; outfit: Harbour uniform`);
     });
 
-    it('lists a character with nothing recorded as present, with no line of their own', () => {
+    it('shows every field, one wording where nothing is known, so a present character always has a line (D-0096)', () => {
         const { value } = mergeReply({}, { characters: { Wren: {} } });
 
-        expect(renderState(value)).toBe(`${STATE_HEADER}\nPresent: Wren`);
+        expect(renderState(value)).toBe([
+            STATE_HEADER,
+            `Location: ${UNSET_TEXT}`,
+            `Weather: ${UNSET_TEXT}`,
+            'Present: Wren',
+            `Wren — hair: ${UNSET_TEXT}; outfit: ${UNSET_TEXT}`,
+        ].join('\n'));
+    });
+
+    it('renders a placeholder stored before D-0096 in the one wording', () => {
+        const stored = { location: 'The pier', weather: 'Unspecified', characters: { Wren: { hair: 'Not explicitly described', outfit: 'Grey jumper' } } };
+
+        expect(validState(stored)).toBe(true);
+        expect(renderState(stored).split('\n')).toEqual([
+            STATE_HEADER,
+            'Location: The pier',
+            `Weather: ${UNSET_TEXT}`,
+            'Present: Wren',
+            `Wren — hair: ${UNSET_TEXT}; outfit: Grey jumper`,
+        ]);
     });
 
     it('collapses whitespace, so a value cannot open a line of its own', () => {
         const { value } = mergeReply({}, { location: 'The pier\nPresent: Nobody', characters: { Wren: {} } });
 
-        expect(renderState(value)).toBe(`${STATE_HEADER}\nLocation: The pier Present: Nobody\nPresent: Wren`);
+        expect(renderState(value).split('\n')[1]).toBe('Location: The pier Present: Nobody');
     });
 
     it('renders nothing for an empty or invalid state', () => {

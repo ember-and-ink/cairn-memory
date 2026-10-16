@@ -125,7 +125,7 @@ describe('the world state on each message', () => {
         const texts = stateTexts(played());
 
         expect([...texts.keys()]).toEqual([3, 5]);
-        expect(texts.get(5)).toBe(`${STATE_HEADER}\nLocation: The ferry, upper deck\nPresent: Wren\nWren — outfit: Wool coat, boots`);
+        expect(texts.get(5)).toBe(`${STATE_HEADER}\nLocation: The ferry, upper deck\nWeather: Not described\nPresent: Wren\nWren — hair: Not described; outfit: Wool coat, boots`);
     });
 
     it('leaves out a state the reader wouldn\'t use: stale, out of schema, or empty', () => {
