@@ -8,6 +8,34 @@ what we believed and why it changed.
 
 ---
 
+## D-0096 — The world state always shows every field, and a placeholder is never stored
+**2026-10-16.** Comparing GLM-5.3 and a local Qwen3.6-27B on the same opening messages of
+one chat, the rendered state's shape changed from run to run, for both models. Unknown
+fields came back as "Unspecified", "Not mentioned", "Not described" or "Not explicitly
+described", or were left out. One Qwen state listed Matt as present with no line for him,
+because the reply's blank fields were dropped and `renderState` left out empty fields.
+Qwen also hedged ("likely standard Hogwarts robes or casual wear") and wrote "Indoors" as
+the weather.
+
+**Three changes.**
+1. **Every field renders, always** (Matt: "Not described" is better than no entry). Location,
+   weather, and each present character's hair and outfit each get a line. Where nothing is
+   known, the line says `Not described`, in one wording. This supersedes the "empty fields
+   left out" clause of D-0043's rendering.
+2. **A placeholder is read as a blank.** A value that only says the value is unknown is
+   dropped with reason `placeholder`, so it never overwrites a real value. Before this
+   change, "Not described" could replace a stored "stubble", which got around D-0053's
+   never-cleared rule. A placeholder already stored still renders as `Not described`. The
+   stored shape is unchanged, so no schema bump.
+3. **The prompt asks for `""` instead of a placeholder, and says never guess or hedge.** It
+   gives every present character both fields, tells the model to read cues ("frost on the
+   glass means a cold night"), and asks for the weather outside when the scene is indoors.
+
+**Would reopen it:** a placeholder wording the pattern misses that keeps recurring in the
+log's `placeholder` drops, or a real value the pattern catches by mistake.
+
+---
+
 ## D-0095 — Mend a finished reply's bracket slip; tell the memory model the chat is fiction
 **2026-10-14.** D-0094's reopen condition was met. Its logging covered 13 chats and 679
 memory calls, with 30 failures. None of the failures it logged was an unescaped quote.

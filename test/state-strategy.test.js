@@ -91,6 +91,14 @@ describe('the state prompt', () => {
         expect(STATE_PROMPT).toContain('Write every field every time');
     });
 
+    it('asks for "" over a placeholder or a guess, and the outside weather indoors (D-0096)', () => {
+        expect(INSTRUCTIONS).toContain('give every character present both hair and outfit');
+        expect(INSTRUCTIONS).toContain('write an empty string ""');
+        expect(INSTRUCTIONS).toContain('Never write a placeholder');
+        expect(INSTRUCTIONS).toContain('Never guess or hedge');
+        expect(INSTRUCTIONS).toMatch(/^- weather: .*indoors, the conditions inside and the weather outside/m);
+    });
+
     it('names the reply\'s keys and how to write speech inside a value (D-0094)', () => {
         expect(STATE_PROMPT).toContain('only a JSON object with the keys "location", "weather" and "characters"');
         expect(STATE_PROMPT).toContain('write speech with single quotes, never double quotes');

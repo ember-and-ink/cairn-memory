@@ -39,6 +39,27 @@ export const CHANGE_KINDS = Object.freeze([
 
 export const STATE_HEADER = '[Current scene]';
 
+/** What renders for a field nothing has established yet: one wording, whatever the model wrote (D-0096). */
+export const UNSET_TEXT = 'Not described';
+
+/**
+ * A value that only says the value is unknown — "Unspecified", "Not explicitly described",
+ * "N/A". Models write a different one each run, so they are recognised, never stored.
+ * "None" and "Nothing" are left alone: as an outfit they are a fact.
+ */
+const PLACEHOLDER = new RegExp('^(?:'
+    + 'not\\s+(?:yet\\s+|explicitly\\s+|clearly\\s+)?'
+    + '(?:described|mentioned|specified|stated|established|given|known|noted|shown|visible|provided)'
+    + '(?:\\s+yet)?(?:\\s+(?:in|by)\\s+the\\s+(?:messages?|scene|story|text))?'
+    + '|unspecified|unknown|unclear|undescribed|unmentioned|unstated|n\\s*/\\s*a|tbd'
+    + '|[-–—?]+'
+    + ')\\.?$', 'i');
+
+/** @param {string} text */
+export function isPlaceholder(text) {
+    return PLACEHOLDER.test(text.trim());
+}
+
 const LABELS = Object.freeze({ location: 'Location', weather: 'Weather' });
 const STATE_KEYS = [...Object.keys(TEXT_FIELDS), 'characters'];
 
@@ -91,31 +112,32 @@ export function validState(value) {
 
 /**
  * The state as it goes into the prompt. Fixed field order, characters in the
- * order they arrived, empty fields left out, and whitespace collapsed so a value
- * cannot start a line of its own. Anything `validState` rejects renders as `''`,
- * so the bound holds for any input.
+ * order they arrived, every field always shown — UNSET_TEXT where nothing is known,
+ * so the block has one shape (D-0096) — and whitespace collapsed so a value cannot
+ * start a line of its own. Anything `validState` rejects renders as `''`, so the
+ * bound holds for any input.
  *
  * @param {object} value
  * @returns {string} `''` when there is nothing to say.
  */
 export function renderState(value) {
-    if (!validState(value)) return '';
+    if (!validState(value) || !Object.keys(value).length) return '';
 
-    const lines = Object.keys(TEXT_FIELDS)
-        .filter((field) => value[field] !== undefined)
-        .map((field) => `${LABELS[field]}: ${oneLine(value[field])}`);
+    const lines = Object.keys(TEXT_FIELDS).map((field) => `${LABELS[field]}: ${shown(value[field])}`);
     const characters = Object.entries(value.characters ?? {});
-    // Who is present is a fact of its own, as WTrackerLite rendered it, so a
-    // character with nothing recorded yet still counts as there.
+    // Who is present is a fact of its own, as WTrackerLite rendered it.
     if (characters.length) lines.push(`Present: ${characters.map(([name]) => oneLine(name)).join(', ')}`);
     for (const [name, fields] of characters) {
-        const parts = Object.keys(CHARACTER_FIELDS)
-            .filter((field) => fields[field] !== undefined)
-            .map((field) => `${field}: ${oneLine(fields[field])}`);
-        if (parts.length) lines.push(`${oneLine(name)} — ${parts.join('; ')}`);
+        const parts = Object.keys(CHARACTER_FIELDS).map((field) => `${field}: ${shown(fields[field])}`);
+        lines.push(`${oneLine(name)} — ${parts.join('; ')}`);
     }
 
-    return lines.length ? [STATE_HEADER, ...lines].join('\n') : '';
+    return [STATE_HEADER, ...lines].join('\n');
+}
+
+/** A state stored before D-0096 can still hold a placeholder, so it renders as one too. */
+function shown(text) {
+    return text === undefined || isPlaceholder(text) ? UNSET_TEXT : oneLine(text);
 }
 
 /** The rendered length of a state with every field full, so the ceiling is derived, not typed in. */
@@ -221,10 +243,14 @@ function copyCharacters(characters) {
     return entries.length ? Object.fromEntries(entries.map(([name, fields]) => [name, { ...fields }])) : undefined;
 }
 
-/** Nothing here can stop applying, so a blank is a reply that lost a field, not a field that ended. */
+/**
+ * Nothing here can stop applying, so a blank is a reply that lost a field, not a field that ended.
+ * A placeholder says no more than a blank, so it must not overwrite a value either (D-0096).
+ */
 function readText(entry, cap) {
     if (entry === null || (typeof entry === 'string' && entry.trim() === '')) return { ok: false, reason: 'blank' };
     if (typeof entry !== 'string') return { ok: false, reason: 'wrong-type' };
+    if (isPlaceholder(entry)) return { ok: false, reason: 'placeholder' };
     if (entry.length > cap) return { ok: false, reason: 'too-long' };
     return { ok: true, text: entry };
 }

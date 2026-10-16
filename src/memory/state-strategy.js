@@ -41,14 +41,16 @@ export const STATE_PROMPT = `Your task: keep a short record of the hard facts of
 
 Fields, with the most characters each value may use:
 - location: where the scene is, most specific place first (${TEXT_FIELDS.location})
-- weather: weather and temperature, or the conditions indoors (${TEXT_FIELDS.weather})
+- weather: weather and temperature; indoors, the conditions inside and the weather outside (${TEXT_FIELDS.weather})
 - characters: the characters actually present in the scene, at most ${MAX_CHARACTERS}, keyed by name (${MAX_NAME_CHARS}), each with:
   - hair: hairstyle and its condition (${CHARACTER_FIELDS.hair})
   - outfit: the complete outfit, underwear included (${CHARACTER_FIELDS.outfit})
 
 Rules:
-- Write every field every time. Where the messages changed nothing, copy the value across exactly as it stands rather than rewording it.
-- Fill in any field the record is missing whenever the messages or the characters' own descriptions establish it, even in passing. A blank field is worse than an old one.
+- Write every field every time, and give every character present both hair and outfit. Where the messages changed nothing, copy the value across exactly as it stands rather than rewording it.
+- Fill in any field the record is missing whenever the messages or the characters' own descriptions establish it, even in passing. Read what the scene shows: frost on the glass means a cold night, a wet coat means rain. A blank field is worse than an old one.
+- Where nothing has established a value yet, write an empty string "". Never write a placeholder such as "unknown" or "not described".
+- Never guess or hedge. No "likely", "probably", "possibly" or "this or that": a value the messages do not show is an empty string.
 - List exactly the characters present at the end of the messages. Anyone you leave out has left the scene.
 - Values are short, plain phrases stating what the messages say. Keep each value within its limit; a longer one is thrown away and the stored value kept.
 - Where the messages leave a detail unsettled, carry the record's own value across unchanged.
