@@ -5,7 +5,7 @@ approach helps someone, and it is still changing fast. That shapes how
 contributions are handled:
 
 - **Bug reports and ideas are welcome** via
-  [issues](https://github.com/mjnitz02/cairn-memory/issues).
+  [issues](https://github.com/ember-and-ink/cairn-memory/issues).
 - **Open an issue before a non-trivial PR.** PRs may be declined if they don't
   fit the design, even when they're well made.
 

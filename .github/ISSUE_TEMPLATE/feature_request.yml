@@ -8,7 +8,7 @@ body:
         Cairn keeps its knobs few: if a setting can be derived, it is derived. Ideas that
         add a setting need to say why it can't be worked out automatically.
 
-        Settled choices are logged in [`docs/decisions.md`](https://github.com/mjnitz02/cairn-memory/blob/main/docs/decisions.md),
+        Settled choices are logged in [`docs/decisions.md`](https://github.com/ember-and-ink/cairn-memory/blob/main/docs/decisions.md),
         with what would reopen each one. If your idea revisits one, say what's new.
   - type: textarea
     id: idea
