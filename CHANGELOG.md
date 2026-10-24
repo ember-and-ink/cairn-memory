@@ -582,10 +582,10 @@ extension.
   `docs/st-api-surface.md` against a local SillyTavern checkout.
 - Documentation: design, decision log, ST API surface, development guide.
 
-[Unreleased]: https://github.com/mjnitz02/cairn-memory/compare/v0.3.1...HEAD
-[0.3.1]: https://github.com/mjnitz02/cairn-memory/compare/v0.3.0...v0.3.1
-[0.3.0]: https://github.com/mjnitz02/cairn-memory/compare/v0.2.2...v0.3.0
-[0.2.2]: https://github.com/mjnitz02/cairn-memory/compare/v0.2.1...v0.2.2
-[0.2.1]: https://github.com/mjnitz02/cairn-memory/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/mjnitz02/cairn-memory/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/mjnitz02/cairn-memory/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ember-and-ink/cairn-memory/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/ember-and-ink/cairn-memory/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/ember-and-ink/cairn-memory/compare/v0.2.2...v0.3.0
+[0.2.2]: https://github.com/ember-and-ink/cairn-memory/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/ember-and-ink/cairn-memory/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/ember-and-ink/cairn-memory/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/ember-and-ink/cairn-memory/releases/tag/v0.1.0

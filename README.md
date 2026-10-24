@@ -46,13 +46,13 @@ set of retrievable past events.
 In SillyTavern: **Extensions → Install extension**, and paste:
 
 ```
-https://github.com/mjnitz02/cairn-memory
+https://github.com/ember-and-ink/cairn-memory
 ```
 
 Or clone into your ST data directory:
 
 ```sh
-git clone https://github.com/mjnitz02/cairn-memory \
+git clone https://github.com/ember-and-ink/cairn-memory \
   ~/SillyTavern/data/default-user/extensions/cairn-memory
 ```
 

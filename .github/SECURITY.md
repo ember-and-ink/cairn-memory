@@ -11,7 +11,7 @@ updates them automatically.
 Please **do not open a public issue** for security problems.
 
 Report privately via GitHub's
-[private vulnerability reporting](https://github.com/mjnitz02/cairn-memory/security/advisories/new),
+[private vulnerability reporting](https://github.com/ember-and-ink/cairn-memory/security/advisories/new),
 which notifies the maintainer directly and keeps the report confidential until
 a fix ships.
 

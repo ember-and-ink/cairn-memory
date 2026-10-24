@@ -7,7 +7,7 @@
     "js": "index.js",
     "css": "style.css",
     "author": "mjnitz02",
-    "version": "0.19.0",
-    "homePage": "https://github.com/mjnitz02/cairn-memory",
+    "version": "0.20.0",
+    "homePage": "https://github.com/ember-and-ink/cairn-memory",
     "auto_update": true
 }
