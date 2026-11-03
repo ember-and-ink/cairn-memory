@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    CAP_FRACTION, MARGIN_FRACTION, MIN_CAP_FRACTION,
+    budgetCeilings, CAP_FRACTION, MARGIN_FRACTION, MIN_CAP_FRACTION,
     CANON_FRACTION, canonCap, COMPACT_FRACTION, createBudget, deriveCap, FLOOR_FRACTION, fractionOr, recoupled, tierSplit,
 } from '../src/pipeline/budgeter.js';
 import { NEAR_LIMIT_FRACTION } from '../src/util/context-size.js';
@@ -437,5 +437,44 @@ describe('the two fidelities', () => {
 
         expect(recoupled({ fullCap, floor, stepTokens })).toBe(true);
         expect(recoupled({ fullCap: sceneCap, floor, stepTokens })).toBe(false);
+    });
+});
+
+/** D-0098: the settings panel's static table of ceilings, which has to add up. */
+describe('the budget table', () => {
+    const defaults = { memoryFraction: 0.35, canonFraction: 0.2, compactFraction: 0.2, loreFraction: 0.11 };
+
+    it('gives each share\'s ceiling at a 32k prompt', () => {
+        expect(budgetCeilings({ maxPromptTokens: 32_000, ...defaults })).toEqual({
+            maxPrompt: 32_000, memory: 11_200, canon: 2_240, compact: 1_792, full: 7_168,
+            lore: 3_520, margin: 1_600, rest: 15_680, restShare: 49,
+        });
+    });
+
+    it('adds up: memory splits into its three parts, and the prompt into four rows', () => {
+        for (const maxPromptTokens of [8_192, 32_768, 131_072]) {
+            const t = budgetCeilings({ maxPromptTokens, ...defaults });
+            expect(t.canon + t.compact + t.full).toBe(t.memory);
+            expect(t.memory + t.lore + t.margin + t.rest).toBe(t.maxPrompt);
+        }
+    });
+
+    it('scales with the context, ceilings and all', () => {
+        const small = budgetCeilings({ maxPromptTokens: 32_000, ...defaults });
+        const large = budgetCeilings({ maxPromptTokens: 128_000, ...defaults });
+
+        expect(large.memory).toBe(small.memory * 4);
+        expect(large.lore).toBe(small.lore * 4);
+    });
+
+    it('never shows a negative remainder when the shares overrun the prompt', () => {
+        const t = budgetCeilings({ maxPromptTokens: 32_000, ...defaults, memoryFraction: 0.9, loreFraction: 0.9 });
+
+        expect(t.rest).toBe(0);
+        expect(t.restShare).toBe(0);
+    });
+
+    it('reads a lorebook share of 0 as no lorebook row', () => {
+        expect(budgetCeilings({ maxPromptTokens: 32_000, ...defaults, loreFraction: 0 }).lore).toBe(0);
     });
 });

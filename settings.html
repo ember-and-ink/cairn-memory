@@ -18,8 +18,14 @@
                 <label for="cairn_memoryProfileId">Connection profile</label>
                 <select id="cairn_memoryProfileId" class="text_pole"></select>
                 <div class="cairn-hint">
-                    The model that writes Cairn's memory. Pick a plain, cheap model — not your
-                    roleplay one. Nothing happens until one is chosen.
+                    The model that writes Cairn's memory. Any capable general-purpose model works,
+                    including your roleplay one; a cheaper one saves money. Nothing happens until
+                    one is chosen.
+                </div>
+                <div id="cairn_sharedProfileNote" class="cairn-hint cairn-note" hidden>
+                    This is the profile your chat uses. That works if it's a general-purpose model.
+                    Roleplay finetunes tend to drift when writing summaries, so pick a separate
+                    profile if yours is one.
                 </div>
 
                 <label for="cairn_memoryReasoning">Reasoning</label>
@@ -79,23 +85,67 @@
             <details class="cairn-card cairn-group">
                 <summary>Advanced settings</summary>
 
-                <details class="cairn-details">
-                    <summary>Memory budget</summary>
-                    <div class="cairn-hint">The defaults work. Each share is a ceiling; room left over goes to summaries.</div>
+                <div class="cairn-budget">
+                    <h4 class="cairn-section">Memory budget</h4>
+                    <div class="cairn-hint">The defaults work. Each row is a ceiling, worked out from your context size.</div>
 
-                    <div class="cairn-field">
-                        <label for="cairn_memoryFraction">Memory, % of the prompt</label>
-                        <input id="cairn_memoryFraction" type="number" class="text_pole" min="0" max="90" step="1">
+                    <table class="cairn-budget-table">
+                        <thead>
+                            <tr><th></th><th>%</th><th>≈ tokens</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr class="cairn-budget-total">
+                                <td>Max prompt</td>
+                                <td>100</td>
+                                <td id="cairn_budgetMaxPrompt">—</td>
+                            </tr>
+                            <tr>
+                                <td><label for="cairn_memoryFraction">Memory</label></td>
+                                <td><input id="cairn_memoryFraction" type="number" class="text_pole" min="0" max="90" step="1"></td>
+                                <td id="cairn_budgetMemory">—</td>
+                            </tr>
+                            <tr class="cairn-budget-sub">
+                                <td><label for="cairn_canonFraction">Canon, of memory</label></td>
+                                <td><input id="cairn_canonFraction" type="number" class="text_pole" min="0" max="90" step="1"></td>
+                                <td id="cairn_budgetCanon">—</td>
+                            </tr>
+                            <tr class="cairn-budget-sub">
+                                <td><label for="cairn_compactFraction">One-line summaries, of summaries</label></td>
+                                <td><input id="cairn_compactFraction" type="number" class="text_pole" min="0" max="90" step="1"></td>
+                                <td id="cairn_budgetCompact">—</td>
+                            </tr>
+                            <tr class="cairn-budget-sub">
+                                <td>Full summaries</td>
+                                <td>rest</td>
+                                <td id="cairn_budgetFull">—</td>
+                            </tr>
+                            <tr>
+                                <td><label for="cairn_loreFraction">Lorebook</label></td>
+                                <td><input id="cairn_loreFraction" type="number" class="text_pole" min="0" max="90" step="1"></td>
+                                <td id="cairn_budgetLore">—</td>
+                            </tr>
+                            <tr>
+                                <td>Safety margin</td>
+                                <td id="cairn_budgetMarginShare">—</td>
+                                <td id="cairn_budgetMargin">—</td>
+                            </tr>
+                            <tr>
+                                <td>Card, persona, recent messages</td>
+                                <td id="cairn_budgetRestShare">—</td>
+                                <td id="cairn_budgetRest">—</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="cairn-hint"><i>
+                        Canon or one-liners that don't fill their share go to full summaries, and a long
+                        card or long messages leave memory less. What this chat actually got is under
+                        Last generation.
+                    </i></div>
+                    <div class="cairn-hint">
+                        More one-liners reach further back; fewer keep recent summaries in full.
+                        Cairn sets SillyTavern's World Info budget cap from the lorebook row, for every
+                        chat; set it to <b>0</b> to manage that yourself.
                     </div>
-                    <div class="cairn-field">
-                        <label for="cairn_canonFraction">Canon, % of memory</label>
-                        <input id="cairn_canonFraction" type="number" class="text_pole" min="0" max="90" step="1">
-                    </div>
-                    <div class="cairn-field">
-                        <label for="cairn_compactFraction">One-line summaries, % of summaries</label>
-                        <input id="cairn_compactFraction" type="number" class="text_pole" min="0" max="90" step="1">
-                    </div>
-                    <div class="cairn-hint">More one-liners reach further back; fewer keep recent summaries in full.</div>
 
                     <div class="cairn-field">
                         <label for="cairn_rawWindow">Recent messages kept in full</label>
@@ -106,16 +156,7 @@
                         <input id="cairn_step" type="number" class="text_pole" min="0" max="100" step="1">
                     </div>
                     <div class="cairn-hint">Bigger steps change the prompt less often, keeping the cache warm. Changing either rebuilds memory once.</div>
-
-                    <div class="cairn-field">
-                        <label for="cairn_loreCap">Lorebook cap, tokens</label>
-                        <input id="cairn_loreCap" type="number" class="text_pole" min="0" step="100">
-                    </div>
-                    <div class="cairn-hint">
-                        The most the lorebook may take; what it frees goes to memory. <b>0</b> leaves
-                        SillyTavern's own budget alone. This is SillyTavern's setting, so it applies to every chat.
-                    </div>
-                </details>
+                </div>
 
                 <details class="cairn-details">
                     <summary>Memory prompts</summary>
@@ -181,25 +222,27 @@
                     <div id="cairn_adoptStatus" class="cairn-hint"></div>
                 </details>
 
-                <h4 class="cairn-section">Diagnostics</h4>
+                <details class="cairn-details">
+                    <summary>Diagnostics</summary>
 
-                <label class="checkbox_label" for="cairn_showInspector">
-                    <input id="cairn_showInspector" type="checkbox">
-                    <span>Show last generation</span>
-                </label>
-                <div class="cairn-hint">What Cairn put in the prompt, from where, and how stable the prompt is.</div>
+                    <label class="checkbox_label" for="cairn_showInspector">
+                        <input id="cairn_showInspector" type="checkbox">
+                        <span>Show last generation</span>
+                    </label>
+                    <div class="cairn-hint">What Cairn put in the prompt, from where, and how stable the prompt is.</div>
 
-                <label class="checkbox_label" for="cairn_logToDisk">
-                    <input id="cairn_logToDisk" type="checkbox">
-                    <span>Log each generation to disk</span>
-                </label>
-                <div class="cairn-hint">One file per chat, <code>user/files/cairn-&lt;chat&gt;-&lt;id&gt;.jsonl</code>, across sessions.</div>
+                    <label class="checkbox_label" for="cairn_logToDisk">
+                        <input id="cairn_logToDisk" type="checkbox">
+                        <span>Log each generation to disk</span>
+                    </label>
+                    <div class="cairn-hint">One file per chat, <code>user/files/cairn-&lt;chat&gt;-&lt;id&gt;.jsonl</code>, across sessions.</div>
 
-                <label class="checkbox_label" for="cairn_debugLogging">
-                    <input id="cairn_debugLogging" type="checkbox">
-                    <span>Debug logging</span>
-                </label>
-                <div class="cairn-hint">Verbose browser-console output. Only needed for bug reports.</div>
+                    <label class="checkbox_label" for="cairn_debugLogging">
+                        <input id="cairn_debugLogging" type="checkbox">
+                        <span>Debug logging</span>
+                    </label>
+                    <div class="cairn-hint">Verbose browser-console output. Only needed for bug reports.</div>
+                </details>
             </details>
 
             <details id="cairn_inspector_block" class="cairn-card cairn-group cairn-inspector-block">

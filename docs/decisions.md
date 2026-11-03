@@ -8,6 +8,65 @@ what we believed and why it changed.
 
 ---
 
+## D-0098 — The lorebook cap is a share of the prompt; the budget reads as one table
+**2026-11-03.** Supersedes D-0069's 3,500-token default. Checked against context size before
+the public announcement: every budget scaled with the context except the lorebook cap. At
+32k the 3,500 cap is 11% of the prompt. At 128k it is 2.7%, while ST's own 25% would have
+allowed 32k. That is the setting most likely to starve a large-context user's lorebook.
+
+**What changes.**
+1. **`loreCap` (tokens) becomes `loreFraction`, defaulting to 11% of the max prompt.** At
+   32k that is the same 3,500, and at 128k it is ~14k. The base is the max prompt, which the
+   memory share also uses, not ST's max context. There is no floor for small contexts: an
+   8k user gets ~900 tokens and can raise the share.
+2. **Cairn writes the cap as tokens into ST's `world_info_budget_cap`**, the field that ships
+   at 0, and leaves alone the percentage that users actually tune. It recomputes on load and on
+   `GENERATION_STARTED`, which runs before the World Info scan (`script.js:4299`, `:4635`),
+   and writes only when the number changed. While Cairn is on it owns that field, so a hand
+   edit is overwritten by the next generation.
+3. **Restore.** The first write stores ST's previous value as `loreCapBefore`. Turning Cairn
+   off, or setting the share to 0, writes it back. Nothing is applied while Cairn is off. A
+   v1 install's cap was already Cairn's own, so its migration restores ST's shipped 0.
+   Uninstall cannot be hooked, which is why the README says what Cairn changes.
+4. **The Memory budget is a static table of ceilings**, always open at the top of Advanced
+   settings. The percentages are editable and the token column is read-only. Rows: max prompt,
+   memory (canon, one-liners, full summaries), lorebook, the fixed 5% margin, and the
+   remainder for card, persona and recent messages. It shows what each share *could* take,
+   not what a given chat got. That is shown under Last generation, because a big card or
+   long messages change it per chat.
+5. **The raw window stays a fixed 8, stepping by 8,** at every context size. D-0068's
+   reasoning holds. On a large context the user may raise it, at a cost in tokens every turn.
+
+Also out of the same review: `logToDisk` now ships off. It is a diagnostic, and it re-uploads
+a growing file every session. Diagnostics becomes a fold like Memory prompts.
+
+**Would reopen it:** a large-context user reporting lorebook entries going missing at the
+default, or a small-context one finding 11% too tight to play.
+
+---
+
+## D-0097 — The memory profile may be the chat's own; the risk is a finetune, not sharing
+**2026-11-03.** Supersedes D-0006's "never the roleplay model". D-0006 came from Matt's own
+setup, which always splits the two to keep costs down. Plenty of users run a frontier
+generalist (Claude Opus, Gemini) for everything and don't care about cost, and those models
+are more than capable of Cairn's memory work. What actually struggles with consistent
+summaries is a roleplay **finetune**, and Cairn can't tell which kind a profile points at.
+
+**What changes.**
+1. A profile must still be chosen before any memory call runs. That part of D-0006 stands,
+   so the chat's own profile is never picked automatically.
+2. Choosing the chat's own profile is allowed. The toast that fired when they matched is
+   removed, along with the `sameProfile` field the gates carried only for it.
+3. The settings panel shows a muted note under the picker when the two match, and re-checks
+   on `CONNECTION_PROFILE_LOADED`. It says a general-purpose model is fine and a finetune is
+   the thing to avoid. The README and settings copy now give a separate cheaper profile as a
+   way to save money, not a requirement.
+
+**Would reopen it:** a capable general-purpose model seen failing at the memory work when it
+is also the chat model, in a way a separate profile on the same model would not.
+
+---
+
 ## D-0096 — The world state always shows every field, and a placeholder is never stored
 **2026-10-16.** Comparing GLM-5.3 and a local Qwen3.6-27B on the same opening messages of
 one chat, the rendered state's shape changed from run to run, for both models. Unknown

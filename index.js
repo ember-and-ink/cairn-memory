@@ -13,10 +13,10 @@ import { createSummarizer } from './src/pipeline/summarizer.js';
 import { migrateSettings } from './src/settings.js';
 import { createChatMarks } from './src/ui/chat-marks.js';
 import { createInspector } from './src/ui/inspector.js';
-import { renderSettingsPanel } from './src/ui/panel.js';
+import { noteSharedProfile, refreshBudget, renderSettingsPanel } from './src/ui/panel.js';
 import { installResummariseButton } from './src/ui/resummarise-button.js';
 import { installAdoptControls } from './src/ui/adopt-panel.js';
-import { error, info, setDebugEnabled } from './src/util/log.js';
+import { error, info, setDebugEnabled, warn } from './src/util/log.js';
 
 (async function init() {
     try {
@@ -35,10 +35,10 @@ import { error, info, setDebugEnabled } from './src/util/log.js';
         diskLog.setEnabled(settings.logToDisk);
 
         // The lorebook's ceiling, which is ST's own setting and ships at no cap
-        // (src/prompt/lore-cap.js, docs/decisions.md D-0069). Applied before the
-        // first plan, so the reserve and the holder read the same number.
-        const loreCap = createLoreCap();
-        await loreCap.apply(settings.loreCap);
+        // (src/prompt/lore-cap.js, D-0069, D-0098). Synced before the first plan and
+        // every generation, so the reserve and ST's scan read the same number.
+        const loreCap = createLoreCap({ settings: () => settings, save: () => context.saveSettingsDebounced() });
+        await loreCap.sync(context);
 
         // Plans the memory block every turn. Whether the plan is written is the
         // handover gate's call (src/prompt/handover.js, docs/decisions.md D-0027).
@@ -94,6 +94,7 @@ import { error, info, setDebugEnabled } from './src/util/log.js';
 
         inspector = createInspector(await renderSettingsPanel(context, {
             onEnabledChange: (enabled) => {
+                loreCap.sync(getContext());
                 if (enabled) {
                     observer.start();
                     injector.start();
@@ -108,7 +109,7 @@ import { error, info, setDebugEnabled } from './src/util/log.js';
             },
             onLogToDiskChange: (enabled) => diskLog.setEnabled(enabled),
             onHoldWorldInfoChange: (enabled) => injector.setHoldEnabled(enabled),
-            onLoreCapChange: (cap) => loreCap.apply(cap),
+            onLoreFractionChange: () => loreCap.sync(getContext()),
             onOwnMemoryBlockChange: (enabled) => assembler.setOwnEnabled(enabled),
             // Off takes effect at the next generation; on may have a state to bring up to date.
             onWorldStateChange: () => {
@@ -142,6 +143,20 @@ import { error, info, setDebugEnabled } from './src/util/log.js';
             statePlacement.reset();
             inspector.render(null);
             inspector.summaries(summarizer.status);
+        });
+        // Switching the chat's profile can make Cairn's the same one, or change the context size.
+        context.eventSource.on(context.eventTypes.CONNECTION_PROFILE_LOADED, () => {
+            noteSharedProfile(context);
+            refreshBudget(getContext()).catch((err) => warn('Could not refresh the memory budget table.', err));
+        });
+        // Ahead of ST's World Info scan (script.js:4299, :4635), so a new context size reaches the cap first.
+        context.eventSource.on(context.eventTypes.GENERATION_STARTED, async () => {
+            try {
+                await loreCap.sync(getContext());
+                await refreshBudget(getContext());
+            } catch (err) {
+                warn('Could not update the lorebook cap; the lorebook keeps its budget.', err);
+            }
         });
 
         info(`${DISPLAY_NAME} loaded.`);

@@ -12,7 +12,7 @@ Every setting has a default that works, and the only one you have to set is
 
 | Setting | Default | What it does |
 |---|---|---|
-| Connection profile | *none* | The profile Cairn uses to write summaries, the index, canon and the world state. It must not be your roleplay model. Until you pick one, Cairn does nothing. |
+| Connection profile | *none* | The profile Cairn uses to write summaries, the index, canon and the world state. Any capable general-purpose model works, including your roleplay profile; a cheaper separate one saves money, and roleplay finetunes are the thing to avoid. When it is the chat's own profile, the panel says so. Until you pick one, Cairn does nothing. |
 | Reasoning | None | How much the memory model thinks first: **None**, **Low**, or **As the profile's preset says**. Memory work doesn't need it, and thinking is slow and billed. Cairn can set this only on OpenRouter. On other sources, set reasoning in the profile's preset. |
 | Tell it the chat is fiction | On | Starts each memory request by saying the chat is a collaborative story, so the model reads it as one. |
 
@@ -29,21 +29,34 @@ Every setting has a default that works, and the only one you have to set is
 
 ## Advanced settings
 
-Collapsed by default. You shouldn't need any of these.
+Collapsed by default. The memory budget is the only part most people change, so it
+is always open at the top; the rest are folds.
 
 ### Memory budget
 
-Each share is a ceiling. Anything canon or the one-line summaries don't use goes
-back to full summaries.
+A table of percentages with the tokens each one comes to at your context size. Every
+row is a **ceiling**, not what a chat will use. Canon or one-liners that don't fill
+their share go to full summaries, and a long card or long messages leave memory less.
+What a chat actually got is under **Last generation**. The table updates when you
+switch connection profile and at each generation.
+
+| Row | Default | What it does |
+|---|---|---|
+| Max prompt | — | Your context size less the reply length, from SillyTavern. Read-only. |
+| Memory | 35% of the prompt | The most of the prompt the memory block may take. |
+| Canon | 20% of memory | The most of the memory block canon may take. |
+| One-line summaries | 20% of summaries | More one-liners reach further back. Fewer keep recent summaries in full. |
+| Full summaries | the rest of memory | Read-only. |
+| Lorebook | 11% of the prompt | The most the lorebook may take. What it frees goes to memory. Cairn writes it, as tokens, into SillyTavern's **World Info budget cap**, for every chat, and overwrites a hand edit there while Cairn is on. **0**, or turning Cairn off, gives SillyTavern its previous cap back. |
+| Safety margin | 5% | Fixed. Room for what no estimate sees. |
+| Card, persona, recent messages | the rest | Read-only. Everything else in the prompt. |
+
+Below the table, two message counts:
 
 | Setting | Default | What it does |
 |---|---|---|
-| Memory, % of the prompt | 35 | The most of the prompt the memory block may take. |
-| Canon, % of memory | 20 | The most of the memory block canon may take. |
-| One-line summaries, % of summaries | 20 | More one-liners reach further back. Fewer keep recent summaries in full. |
-| Recent messages kept in full | 8 | How many of the newest messages stay in the prompt as they were written. |
+| Recent messages kept in full | 8 | How many of the newest messages stay in the prompt as they were written. It doesn't grow with your context: on a large context you can raise it, but it costs tokens every turn. |
 | Messages per summary step | 8 | How many messages build up before they are swapped for summaries. Bigger steps change the prompt less often, which keeps the cache warm. |
-| Lorebook cap, tokens | 3500 | The most the lorebook may take. What it frees goes to memory. **0** leaves SillyTavern's budget alone. This writes SillyTavern's own setting, so it applies to every chat. |
 
 Changing **Recent messages kept in full** or **Messages per summary step**
 rebuilds memory once.
@@ -75,7 +88,7 @@ Both make many memory-model calls, so Cairn tells you how many and asks first.
 | Setting | Default | What it does |
 |---|---|---|
 | Show last generation | On | Shows the **Last generation** inspector: what Cairn put in the prompt, from where, and how stable the prompt is. |
-| Log each generation to disk | On | One file per chat at `user/files/cairn-<chat>-<id>.jsonl`, kept across sessions. |
+| Log each generation to disk | Off | One file per chat at `user/files/cairn-<chat>-<id>.jsonl`, kept across sessions. |
 | Debug logging | Off | Verbose browser-console output. Only needed for bug reports. |
 
 ## Last generation
