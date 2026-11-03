@@ -110,7 +110,7 @@ describe('whether Cairn may update the world state', () => {
     });
 });
 
-/** docs/p4-plan.md decision 9: what a compaction pass needs, and the handover's say in it. */
+/** docs/decisions.md D-0057: what a compaction pass needs, and the handover's say in it. */
 describe('whether Cairn may run a compaction pass', () => {
     const ready = { memoryProfileId: MEMORY.id, keepCanon: true };
 

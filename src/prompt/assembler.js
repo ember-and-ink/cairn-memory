@@ -62,7 +62,7 @@ export const BLOCK_RENDERING = Object.freeze({
 });
 
 /**
- * Canon's own section, above the summaries (docs/p4-plan.md decision 4). The same
+ * Canon's own section, above the summaries (docs/decisions.md D-0056). The same
  * shape as the block's, so the two read as one thing, and **no canon means no
  * section at all** — a chat that has never had a pass gets today's bytes exactly.
  */
@@ -154,7 +154,7 @@ export function createAssembler(getContext, {
     let latest = null;
     /**
      * The newest message whose canon batch the block has admitted. Advances only on a
-     * rebuild turn and only forward, like `budget.oldest` (docs/p4-plan.md decision 3):
+     * rebuild turn and only forward, like `budget.oldest` (docs/decisions.md D-0056):
      * canon sits at the block's head, so admitting a batch on an ordinary turn would
      * change bytes above every summary. A rebuild changes the head anyway, so the two
      * head-changes land together and cost one break instead of two.
@@ -443,7 +443,7 @@ export function createAssembler(getContext, {
             compactBoundary: fit.boundary,
             overCap: fit.over,
             cap,
-            // Canon (docs/p4-plan.md §3). `canonAdmitted` is the check the run reads: it
+            // Canon (docs/decisions.md D-0056). `canonAdmitted` is the check the run reads: it
             // may change only on a turn where `evicted > 0` or the step reason is
             // `first-turn`. Any other turn where it moves is decision 3 failing.
             canonFacts: allFacts.length,
@@ -558,7 +558,7 @@ export function createAssembler(getContext, {
         },
 
         /**
-         * This turn's compaction pass, for the summarizer (docs/p4-plan.md decision 6).
+         * This turn's compaction pass, for the summarizer (docs/decisions.md D-0057).
          * Separate from `latest` because it carries the summaries a pass would read,
          * and the report is counts and offsets only.
          */

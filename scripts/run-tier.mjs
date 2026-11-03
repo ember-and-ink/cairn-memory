@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * P5 stage 0d — the fixture, re-run by the model class that will actually run it
- * (docs/p5-plan.md, D-0080). The one step `calibrate-tier.mjs` and `pick-gate.mjs` leave
+ * (docs/decisions.md D-0080). The one step `calibrate-tier.mjs` and `pick-gate.mjs` leave
  * to a human — answering the prompts — done against an OpenAI-compatible API instead.
  *
  *   node scripts/run-tier.mjs <model...> [--runs N] [--slots N] [--dir corpusDir]

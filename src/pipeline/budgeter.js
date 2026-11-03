@@ -17,7 +17,7 @@
  *                (docs/decisions.md D-0038, D-0052). No setting, and nothing
  *                measured feeds it.
  *   `sceneCap` — what is left of it once canon has taken its share
- *                (`canonCap`, docs/p4-plan.md decision 5). This is what the summaries
+ *                (`canonCap`, docs/decisions.md D-0056). This is what the summaries
  *                are fitted to; the cap above is the whole block's.
  *   `floor`    — where a rebuild lands. Half the scene cap, so the next rebuild is
  *                half a cap of growth away instead of one summary away (D-0026).
@@ -54,7 +54,7 @@ export const CAP_FRACTION = 0.35;
 export const MARGIN_FRACTION = 0.05;
 
 /**
- * Canon's **ceiling** share of the block (docs/p4-plan.md decision 5). On Esin's derived
+ * Canon's **ceiling** share of the block (docs/decisions.md D-0056). On Esin's derived
  * cap that is ~720 tokens, about 45 one-liners, against a block that holds 34
  * summaries. Conservative on purpose: the first run's numbers are the evidence for
  * moving it, not an argument made in advance.
@@ -128,7 +128,7 @@ export function fractionOr(value, fallback) {
 }
 
 /**
- * How much of the block canon may take, and why that number (docs/p4-plan.md decision 5).
+ * How much of the block canon may take, and why that number (docs/decisions.md D-0056).
  *
  * Canon takes its room from the scene budget, so it can cause exactly the collapse
  * `recoupled()` reports. The second term makes that arithmetically impossible: the

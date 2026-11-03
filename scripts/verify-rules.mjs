@@ -28,7 +28,7 @@ const SOURCE = /(?<![\w./-])(?:src\/)?((?:interop|pipeline|memory|prompt|store|u
 /** Interfaces DESIGN.md §11 names before they exist; a citation of one is a plan, not a pointer. */
 const PLANNED = new Set(['store/entity-index.js']);
 /** Dated records: they name files as they were then, and a later move does not rewrite them (CLAUDE.md §6.26). */
-const RECORDS = new Set(['CHANGELOG.md', 'docs/decisions.md', 'docs/p4-plan.md', 'docs/p5-plan.md']);
+const RECORDS = new Set(['CHANGELOG.md', 'docs/decisions.md']);
 
 const decisions = new Set(
     [...readFileSync('docs/decisions.md', 'utf8').matchAll(/^## D-(\d{4})\b/gm)].map((match) => match[1]),
@@ -76,16 +76,17 @@ for (const file of walk(ROOT)) {
     // The changelog records what was true then, including pages since removed.
     if (relative(ROOT, file) === 'CHANGELOG.md') continue;
 
-    for (const [, page] of text.matchAll(DOC)) {
-        pointers++;
-        if (!existsSync(join(ROOT, 'docs', page))) failures.push(`${relative(ROOT, file)} → docs/${page}: no such page.`);
-    }
     for (const [, number] of text.matchAll(DECISION)) {
         pointers++;
         if (!decisions.has(number)) failures.push(`${relative(ROOT, file)} → D-${number}: no such decision.`);
     }
 
+    // The log names pages as they were then, the archived phase plans among them.
     if (RECORDS.has(relative(ROOT, file))) continue;
+    for (const [, page] of text.matchAll(DOC)) {
+        pointers++;
+        if (!existsSync(join(ROOT, 'docs', page))) failures.push(`${relative(ROOT, file)} → docs/${page}: no such page.`);
+    }
     for (const [, path] of text.matchAll(SOURCE)) {
         sources++;
         if (!PLANNED.has(path) && !existsSync(join(ROOT, 'src', path))) {

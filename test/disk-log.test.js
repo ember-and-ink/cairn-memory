@@ -628,7 +628,7 @@ describe('disk log — P6 the cap and its reserves', () => {
 });
 
 /**
- * Each phase's check names the log fields it is read from (docs/p5-plan.md §3). A check
+ * Each phase's check names the log fields it is read from. A check
  * whose field is missing is a check nobody can run, and the gap is invisible until the
  * run — so the field list is a test (CLAUDE.md §9.35).
  */

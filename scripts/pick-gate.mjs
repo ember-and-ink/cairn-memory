@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * P5 stage 3's gate, offline — the canon pick over a real index (docs/p5-plan.md).
+ * P5 stage 3's gate, offline — the canon pick over a real index (docs/decisions.md D-0080).
  *
  * **It is a fixture, not a run** (docs/decisions.md D-0061): the summaries are on disk,
  * the index is on disk, and the question is whether a forced-budget pick over a correct

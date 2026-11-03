@@ -948,7 +948,7 @@ describe('the cap the block is planned against', () => {
 });
 
 /**
- * P4: canon at the block's head (docs/p4-plan.md decisions 3, 4 and 5). The
+ * P4: canon at the block's head (docs/decisions.md D-0056). The
  * invariants here are the ones that are invisible in play (CLAUDE.md §3.10):
  * whether the block still reads byte-identically without canon, and whether canon
  * only ever enters on a turn that was rebuilding anyway.
@@ -1111,7 +1111,7 @@ describe('canon at the head of the block', () => {
     });
 
     /**
-     * The single sentence D-0062's three gaps reduce to (docs/p5-plan.md): P4 read the
+     * The single sentence D-0062's three gaps reduce to (docs/decisions.md D-0070): P4 read the
      * summaries the *prompt* was about to drop, and eviction from the prompt has nothing
      * to do with availability on disk. The pick reads the chat.
      */

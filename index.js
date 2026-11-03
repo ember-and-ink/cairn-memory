@@ -65,7 +65,7 @@ import { error, info, setDebugEnabled } from './src/util/log.js';
             settings: () => settings,
             // The budget a compaction pass needs lives in the assembler, so the pass it
             // works out each turn comes through rather than being derived twice
-            // (docs/p4-plan.md decision 6).
+            // (docs/decisions.md D-0057).
             memory: () => assembler.pendingPass,
             // Every memory call gets its own line, adoptions included (D-0093).
             onCall: (entry) => diskLog.appendCall(entry, getContext),

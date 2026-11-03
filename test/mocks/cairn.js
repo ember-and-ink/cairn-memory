@@ -16,7 +16,7 @@ export function cairnStore(message, text, { prompt = 'h:00000000000001', at = '2
 }
 
 /**
- * A v3 store carrying a canon batch, written out by hand (docs/p4-plan.md decision 1).
+ * A v3 store carrying a canon batch, written out by hand (docs/decisions.md D-0055).
  * A plain string is a fact with no entities; the tags are stored and unread in P4.
  *
  * @param {Array<string|{text: string, entities?: string[]}>} facts

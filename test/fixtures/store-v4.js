@@ -20,7 +20,7 @@
  * yet. What was confirmed against the real chats is only that a summary is ~3 sentences
  * and names 4 to 5 people and places, measured by length and count alone — so four
  * name slots and a 100-character clause are the right order of size. Stage 0's labelling
- * pass is what confirms the rest (docs/p5-plan.md §5).
+ * pass is what confirms the rest (docs/decisions.md D-0074).
  *
  * An index record is hashed against **the summary it was derived from**, not against
  * `mes`: a resummarise has to invalidate it, and a hash of the message would not.

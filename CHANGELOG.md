@@ -40,7 +40,9 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 - **The README is now a short quick start.** The full settings reference moved to
   `docs/settings.md`, the Qvink handover to `docs/qvink-handover.md`, and
-  `docs/README.md` indexes the rest.
+  `docs/README.md` indexes the rest. The P4 and P5 phase plans and the naming notes
+  are gone from `docs/`; every decision in them was already in `docs/decisions.md`,
+  and the code cites those entries now.
 
 - **The settings panel is regrouped and shorter.** **Memory model** (connection
   profile, reasoning), then **What Cairn keeps** (the feature switches), with the

@@ -8,7 +8,7 @@ import { isRebuild } from '../src/prompt/rebuild.js';
  * D-0067's invariant: the rebuild turn is the only turn discontinuous work happens on,
  * and there is exactly one definition of which turn that is.
  *
- * This lands before anything in P5 depends on it (docs/p5-plan.md stage 2, item 4). The
+ * This lands before anything in P5 depends on it (docs/decisions.md D-0074). The
  * failure it guards is not a crash — it is a second, slightly different rebuild
  * condition at a new call site, after which the block quietly starts changing on turns
  * it should not, which is invisible in play and is exactly what D-0019 was about.

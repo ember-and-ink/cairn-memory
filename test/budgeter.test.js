@@ -115,7 +115,7 @@ describe('how much room the block gets', () => {
     });
 });
 
-/** docs/p4-plan.md decision 5: canon's share, and the guard that keeps the see-saw apart. */
+/** docs/decisions.md D-0056: canon's share, and the guard that keeps the see-saw apart. */
 describe('canon\'s share of the block', () => {
     it('takes its fifth when the block has room for it', () => {
         // Esin's derived cap (docs/decisions.md D-0054) against a ~1,060-token step.

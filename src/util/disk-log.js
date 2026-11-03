@@ -249,7 +249,7 @@ function memoryFields(memory) {
         // The cap in use: the smaller of the fixed share and what the chat leaves
         // (docs/decisions.md D-0038, D-0052).
         memory_cap: memory.cap,
-        // Canon at the block's head (docs/p4-plan.md §3, docs/decisions.md D-0071).
+        // Canon at the block's head (docs/decisions.md D-0056, D-0071).
         // `memory_canon_admitted` is the check the run reads: it may change only on a
         // turn where `memory_evicted > 0` or `memory_step_reason` is `first-turn`, and
         // `memory_canon_rederived` says the same thing in one field.
@@ -380,7 +380,7 @@ function summaryFields(status) {
 }
 
 /**
- * The compaction queue as the prompt went out (docs/p4-plan.md §3). Counts are running
+ * The compaction queue as the prompt went out (docs/decisions.md D-0057). Counts are running
  * totals for the chat, so the work between two generations is the difference of two
  * lines, and every one of them is of the *applied* change (CLAUDE.md §4.18). Never a
  * fact's text.

@@ -20,11 +20,12 @@ detail.
 | [SillyTavern API surface](st-api-surface.md) | Every SillyTavern API Cairn depends on |
 | [Contributing](../.github/CONTRIBUTING.md) | How to report bugs and open PRs |
 
-## Records
+## Project history
+
+Most readers can skip this. Code comments cite decisions by number (`D-0071`), and
+this is where those numbers point.
 
 | | |
 |---|---|
 | [Decisions](decisions.md) | What was decided, when, why, and what would reopen it |
 | [`CHANGELOG.md`](../CHANGELOG.md) | What changed in each version |
-| [P4 plan](p4-plan.md), [P5 plan](p5-plan.md) | Phase plans, kept as written |
-| [Names](names.md) | How the name was chosen |
