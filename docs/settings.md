@@ -12,7 +12,7 @@ Every setting has a default that works, and the only one you have to set is
 
 | Setting | Default | What it does |
 |---|---|---|
-| Connection profile | *none* | The profile Cairn uses to write summaries, the index, canon and the world state. It must not be your roleplay model. Until you pick one, Cairn does nothing. |
+| Connection profile | *none* | The profile Cairn uses to write summaries, the index, canon and the world state. Any capable general-purpose model works, including your roleplay profile; a cheaper separate one saves money, and roleplay finetunes are the thing to avoid. When it is the chat's own profile, the panel says so. Until you pick one, Cairn does nothing. |
 | Reasoning | None | How much the memory model thinks first: **None**, **Low**, or **As the profile's preset says**. Memory work doesn't need it, and thinking is slow and billed. Cairn can set this only on OpenRouter. On other sources, set reasoning in the profile's preset. |
 | Tell it the chat is fiction | On | Starts each memory request by saying the chat is a collaborative story, so the model reads it as one. |
 

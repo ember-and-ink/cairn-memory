@@ -55,8 +55,10 @@ inside Cairn never breaks the chat.
 **You need:**
 
 - SillyTavern **1.19.0** or newer.
-- A **second connection profile** for memory work. Use a capable model that isn't
-  your roleplay model (GLM-4.7 class or better) with reasoning off. On OpenRouter
+- A **connection profile** for memory work: any capable general-purpose model
+  (GLM-4.7 class or better) with reasoning off. It can be your roleplay profile;
+  a cheaper separate one costs less, and roleplay finetunes are the one thing to
+  avoid, since they tend to drift when summarising. On OpenRouter
   Cairn turns reasoning off for you; elsewhere, turn it off in the profile's preset.
 
 **Install:**

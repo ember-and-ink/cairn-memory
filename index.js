@@ -13,7 +13,7 @@ import { createSummarizer } from './src/pipeline/summarizer.js';
 import { migrateSettings } from './src/settings.js';
 import { createChatMarks } from './src/ui/chat-marks.js';
 import { createInspector } from './src/ui/inspector.js';
-import { renderSettingsPanel } from './src/ui/panel.js';
+import { noteSharedProfile, renderSettingsPanel } from './src/ui/panel.js';
 import { installResummariseButton } from './src/ui/resummarise-button.js';
 import { installAdoptControls } from './src/ui/adopt-panel.js';
 import { error, info, setDebugEnabled } from './src/util/log.js';
@@ -143,6 +143,8 @@ import { error, info, setDebugEnabled } from './src/util/log.js';
             inspector.render(null);
             inspector.summaries(summarizer.status);
         });
+        // Switching the chat's profile can make Cairn's the same one, or stop it being.
+        context.eventSource.on(context.eventTypes.CONNECTION_PROFILE_LOADED, () => noteSharedProfile(context));
 
         info(`${DISPLAY_NAME} loaded.`);
     } catch (err) {

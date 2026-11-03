@@ -38,6 +38,11 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Changed
 
+- **Cairn's memory profile can be the one your chat uses.** The toast that fired
+  when they matched is gone. A quiet note under the connection profile picker now
+  says a general-purpose model is fine for both, and that a roleplay finetune is the
+  one to swap out. A cheaper separate profile is still a good way to save money.
+
 - **The README is now a short quick start.** The full settings reference moved to
   `docs/settings.md`, the Qvink handover to `docs/qvink-handover.md`, and
   `docs/README.md` indexes the rest. The P4 and P5 phase plans and the naming notes

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assessCompaction, assessStateUpdates, assessSummarizing } from '../src/pipeline/gates.js';
+import { assessCompaction, assessStateUpdates, assessSummarizing, sharesChatProfile } from '../src/pipeline/gates.js';
 import { QVINK_EXTENSION } from '../src/interop/qvink.js';
 import { WTRACKERS } from '../src/interop/wtracker.js';
 import { createRequestService } from './mocks/llm.js';
@@ -10,10 +10,10 @@ const context = (overrides = {}) => createContext({ profiles: [MEMORY, ROLEPLAY]
 
 describe('whether Cairn may summarise', () => {
     it('is ready with a memory profile, a single-character chat and a quiet qvink', () => {
-        expect(assessSummarizing(context(), { memoryProfileId: MEMORY.id })).toEqual({ ready: true, reason: 'ready', sameProfile: false });
+        expect(assessSummarizing(context(), { memoryProfileId: MEMORY.id })).toEqual({ ready: true, reason: 'ready' });
     });
 
-    it('never calls a model without a memory profile (D-0006)', () => {
+    it('never calls a model without a memory profile (D-0006, D-0097)', () => {
         expect(assessSummarizing(context(), { memoryProfileId: '' }).reason).toBe('no-profile');
         expect(assessSummarizing(context(), {}).reason).toBe('no-profile');
     });
@@ -58,19 +58,13 @@ describe('whether Cairn may summarise', () => {
         expect(assessSummarizing(disabled, { memoryProfileId: MEMORY.id }).reason).toBe('ready');
         expect(assessSummarizing(uninstalled, { memoryProfileId: MEMORY.id }).reason).toBe('ready');
     });
-
-    it('flags a memory profile that is the chat\'s own', () => {
-        const same = context({ selectedProfile: MEMORY.id });
-
-        expect(assessSummarizing(same, { memoryProfileId: MEMORY.id })).toEqual({ ready: true, reason: 'ready', sameProfile: true });
-    });
 });
 
 describe('whether Cairn may update the world state', () => {
     const settings = { memoryProfileId: MEMORY.id };
 
     it('is ready with a memory profile and a single-character chat', () => {
-        expect(assessStateUpdates(context(), settings)).toEqual({ ready: true, reason: 'ready', sameProfile: false, tracker: null });
+        expect(assessStateUpdates(context(), settings)).toEqual({ ready: true, reason: 'ready', tracker: null });
     });
 
     it('needs what summaries need, for the same reasons', () => {
@@ -100,13 +94,9 @@ describe('whether Cairn may update the world state', () => {
         for (const tracker of WTRACKERS) {
             const loaded = context({ extensions: [tracker.extension] });
             expect(assessStateUpdates(loaded, settings)).toEqual({
-                ready: false, reason: 'wtracker-loaded', sameProfile: false, tracker: tracker.name,
+                ready: false, reason: 'wtracker-loaded', tracker: tracker.name,
             });
         }
-    });
-
-    it('flags a memory profile that is the chat\'s own', () => {
-        expect(assessStateUpdates(context({ selectedProfile: MEMORY.id }), settings).sameProfile).toBe(true);
     });
 });
 
@@ -116,7 +106,7 @@ describe('whether Cairn may run a compaction pass', () => {
 
     it('is ready with a memory profile and Cairn writing the block', () => {
         expect(assessCompaction(context(), ready, { writing: true }))
-            .toEqual({ ready: true, reason: 'ready', sameProfile: false });
+            .toEqual({ ready: true, reason: 'ready' });
     });
 
     it('shows the switch first when the user turned it off', () => {
@@ -144,13 +134,32 @@ describe('whether Cairn may run a compaction pass', () => {
         expect(assessCompaction(group, ready, { writing: true }).reason).toBe('group-chat');
     });
 
-    it('says when the memory profile is the one the chat is using', () => {
-        const same = context({ selectedProfile: MEMORY.id });
-
-        expect(assessCompaction(same, ready, { writing: true })).toMatchObject({ ready: true, sameProfile: true });
-    });
-
     it('is on by default, so an unconfigured install still promotes', () => {
         expect(assessCompaction(context(), { memoryProfileId: MEMORY.id }, { writing: true }).ready).toBe(true);
+    });
+});
+
+/** D-0097: the chat's own profile is allowed, so this only decides whether the panel notes it. */
+describe('whether the memory profile is the chat\'s own', () => {
+    it('is when ST has that profile selected', () => {
+        expect(sharesChatProfile(context({ selectedProfile: MEMORY.id }), MEMORY.id)).toBe(true);
+    });
+
+    it('is not when the chat uses another profile, or none', () => {
+        expect(sharesChatProfile(context({ selectedProfile: ROLEPLAY.id }), MEMORY.id)).toBe(false);
+        expect(sharesChatProfile(context(), MEMORY.id)).toBe(false);
+    });
+
+    it('is not when Cairn has no profile, even with none selected in ST', () => {
+        expect(sharesChatProfile(context({ selectedProfile: '' }), '')).toBe(false);
+        expect(sharesChatProfile(context(), undefined)).toBe(false);
+    });
+
+    it('does not stop any memory work', () => {
+        const same = context({ selectedProfile: MEMORY.id });
+
+        expect(assessSummarizing(same, { memoryProfileId: MEMORY.id }).ready).toBe(true);
+        expect(assessStateUpdates(same, { memoryProfileId: MEMORY.id }).ready).toBe(true);
+        expect(assessCompaction(same, { memoryProfileId: MEMORY.id }, { writing: true }).ready).toBe(true);
     });
 });

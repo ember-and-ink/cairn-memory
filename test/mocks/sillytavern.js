@@ -314,6 +314,8 @@ export function createContext({
             /** public/scripts/events.js:23; emitted with (type, params, dryRun), public/script.js:4299 */
             GENERATION_STARTED: 'generation_started',
             CHAT_CHANGED: 'chat_id_changed',
+            /** public/scripts/events.js:81 */
+            CONNECTION_PROFILE_LOADED: 'connection_profile_loaded',
         },
 
         /** public/scripts/extensions.js:141 */

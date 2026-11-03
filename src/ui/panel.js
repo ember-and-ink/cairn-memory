@@ -3,6 +3,7 @@ import { CANON_PROMPT } from '../memory/canon-strategy.js';
 import { INDEX_PROMPT } from '../memory/index-strategy.js';
 import { DEFAULT_SUMMARY_PROMPT } from '../memory/scene-strategy.js';
 import { STATE_PROMPT } from '../memory/state-strategy.js';
+import { sharesChatProfile } from '../pipeline/gates.js';
 import { setDebugEnabled } from '../util/log.js';
 import { escapeHtml } from './html.js';
 
@@ -49,7 +50,11 @@ export async function renderSettingsPanel(context, handlers = {}) {
     bind(context, 'debugLogging', CHECKBOX, (value) => setDebugEnabled(value));
 
     populateProfiles(context, settings.memoryProfileId);
-    bind(context, 'memoryProfileId', SELECT, (value) => handlers.onMemoryProfileChange?.(value));
+    bind(context, 'memoryProfileId', SELECT, (value) => {
+        noteSharedProfile(context);
+        handlers.onMemoryProfileChange?.(value);
+    });
+    noteSharedProfile(context);
     // A new choice is a fresh start: what a provider refused before is asked again (D-0088).
     bind(context, 'memoryReasoning', SELECT, () => {
         context.extensionSettings[SLUG].reasoningRefused = {};
@@ -70,8 +75,18 @@ function toggleInspector(visible) {
 }
 
 /**
- * The memory model is never the roleplay model (DESIGN.md §3.1), so this lists
- * Connection Manager profiles and stays empty-by-default rather than guessing.
+ * Shows the note under the profile picker when Cairn shares the chat's profile.
+ * Called again when ST switches profile, so the note follows the top bar (D-0097).
+ * @param {object} context SillyTavern.getContext()
+ */
+export function noteSharedProfile(context) {
+    const note = document.getElementById(`${SLUG}_sharedProfileNote`);
+    if (note) note.hidden = !sharesChatProfile(context, context.extensionSettings[SLUG]?.memoryProfileId);
+}
+
+/**
+ * Lists Connection Manager profiles and stays empty-by-default rather than guessing:
+ * the user chooses, even when the choice is the chat's own profile (D-0097).
  */
 function populateProfiles(context, selectedId) {
     const select = field('memoryProfileId');

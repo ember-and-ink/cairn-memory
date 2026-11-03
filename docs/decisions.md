@@ -8,6 +8,28 @@ what we believed and why it changed.
 
 ---
 
+## D-0097 — The memory profile may be the chat's own; the risk is a finetune, not sharing
+**2026-11-03.** Supersedes D-0006's "never the roleplay model". D-0006 came from Matt's own
+setup, which always splits the two to keep costs down. Plenty of users run a frontier
+generalist (Claude Opus, Gemini) for everything and don't care about cost, and those models
+are more than capable of Cairn's memory work. What actually struggles with consistent
+summaries is a roleplay **finetune**, and Cairn can't tell which kind a profile points at.
+
+**What changes.**
+1. A profile must still be chosen before any memory call runs. That part of D-0006 stands,
+   so the chat's own profile is never picked automatically.
+2. Choosing the chat's own profile is allowed. The toast that fired when they matched is
+   removed, along with the `sameProfile` field the gates carried only for it.
+3. The settings panel shows a muted note under the picker when the two match, and re-checks
+   on `CONNECTION_PROFILE_LOADED`. It says a general-purpose model is fine and a finetune is
+   the thing to avoid. The README and settings copy now give a separate cheaper profile as a
+   way to save money, not a requirement.
+
+**Would reopen it:** a capable general-purpose model seen failing at the memory work when it
+is also the chat model, in a way a separate profile on the same model would not.
+
+---
+
 ## D-0096 — The world state always shows every field, and a placeholder is never stored
 **2026-10-16.** Comparing GLM-5.3 and a local Qwen3.6-27B on the same opening messages of
 one chat, the rendered state's shape changed from run to run, for both models. Unknown

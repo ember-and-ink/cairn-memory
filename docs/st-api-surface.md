@@ -41,6 +41,7 @@ literally against the cited line.
 | `CHAT_COMPLETION_PROMPT_READY` | Chat-completion prompt, read-only in P0 | `public/scripts/openai.js` | 1619 |
 | `WORLD_INFO_ACTIVATED` | Observe which WI entries fired | `public/scripts/world-info.js` | 902 |
 | `CHAT_CHANGED` | Drop the stability baseline on a new chat; abandon a memory request for the chat being left | `public/scripts/events.js` | 19 |
+| `CONNECTION_PROFILE_LOADED: 'connection_profile_loaded',` | Re-check whether Cairn shares the chat's profile when ST switches it (D-0097) | `public/scripts/events.js` | 81 |
 | `GENERATE_AFTER_COMBINE_PROMPTS` | Event name | `public/scripts/events.js` | 57 |
 | `WORLD_INFO_ACTIVATED` | Event name | `public/scripts/events.js` | 62 |
 | `CHAT_COMPLETION_PROMPT_READY` | Event name | `public/scripts/events.js` | 65 |
@@ -154,7 +155,7 @@ literally against the cited line.
 | `disabledExtensions.includes('connection-manager')` | `sendRequest` refuses outright without Connection Manager, so the summarizer checks first | `public/scripts/extensions/shared.js` | 427 |
 | `throw new Error('API request failed', { cause: error });` | Every transport error, an abort included, arrives wrapped | `public/scripts/extensions/shared.js` | 490 |
 | `ExtractedData` | `{ content, reasoning }`, the non-streaming return shape | `public/scripts/custom-request.js` | 60 |
-| `selectedProfile: null` | The chat's own profile, so a memory profile that matches it gets a warning | `public/scripts/extensions/connection-manager/index.js` | 29 |
+| `selectedProfile: null` | The chat's own profile, so a memory profile that matches it gets a note in the panel (D-0097) | `public/scripts/extensions/connection-manager/index.js` | 29 |
 | `substituteParams,` | Expands ST macros on the summary template before chat text goes in | `public/scripts/st-context.js` | 163 |
 | `chatId: selected_group` | Keys a message's failure count to its chat | `public/scripts/st-context.js` | 125 |
 | `saveChat: saveChatConditional` | Persist a written scene; saves the *current* chat | `public/scripts/st-context.js` | 155 |

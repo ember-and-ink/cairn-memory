@@ -92,6 +92,9 @@
     color: var(--SmartThemeBodyColor);
 }
 
+/* A note, not an alarm: the hint's muted weight in the warning colour. */
+.cairn-hint.cairn-note { color: var(--warning, #e0a030); }
+
 .cairn-settings select,
 .cairn-settings input[type="text"],
 .cairn-settings textarea {

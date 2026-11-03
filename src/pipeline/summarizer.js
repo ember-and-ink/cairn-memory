@@ -33,7 +33,6 @@ import { framedMessages, isBadRequest, memoryProfile, refusalKey, requestOverrid
 
 const NO_CONNECTION_MANAGER = 'Cairn needs the Connection Manager extension enabled to write memory summaries.';
 const PROFILE_MISSING = 'Cairn\'s memory connection profile no longer exists. Choose another in Cairn\'s settings.';
-const SAME_PROFILE = 'Cairn\'s memory connection is the profile this chat uses. Memory summaries should come from a separate model.';
 /** Reasons a reply arrived and could not be read, as against a transport or write failure. */
 const READ_FAILURES = new Set(['empty', 'refusal', 'format', 'truncated', 'no-facts']);
 const EFFORT_REFUSED = (effort) => `The memory model's provider refused reasoning effort "${effort}", so Cairn asks it for `
@@ -190,7 +189,6 @@ export function createSummarizer(getContext, {
             // The summary gate checks what every kind needs first, so its reason covers all three.
             if (gates.summary.reason === 'no-connection-manager') toastOnce(NO_CONNECTION_MANAGER);
             if (gates.summary.reason === 'profile-missing') toastOnce(PROFILE_MISSING);
-            if (gates.summary.sameProfile || gates.state.sameProfile) toastOnce(SAME_PROFILE);
 
             const { chat, chatId } = context;
             // A rebuild the user asked for goes first, as the state does: they are waiting on it.

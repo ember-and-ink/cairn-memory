@@ -100,10 +100,11 @@ whether ST has the lever — and if it does, the work is the timing.
 
 ## 3. Hard requirements
 
-1. **The summarisation model is never the roleplay model.** Separate connection profile,
-   mandatory, not optional. RP models are trained to be fluffy and evocative; those objectives
-   compete with summarisation in every observed case. The extension must not work at all without
-   an explicitly selected memory connection.
+1. **The memory connection is chosen explicitly.** The extension does nothing until one is
+   selected. It may be the chat's own profile if that is a capable general-purpose model.
+   Roleplay finetunes are trained to be fluffy and evocative, which works against summarisation,
+   so the panel notes the shared profile instead of blocking it (D-0097, superseding D-0006's
+   "never the roleplay model").
 2. **State is structured, not prose.** Prose state invites the summariser to wordsmith, which
    damages flow. Hard facts live in structured state; *flavour* comes from the recent raw
    messages, which is what they are for.

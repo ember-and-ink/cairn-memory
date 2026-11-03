@@ -256,7 +256,7 @@ describe('when it runs', () => {
         expect(toastr.warning).toHaveBeenCalledTimes(1);
     });
 
-    it('warns once when the memory profile is the chat\'s own, and still summarises', async () => {
+    it('summarises without a toast when the memory profile is the chat\'s own (D-0097)', async () => {
         const { context, summarizer } = harness({
             responses: [summary(10), summary(11), summary(12)],
             context: { selectedProfile: MEMORY.id },
@@ -266,7 +266,7 @@ describe('when it runs', () => {
         await summarizer.idle();
 
         expect(written(context.chat)).toEqual([10, 11, 12]);
-        expect(toastr.warning).toHaveBeenCalledTimes(1);
+        expect(toastr.warning).not.toHaveBeenCalled();
     });
 
     it('stops listening and abandons the request in flight when stopped', async () => {

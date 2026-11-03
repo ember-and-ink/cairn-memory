@@ -18,8 +18,14 @@
                 <label for="cairn_memoryProfileId">Connection profile</label>
                 <select id="cairn_memoryProfileId" class="text_pole"></select>
                 <div class="cairn-hint">
-                    The model that writes Cairn's memory. Pick a plain, cheap model — not your
-                    roleplay one. Nothing happens until one is chosen.
+                    The model that writes Cairn's memory. Any capable general-purpose model works,
+                    including your roleplay one; a cheaper one saves money. Nothing happens until
+                    one is chosen.
+                </div>
+                <div id="cairn_sharedProfileNote" class="cairn-hint cairn-note" hidden>
+                    This is the profile your chat uses. That works if it's a general-purpose model.
+                    Roleplay finetunes tend to drift when writing summaries, so pick a separate
+                    profile if yours is one.
                 </div>
 
                 <label for="cairn_memoryReasoning">Reasoning</label>
