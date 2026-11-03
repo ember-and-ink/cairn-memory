@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The compact tier's calibration harness — P5 stage 0c (docs/p5-plan.md, D-0075).
+ * The compact tier's calibration harness — P5 stage 0c (docs/decisions.md D-0075, D-0076).
  *
  * Two subcommands, because the middle step is a model and not a script:
  *
@@ -38,7 +38,7 @@ const DEFAULT_OUT = path.join(homedir(), 'workspaces', 'cairn-corpus', 'p5-stage
 /** Messages 1–85 are the real story; past ~85 is filler generated to pad tokens. */
 const REAL_THROUGH = 85;
 
-/** The post-reclaim scene budget the horizon is priced against (docs/p5-plan.md §1). */
+/** The post-reclaim scene budget the horizon is priced against (docs/decisions.md D-0075). */
 const SCENE_CAP = 6362;
 
 function outDir(given) {
@@ -242,7 +242,7 @@ function measure(given, name = 'records.json', { sceneCap = SCENE_CAP } = {}) {
         ``,
         `Kinds: ${Object.entries(kinds).map(([k, v]) => `${k} ${v}`).join(', ')}.`,
         ``,
-        `## The horizon, against sceneCap ${sceneCap} (docs/p5-plan.md §1)`,
+        `## The horizon, against sceneCap ${sceneCap} (docs/decisions.md D-0075)`,
         ``,
         `| compact share | fullCap | compactCap | full held | compact held | horizon | vs no tier |`,
         `|---|---|---|---|---|---|---|`,

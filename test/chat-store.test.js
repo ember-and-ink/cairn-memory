@@ -460,7 +460,7 @@ describe('reading a canon batch back', () => {
         expect(readCanon(null)).toEqual({ status: 'none', canon: null });
     });
 
-    it('keeps a batch valid after its messages are edited (docs/p4-plan.md decision 2)', () => {
+    it('keeps a batch valid after its messages are edited (docs/decisions.md D-0055)', () => {
         // A scene and a state cache text and go stale when it changes. A canon fact
         // says something *happened*, and no edit unmakes that.
         const chat = storeV3Chat();

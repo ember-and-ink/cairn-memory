@@ -6,7 +6,7 @@
  * carries it (D-0044), then summaries because a missing one holds the step (D-0037),
  * then the index batch, whose records the compact tier needs before the next rebuild
  * (D-0075), then a compaction pass, which has a whole see-saw step of slack
- * (docs/p4-plan.md decision 7). What a prompt says and how a reply is read belong to the strategies
+ * (docs/decisions.md D-0057). What a prompt says and how a reply is read belong to the strategies
  * (memory/*-strategy.js); what one job of a kind *is* belongs to its own file
  * (summary-, state-, index- and canon-job.js), on the skeleton they share (job.js).
  *
@@ -159,7 +159,7 @@ export function createSummarizer(getContext, {
     /**
      * The state first, since the very next prompt carries it, then summaries oldest
      * first, then a compaction pass. One request at a time, in that order of urgency
-     * (docs/decisions.md D-0037, D-0044; docs/p4-plan.md decision 7). A summary is needed
+     * (docs/decisions.md D-0037, D-0044, D-0057). A summary is needed
      * only when its message reaches a step, 10 or more messages later; a pass has the
      * whole step before its rebuild.
      */

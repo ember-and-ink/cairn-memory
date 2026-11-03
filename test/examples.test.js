@@ -170,7 +170,7 @@ describe('the card reserve and the latch agree', () => {
 
         const examplesTokens = Math.ceil(EXAMPLES.length / 4);
         expect(before.card - after.card).toBe(examplesTokens);
-        // The run's own number: 49% of the card, ~2,176 tokens (docs/p5-plan.md).
+        // The run's own number: 49% of the card, ~2,176 tokens (docs/decisions.md D-0068).
         expect(examplesTokens).toBe(2_176);
         expect(after.card).toBeLessThan(before.card);
     });

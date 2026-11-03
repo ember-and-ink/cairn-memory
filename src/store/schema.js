@@ -20,7 +20,7 @@ export const STORE_VERSION = 4;
 export const STORE_MIGRATIONS = {
     // v2 adds `state` (docs/decisions.md D-0045). A v1 store has none, so it is already a v2 one.
     1: (store) => ({ ...store, v: 2 }),
-    // v3 adds `canon` (docs/p4-plan.md decision 1). Same shape: a v2 store has none.
+    // v3 adds `canon` (docs/decisions.md D-0055). Same shape: a v2 store has none.
     2: (store) => ({ ...store, v: 3 }),
     // v4 adds `index` (docs/decisions.md D-0070). A v3 store has none, and a record is
     // re-derived from the summary it sits beside, so there is nothing to backfill here:

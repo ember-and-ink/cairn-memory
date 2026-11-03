@@ -4,7 +4,7 @@ import { renderCanonView, renderSnapshot, renderSummaries } from '../src/ui/insp
 /**
  * The inspector's rows, as plain strings. `createInspector` is the part that needs a
  * DOM; these two build the text, and the text is what a run is read from until the disk
- * log is opened (docs/p5-plan.md §3).
+ * log is opened.
  */
 
 const memory = (overrides = {}) => ({

@@ -525,7 +525,7 @@ So P5's question is **how to select and compress what matters without a model th
 the whole story**. Episodes and the entity index are candidate mechanisms, not the goal; both
 answer capacity, and capacity is not the binding constraint.
 
-*Planned* (`docs/p5-plan.md`, D-0066 to D-0071). Two halves that pay for each other.
+*Planned* (D-0066 to D-0071). Two halves that pay for each other.
 
 **Reclaim.** The prompt spends 41.7% on nineteen raw messages and 0.3% on the whole story's
 canon, measured. Three levers move that and all three are ST settings that ship off: example

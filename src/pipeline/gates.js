@@ -42,7 +42,7 @@ export function assessStateUpdates(context, { memoryProfileId, worldState } = {}
 
 /**
  * Whether Cairn may run a compaction pass in this chat now, and if not, why
- * (docs/p4-plan.md decision 9).
+ * (docs/decisions.md D-0057).
  *
  * The handover gate has a say here that it does not have over summaries or the state:
  * while qvink is injecting, Cairn is measuring and nothing more (docs/decisions.md

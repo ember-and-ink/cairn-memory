@@ -318,7 +318,7 @@ function renderIndexTally(memory) {
 }
 
 /**
- * Canon's share of the block (docs/p4-plan.md §3). Only shown once a chat has facts:
+ * Canon's share of the block (docs/decisions.md D-0056). Only shown once a chat has facts:
  * before that the block is byte-for-byte what it was, and a row of zeroes would
  * suggest otherwise.
  */

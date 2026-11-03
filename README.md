@@ -2,129 +2,111 @@
   <img src="assets/banner.jpg" alt="Cairn Memory" width="800">
 </p>
 
+<p align="center">
+  <a href="https://github.com/ember-and-ink/cairn-memory/actions/workflows/ci.yml"><img src="https://github.com/ember-and-ink/cairn-memory/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/ember-and-ink/cairn-memory/actions/workflows/codeql.yml"><img src="https://github.com/ember-and-ink/cairn-memory/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
+  <img src="https://img.shields.io/badge/SillyTavern-1.19.0%2B-blue" alt="SillyTavern 1.19.0+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+</p>
+
 # Cairn-Memory
 
-A memory extension for [SillyTavern](https://github.com/SillyTavern/SillyTavern).
+A memory extension for [SillyTavern](https://github.com/SillyTavern/SillyTavern)
+that keeps long roleplays on track. Other memory extensions keep a compressed
+transcript that gets vaguer the longer you play. Cairn keeps the current state of
+the story and the handful of events it can't do without.
 
-Long roleplays lose the thread. Existing memory extensions treat memory as a
-*compressed transcript* — messages in, summaries out, summaries re-summarised —
-which degrades uniformly until everything is equally vague, and still develops
-holes. Cairn treats memory as **state**: what is true right now, plus a sparse
-set of retrievable past events.
+**[Documentation](docs/README.md)** · **[All settings](docs/settings.md)** · **[Coming from Qvink Memory](docs/qvink-handover.md)**
 
-## The major choices
+## Is it for you?
 
-- **Memory is typed, not tiered by age.** Current world state, scene summaries,
-  permanent canon and archived episodes each have their own update rule and
-  lifetime. State is *overwritten*, so it cannot develop gaps.
-- **One writer to the prompt.** Cairn assembles memory *and* lorebook content
-  into a single ordered block with one budget. Two extensions injecting
-  independently is how prompts quietly destabilise.
-- **It cooperates with lorebooks rather than replacing them.** World Info keeps
-  doing retrieval; Cairn keeps it steady, via ST's own force-activate
-  mechanism. An entry that has activated stays in
-  until the budget genuinely evicts it, rather than flickering with the keywords
-  in the last two messages.
-- **A separate model writes memory.** Your roleplay model is tuned to be
-  evocative, which is the opposite of what summarisation needs. Cairn requires
-  its own connection profile and does nothing without one.
-- **Compaction extracts before it compresses.** Durable facts are promoted to
-  permanent storage *first*, then the remainder is merged or dropped. Nothing is
-  destroyed before what matters is pulled out of it.
-- **Few knobs.** If a setting can be derived, it is derived.
+- **Your long chats lose the thread.** Cairn summarises each message as you go and
+  swaps old messages for their summaries, so the prompt stays a steady size.
+- **The story's turning points get forgotten.** Cairn picks the few facts the story
+  depends on (a death, a promise, a debt) and keeps them at the top of memory.
+- **Characters change outfits or rooms at random.** Cairn tracks where the scene
+  is, who is there, and what they look like, and puts that right above your newest
+  message.
+- **Lorebook entries come and go.** Once an entry triggers, Cairn keeps it in the
+  prompt so a missed keyword doesn't drop it.
+- **You pay for prompt caching.** Cairn only changes the prompt every few
+  messages, so cached prefixes keep getting hit.
 
-## Requirements
+It is **not** for group chats, and it needs a second model to write memory.
 
-- SillyTavern **1.19.0** or newer
-- A second connection profile for memory work: a strong non-roleplay model,
-  GLM-4.7 class or better, with reasoning off. Cairn turns it off itself on an
-  OpenRouter profile; on any other source, turn it off in the profile's preset.
-- Single-character chats. Group chats are not supported.
+## How it's built
 
-## Install
+Cairn is test-driven, which is rare for a SillyTavern extension: over a thousand
+tests, CI on every change, and a [decision log](docs/decisions.md) of what was
+decided, why, and what would change it. It's AI-assisted and doesn't hide that,
+but it was planned, reviewed and measured. I've spent 15+ years building
+production machine learning systems and Cairn is held to the same bar.
 
-In SillyTavern: **Extensions → Install extension**, and paste:
+It's also fast. Most of the work went into *when* Cairn calls the memory model,
+not just what it asks. Summaries start after a reply is shown and never hold up
+your next message, each call is small, and the prompt only changes every few
+messages. It runs the same on desktop and mobile, and on cheaper model families as
+well as frontier ones. When something goes wrong (a failed call, an edited
+message, a swipe, a branch) it catches up or rolls back on its own, and a failure
+inside Cairn never breaks the chat.
 
-```
-https://github.com/ember-and-ink/cairn-memory
-```
+## Quick start
 
-Or clone into your ST data directory:
+**You need:**
 
-```sh
-git clone https://github.com/ember-and-ink/cairn-memory \
-  ~/SillyTavern/data/default-user/extensions/cairn-memory
-```
+- SillyTavern **1.19.0** or newer.
+- A **second connection profile** for memory work. Use a capable model that isn't
+  your roleplay model (GLM-4.7 class or better) with reasoning off. On OpenRouter
+  Cairn turns reasoning off for you; elsewhere, turn it off in the profile's preset.
 
-Reload SillyTavern afterwards.
+**Install:**
 
-## Use
+1. In SillyTavern, open **Extensions → Install extension** and paste:
+   ```
+   https://github.com/ember-and-ink/cairn-memory
+   ```
+2. Reload SillyTavern.
+3. Open **Extensions → Cairn-Memory** and set **Connection profile** to your
+   memory profile.
 
-Open **Extensions → Cairn-Memory**. There is very little to configure — send a
-message and open **Last generation**.
+That's all. Send a message, and its summary appears underneath it. Everything else
+is on by default. Until you pick a profile, Cairn does nothing.
 
-Point **Memory model → Connection profile** at a profile that is *not* your
-roleplay model. Without one, Cairn never calls a model. Each summary appears under
-its message, with a collapsed **World state** below it, and Cairn never blocks
-sending, so you can keep chatting while it works. To redo a summary, choose
-**Summarise with Cairn** (the stacked-cubes icon) in the message's actions menu; to
-redo the world state on a message, choose **Rebuild the world state** (the
-stacked-boxes icon).
+> Already using **Qvink Memory**? Cairn reads its summaries, so you lose nothing.
+> Two Qvink settings need changing first: see
+> [Coming from Qvink Memory](docs/qvink-handover.md).
 
-Everything below is on by default and works unconfigured.
+## Using it
 
-| Setting | What it does |
+Cairn runs in the background and never blocks sending. Each message gets a
+summary, with a collapsed **World state** under it. In a message's actions menu:
+
+- **Summarise with Cairn** (stacked cubes) redoes that message's summary.
+- **Rebuild the world state** (stacked boxes) redoes the world state on that message.
+
+**Last generation**, at the bottom of the settings panel, shows what Cairn put in
+the prompt and why.
+
+### The settings you might change
+
+| Setting | When to change it |
 |---|---|
-| Enabled | Turns Cairn off without uninstalling. Existing memory is kept. |
-| **Memory model** | |
-| Connection profile | The profile Cairn uses to write summaries, the index, canon and the world state. Must not be your roleplay model. |
-| Reasoning | How much the memory model may think: None (the default), Low, or whatever the profile's preset says. |
-| **What Cairn keeps** | |
-| Replace old messages with summaries | Cairn injects the summaries and keeps the messages they cover out of the history. It waits until your existing memory extension is silent — see below. |
-| Track the world state | Where the scene is, who is there, the weather, and each character's hair and outfit, just above your newest message. Waits while WTracker or WTrackerLite is loaded. |
-| Keep canon | Picks the few facts the story cannot be understood without from the whole index, and keeps them at the top of the memory block. Picked again as the story grows. |
-| Canon entries | How many canon facts to pick. |
-| Drop example dialogue once summarised | Strips the card's example dialogue once summaries stand in for the early chat, and puts SillyTavern's own setting back when off. |
-| Hold lorebook entries | Keeps a lorebook entry in the prompt once it has activated, instead of letting it drop out when the keyword scan misses it. Off restores stock SillyTavern behaviour. |
-| **Advanced settings** | Collapsed by default. |
-| Memory budget | The memory block's share of the prompt, canon's share of the block, the one-line summaries' share of what is left, how many recent messages stay in full, how many build up before they are summarised, and the lorebook cap — the most tokens your lorebook may take, written into SillyTavern's own setting so it applies to every chat (**0** leaves it alone). |
-| Memory prompts | The summary, index, canon and world-state prompts. Each has **Reset to default**, and falls back to its default if an edit loses the placeholder it needs. |
-| Adopt this chat | Brings a chat started before Cairn up to date, or redoes an old one from scratch. |
-| Diagnostics | **Show last generation** (the inspector), **Log each generation to disk** (`user/files/cairn-<chat>-<id>.jsonl`, one file per chat), and **Debug logging** for bug reports. |
+| **Connection profile** | Always. It's the one required setting. |
+| **Replace old messages with summaries** | Turn off if another memory extension should stay in charge of the prompt. Cairn keeps summarising either way. |
+| **Track the world state** | Turn off if you track scene state some other way. Cairn already waits while WTracker is loaded. |
+| **Keep canon** / **Canon entries** | Turn up the count for a very long story with a lot of threads. Default is 10. |
+| **Adopt this chat** | Once, for a chat you started before installing Cairn. |
 
-**Last generation**, folded under the settings, shows what was injected, from
-where, how stable the prompt is, and the canon in the prompt.
+Everything else (budgets, prompts, diagnostics) is in
+**[docs/settings.md](docs/settings.md)**. The defaults work.
 
-### Handing over from Qvink Memory
+## Contributing
 
-Cairn reads the summaries Qvink Memory has already written, so nothing is
-migrated and nothing is lost. To let Cairn take over the prompt, in **Qvink
-Memory**:
-
-1. set **short-term** and **long-term memory position** to **Macro Only** —
-   Qvink keeps building its block, SillyTavern stops placing it;
-2. turn off **Exclude messages after threshold**.
-
-Qvink can keep summarising, and Cairn keeps reading what it writes. To have Cairn
-write the summaries instead, **back up your chats**, then turn off Qvink's **Auto
-Summarize**. Cairn starts after the newest summary Qvink wrote and never changes
-Qvink's. Each summary is saved on its message, so it survives uninstalling Qvink.
-
-Disabling or uninstalling Qvink does all of the above at once. The inspector's
-**Writing** line says whether Cairn is the writer and, if not, exactly what it is
-waiting for.
-
-## Documentation
-
-| | |
-|---|---|
-| [`DESIGN.md`](DESIGN.md) | Why it works this way — the full design |
-| [`docs/how-it-works.md`](docs/how-it-works.md) | How the pieces fit together |
-| [`docs/development.md`](docs/development.md) | Setup, tests, the local gate |
-| [`docs/decisions.md`](docs/decisions.md) | What was decided, when, and why |
-| [`docs/st-api-surface.md`](docs/st-api-surface.md) | Every SillyTavern API we depend on |
-| [`CHANGELOG.md`](CHANGELOG.md) | What changed |
+Bug reports and ideas are welcome in
+[issues](https://github.com/ember-and-ink/cairn-memory/issues). Please open an
+issue before a non-trivial PR. See [CONTRIBUTING](.github/CONTRIBUTING.md) and
+[docs/development.md](docs/development.md).
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](LICENSE).

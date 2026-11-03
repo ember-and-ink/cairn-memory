@@ -3,8 +3,8 @@
  *
  * Four tiers share the store. A scene lives on the message it summarises, an index
  * record beside it (docs/decisions.md D-0070), a state on the newest message it read
- * (D-0045) and a canon batch on the newest summary its pass read (docs/p4-plan.md
- * decision 1), so deletions, branches and swipes carry all four with no bookkeeping.
+ * (D-0045) and a canon batch on the newest summary its pass read (D-0055),
+ * so deletions, branches and swipes carry all four with no bookkeeping.
  * What a scene, an index record and a state do not survive is an edit, and that is
  * caught on read: each counts only while the text it was written from still hashes the
  * same. A canon fact is not hashed — it says something *happened*, and editing the
@@ -162,7 +162,7 @@ export function writeState(chat, index, { value, read, changed, prompt, at = new
 /**
  * The canon batch stored on `chat[index]`.
  *
- * No `stale`: a batch is checked for shape and nothing else (docs/p4-plan.md decision 2).
+ * No `stale`: a batch is checked for shape and nothing else (docs/decisions.md D-0055).
  * An empty `facts` is well-formed and deliberate — a pass that found nothing durable
  * still records the range it read, so it is not asked the same question every turn.
  *
