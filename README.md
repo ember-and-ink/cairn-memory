@@ -100,7 +100,7 @@ the prompt and why.
 | **Adopt this chat** | Once, for a chat you started before installing Cairn. |
 
 Everything else (budgets, prompts, diagnostics) is in
-**[docs/settings.md](docs/settings.md)**. The defaults work.
+**[docs/settings.md](docs/settings.md)**. The defaults work for most chats.
 
 Cairn sets SillyTavern's **World Info budget cap** (11% of the prompt by default) and
 gives the old value back when you turn Cairn off. Set **Lorebook** to 0 under Memory
