@@ -1,0 +1,50 @@
+name: Release
+
+# Cuts a GitHub release for every version that lands on main. The version is
+# whatever manifest.json says (the Version check in ci.yml already forces a bump
+# on every non-Dependabot PR), the tag is that bare version — `1.0.0`, no `v` —
+# and the notes are GitHub's generated list of PRs merged since the last release.
+#
+# Dependabot PRs do not bump the version and, merged by GITHUB_TOKEN, do not
+# fire `push` at all. They are not lost: they show up in the notes of the next
+# release a person merges. So no schedule sweep is needed here.
+#
+# Not a required check — it runs after the merge, not on the PR.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+# Two quick merges must not race for the same tag.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # create the tag and the release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Release the manifest version if it is new
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./manifest.json').version")
+          if gh release view "$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$version is already released. Nothing to do."
+            exit 0
+          fi
+          gh release create "$version" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$version" \
+            --generate-notes
+          echo "Released $version"
