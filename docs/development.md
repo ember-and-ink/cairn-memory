@@ -42,6 +42,18 @@ installs ships, so there is nothing to release. The `Version` check skips its
 bump comparison for them and still enforces that `manifest.json` and
 `package.json` agree. A red Dependabot PR is the only one that needs a human.
 
+## Releases
+
+`release.yml` runs on every push to `main`. If the `manifest.json` version has
+no release yet, it tags that commit with the bare version (`1.2.0`, no `v`) and
+creates a GitHub release whose notes are GitHub's generated list of PRs merged
+since the previous one. If it already exists, it does nothing.
+
+Dependabot merges never trigger it (they don't bump the version, and a
+`GITHUB_TOKEN` merge doesn't fire `push`). Their PRs show up in the next
+release's notes instead. To retry a failed run, use *Run workflow* on the
+Actions tab.
+
 ## Working against a local SillyTavern
 
 Symlink the repo into your ST extensions directory so edits are live:
