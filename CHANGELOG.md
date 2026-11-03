@@ -38,6 +38,10 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Changed
 
+- **The README is now a short quick start.** The full settings reference moved to
+  `docs/settings.md`, the Qvink handover to `docs/qvink-handover.md`, and
+  `docs/README.md` indexes the rest.
+
 - **The settings panel is regrouped and shorter.** **Memory model** (connection
   profile, reasoning), then **What Cairn keeps** (the feature switches), with the
   budget, prompts, adopt and diagnostics folded under **Advanced settings** and
