@@ -87,7 +87,7 @@
 
                 <div class="cairn-budget">
                     <h4 class="cairn-section">Memory budget</h4>
-                    <div class="cairn-hint">The defaults work. Each row is a ceiling, worked out from your context size.</div>
+                    <div class="cairn-hint">The defaults work for most chats. Each row is the most that part of the prompt can use, worked out from your context size.</div>
 
                     <table class="cairn-budget-table">
                         <thead>
@@ -137,14 +137,17 @@
                         </tbody>
                     </table>
                     <div class="cairn-hint"><i>
-                        Canon or one-liners that don't fill their share go to full summaries, and a long
-                        card or long messages leave memory less. What this chat actually got is under
-                        Last generation.
+                        These are limits, not what every chat uses. Room that canon or one-line summaries
+                        don't need goes to full summaries, and a long card or long messages leave less
+                        room for memory. To see what this chat actually used, open Last generation below.
                     </i></div>
                     <div class="cairn-hint">
-                        More one-liners reach further back; fewer keep recent summaries in full.
-                        Cairn sets SillyTavern's World Info budget cap from the lorebook row, for every
-                        chat; set it to <b>0</b> to manage that yourself.
+                        <b>One-line summaries:</b> a bigger share covers more of the story's past, in less
+                        detail. A smaller share keeps more of the recent summaries at full length.
+                    </div>
+                    <div class="cairn-hint">
+                        <b>Lorebook:</b> Cairn uses this row to set SillyTavern's World Info budget cap,
+                        in every chat. Set it to <b>0</b> to manage the cap yourself.
                     </div>
 
                     <div class="cairn-field">
@@ -155,7 +158,10 @@
                         <label for="cairn_step">Messages per summary step</label>
                         <input id="cairn_step" type="number" class="text_pole" min="0" max="100" step="1">
                     </div>
-                    <div class="cairn-hint">Bigger steps change the prompt less often, keeping the cache warm. Changing either rebuilds memory once.</div>
+                    <div class="cairn-hint">
+                        A bigger step means the prompt changes less often, so the cache stays warm longer.
+                        Changing either of these numbers makes Cairn rebuild its memory once.
+                    </div>
                 </div>
 
                 <details class="cairn-details">

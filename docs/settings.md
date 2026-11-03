@@ -35,9 +35,9 @@ is always open at the top; the rest are folds.
 ### Memory budget
 
 A table of percentages with the tokens each one comes to at your context size. Every
-row is a **ceiling**, not what a chat will use. Canon or one-liners that don't fill
-their share go to full summaries, and a long card or long messages leave memory less.
-What a chat actually got is under **Last generation**. The table updates when you
+row is a **limit**, not what a chat will use. Room that canon or one-line summaries
+don't need goes to full summaries, and a long card or long messages leave less room
+for memory. What a chat actually used is under **Last generation**. The table updates when you
 switch connection profile and at each generation.
 
 | Row | Default | What it does |
@@ -45,7 +45,7 @@ switch connection profile and at each generation.
 | Max prompt | — | Your context size less the reply length, from SillyTavern. Read-only. |
 | Memory | 35% of the prompt | The most of the prompt the memory block may take. |
 | Canon | 20% of memory | The most of the memory block canon may take. |
-| One-line summaries | 20% of summaries | More one-liners reach further back. Fewer keep recent summaries in full. |
+| One-line summaries | 20% of summaries | A bigger share covers more of the story's past, in less detail. A smaller share keeps more of the recent summaries at full length. |
 | Full summaries | the rest of memory | Read-only. |
 | Lorebook | 11% of the prompt | The most the lorebook may take. What it frees goes to memory. Cairn writes it, as tokens, into SillyTavern's **World Info budget cap**, for every chat, and overwrites a hand edit there while Cairn is on. **0**, or turning Cairn off, gives SillyTavern its previous cap back. |
 | Safety margin | 5% | Fixed. Room for what no estimate sees. |
@@ -56,10 +56,10 @@ Below the table, two message counts:
 | Setting | Default | What it does |
 |---|---|---|
 | Recent messages kept in full | 8 | How many of the newest messages stay in the prompt as they were written. It doesn't grow with your context: on a large context you can raise it, but it costs tokens every turn. |
-| Messages per summary step | 8 | How many messages build up before they are swapped for summaries. Bigger steps change the prompt less often, which keeps the cache warm. |
+| Messages per summary step | 8 | How many messages build up before they are swapped for summaries. A bigger step means the prompt changes less often, so the cache stays warm longer. |
 
-Changing **Recent messages kept in full** or **Messages per summary step**
-rebuilds memory once.
+Changing **Recent messages kept in full** or **Messages per summary step** makes
+Cairn rebuild its memory once.
 
 ### Memory prompts
 
