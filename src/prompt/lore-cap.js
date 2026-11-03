@@ -1,5 +1,5 @@
 /**
- * The lorebook cap (docs/decisions.md D-0069).
+ * The lorebook cap (docs/decisions.md D-0069, D-0098).
  *
  * SillyTavern already caps World Info absolutely — `world_info_budget_cap`,
  * `public/scripts/world-info.js:81` — and ships it at 0, meaning no cap, so the
@@ -20,25 +20,43 @@
  * **It persists, and that is the deal.** `updateWorldInfoSettings` ends in
  * `saveSettingsDebounced()` (`:819`, `:852`), and the setting is global rather
  * than per-chat, so unlike the examples latch there is no version of this that
- * lasts only for the session. It is therefore a setting the user owns and can
- * raise, lower or switch off, not something derived behind their back.
+ * lasts only for the session.
+ *
+ * **A share of the max prompt, not a token count** (D-0098). The cap is worked out
+ * from the context each generation, so a 128k context gets four times a 32k one's.
+ * While Cairn is on it owns ST's field; off, or at 0, ST gets back what it had.
  */
+import { createMaxPromptTokens } from '../util/context-size.js';
 import { warn } from '../util/log.js';
 import { loadWorldInfo } from '../util/st-modules.js';
 
 /**
- * Cairn's default, in tokens. Sized from the P4 run: the book weighed 4,982
- * tokens of a 23,040-token prompt, and 3,500 takes ~1,480 of that back for the
- * memory block while leaving the lorebook more room than the card has.
+ * Cairn's default share of the max prompt. 11% of a 32k context is the 3,500 tokens
+ * D-0069 sized from the P4 run (a 4,982-token book in a 23,040-token prompt), so a
+ * 32k chat is unchanged and a larger context scales with it (D-0098).
  */
-export const DEFAULT_LORE_CAP = 3_500;
+export const DEFAULT_LORE_FRACTION = 0.11;
+
+/** The cap a share gives, in whole tokens. 0 for anything that is not a usable share. */
+export function loreCapTokens(maxPromptTokens, fraction) {
+    if (!(maxPromptTokens > 0) || !(fraction > 0) || fraction > 1) return 0;
+    return Math.floor(maxPromptTokens * fraction);
+}
 
 /**
- * @param {{load?: () => Promise<object>, doc?: object}} [options]
+ * @param {{load?: () => Promise<object>, doc?: object, maxPromptTokens?: Function,
+ *          settings?: () => object, save?: () => void}} [options]
  *        `load` is injected in tests; there is no `/scripts/world-info.js`
- *        outside the browser.
+ *        outside the browser. `settings` is Cairn's live settings object, which
+ *        holds `loreFraction`, `enabled` and `loreCapBefore`.
  */
-export function createLoreCap({ load = loadWorldInfo, doc = globalThis.document } = {}) {
+export function createLoreCap({
+    load = loadWorldInfo,
+    doc = globalThis.document,
+    maxPromptTokens = createMaxPromptTokens(),
+    settings = () => ({}),
+    save = () => {},
+} = {}) {
     let applied = null;
 
     /**
@@ -78,8 +96,49 @@ export function createLoreCap({ load = loadWorldInfo, doc = globalThis.document 
         return applied;
     }
 
+    /**
+     * Bring ST's cap in line with the settings: the share of this context while Cairn is
+     * on, or ST's own value back when it is off or the share is 0. Cheap when nothing
+     * changed, so it runs every generation, ahead of ST's World Info scan.
+     */
+    async function sync(context) {
+        const config = settings();
+        const fraction = Number(config.loreFraction);
+        if (config.enabled === false || !(fraction > 0)) return restore();
+
+        const target = loreCapTokens(await maxPromptTokens(context), fraction);
+        if (!(target > 0)) return applied;
+        if (config.loreCapBefore === null || config.loreCapBefore === undefined) {
+            try {
+                const before = Number((await load()).world_info_budget_cap);
+                config.loreCapBefore = Number.isFinite(before) ? before : 0;
+                save();
+            } catch (err) {
+                warn('Could not read the World Info budget cap; the lorebook keeps its own budget.', err);
+                return applied;
+            }
+        }
+        return apply(target);
+    }
+
+    /** Give ST back the cap it had before Cairn set one, once. */
+    async function restore() {
+        const config = settings();
+        const before = config.loreCapBefore;
+        if (before === null || before === undefined) return applied;
+        const result = await apply(before);
+        if (result === Math.max(0, Math.floor(Number(before)))) {
+            config.loreCapBefore = null;
+            save();
+            applied = null;
+        }
+        return applied;
+    }
+
     return {
         apply,
+        sync,
+        restore,
         /** What Cairn last put there, for the inspector. Null until it has run. */
         get applied() {
             return applied;

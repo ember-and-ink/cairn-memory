@@ -98,6 +98,7 @@ literally against the cited line.
 | `await eventSource.emit(event_types.WORLDINFO_ENTRIES_LOADED` | Calling it emits this, so our call fires it a second time per generation | `public/scripts/world-info.js` | 4604 |
 | `export let world_info_budget = 25;` | The World Info budget, as a percentage of the max prompt | `public/scripts/world-info.js` | 73 |
 | `export let world_info_budget_cap = 0;` | An absolute cap on it, when set | `public/scripts/world-info.js` | 81 |
+| `await eventSource.emit(event_types.GENERATION_STARTED, type, { automatic_trigger, force_name2, quiet_prompt, quietToLoud, skipWIAN, force_chid, signal, quietImage }, dryRun);` | Awaited ahead of the scan, so the lorebook cap is re-derived from this context before ST reads it (D-0098) | `public/script.js` | 4299 |
 | `export function updateWorldInfoSettings` | How Cairn sets that cap: it takes only the keys present, so one key is safe to pass | `public/scripts/world-info.js` | 819 |
 | `    saveSettingsDebounced();` | ...and it **persists**, which is why the cap is a setting the user owns rather than a derived value | `public/scripts/world-info.js` | 852 |
 | `$('#world_info_budget_cap').val(world_info_budget_cap);` | ST fills its own field on load and never again, so a write behind it leaves the number on screen stale | `public/scripts/world-info.js` | 989 |

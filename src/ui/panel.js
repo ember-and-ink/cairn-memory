@@ -3,7 +3,9 @@ import { CANON_PROMPT } from '../memory/canon-strategy.js';
 import { INDEX_PROMPT } from '../memory/index-strategy.js';
 import { DEFAULT_SUMMARY_PROMPT } from '../memory/scene-strategy.js';
 import { STATE_PROMPT } from '../memory/state-strategy.js';
+import { budgetCeilings, MARGIN_FRACTION } from '../pipeline/budgeter.js';
 import { sharesChatProfile } from '../pipeline/gates.js';
+import { createMaxPromptTokens } from '../util/context-size.js';
 import { setDebugEnabled } from '../util/log.js';
 import { escapeHtml } from './html.js';
 
@@ -18,7 +20,7 @@ import { escapeHtml } from './html.js';
  * @param {{onEnabledChange?: (enabled: boolean) => void,
  *           onLogToDiskChange?: (enabled: boolean) => void,
  *           onHoldWorldInfoChange?: (enabled: boolean) => void,
- *           onLoreCapChange?: (cap: number) => void,
+ *           onLoreFractionChange?: (fraction: number) => void,
  *           onOwnMemoryBlockChange?: (enabled: boolean) => void,
  *           onWorldStateChange?: (enabled: boolean) => void,
  *           onKeepCanonChange?: (enabled: boolean) => void,
@@ -35,7 +37,6 @@ export async function renderSettingsPanel(context, handlers = {}) {
     bind(context, 'showInspector', CHECKBOX, (value) => toggleInspector(value));
     bind(context, 'logToDisk', CHECKBOX, (value) => handlers.onLogToDiskChange?.(value));
     bind(context, 'holdWorldInfo', CHECKBOX, (value) => handlers.onHoldWorldInfoChange?.(value));
-    bind(context, 'loreCap', wholeNumber(), (value) => handlers.onLoreCapChange?.(value));
     bind(context, 'ownMemoryBlock', CHECKBOX, (value) => handlers.onOwnMemoryBlockChange?.(value));
     bind(context, 'worldState', CHECKBOX, (value) => handlers.onWorldStateChange?.(value));
     bind(context, 'keepCanon', CHECKBOX, (value) => handlers.onKeepCanonChange?.(value));
@@ -44,7 +45,13 @@ export async function renderSettingsPanel(context, handlers = {}) {
     bind(context, 'canonSlots', wholeNumber());
     bind(context, 'dropExamples', CHECKBOX);
     bind(context, 'fictionFrame', CHECKBOX);
-    for (const key of ['memoryFraction', 'canonFraction', 'compactFraction']) bind(context, key, PERCENT);
+    for (const key of ['memoryFraction', 'canonFraction', 'compactFraction']) {
+        bind(context, key, PERCENT, () => refreshBudget(context));
+    }
+    bind(context, 'loreFraction', PERCENT, (value) => {
+        refreshBudget(context);
+        handlers.onLoreFractionChange?.(value);
+    });
     bind(context, 'rawWindow', wholeNumber({ min: 1 }));
     bind(context, 'step', wholeNumber());
     bind(context, 'debugLogging', CHECKBOX, (value) => setDebugEnabled(value));
@@ -55,6 +62,7 @@ export async function renderSettingsPanel(context, handlers = {}) {
         handlers.onMemoryProfileChange?.(value);
     });
     noteSharedProfile(context);
+    refreshBudget(context);
     // A new choice is a fresh start: what a provider refused before is asked again (D-0088).
     bind(context, 'memoryReasoning', SELECT, () => {
         context.extensionSettings[SLUG].reasoningRefused = {};
@@ -72,6 +80,40 @@ export async function renderSettingsPanel(context, handlers = {}) {
 function toggleInspector(visible) {
     const block = document.getElementById(`${SLUG}_inspector_block`);
     if (block) block.hidden = !visible;
+}
+
+const maxPromptTokens = createMaxPromptTokens();
+
+/** The budget table's token column, and which cell each figure goes in. */
+const BUDGET_CELLS = {
+    maxPrompt: 'budgetMaxPrompt', memory: 'budgetMemory', canon: 'budgetCanon', compact: 'budgetCompact',
+    full: 'budgetFull', lore: 'budgetLore', margin: 'budgetMargin', rest: 'budgetRest',
+};
+
+/**
+ * Fills the budget table's read-only cells: each share's ceiling at this context size
+ * (D-0098). Called again when ST switches profile or starts a generation, so a changed
+ * context size shows up by the next one.
+ * @param {object} context SillyTavern.getContext()
+ */
+export async function refreshBudget(context) {
+    if (!field('budgetMaxPrompt')) return;
+    const settings = context.extensionSettings[SLUG] ?? {};
+    const ceilings = budgetCeilings({
+        maxPromptTokens: await maxPromptTokens(context),
+        memoryFraction: settings.memoryFraction,
+        canonFraction: settings.canonFraction,
+        compactFraction: settings.compactFraction,
+        loreFraction: settings.loreFraction,
+    });
+    for (const [key, id] of Object.entries(BUDGET_CELLS)) {
+        const cell = field(id);
+        if (cell) cell.textContent = ceilings[key].toLocaleString();
+    }
+    const restShare = field('budgetRestShare');
+    if (restShare) restShare.textContent = String(ceilings.restShare);
+    const marginShare = field('budgetMarginShare');
+    if (marginShare) marginShare.textContent = String(Math.round(MARGIN_FRACTION * 100));
 }
 
 /**

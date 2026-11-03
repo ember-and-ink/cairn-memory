@@ -7,20 +7,20 @@
 import { DEFAULT_SLOTS } from './memory/canon.js';
 import { CANON_FRACTION, CAP_FRACTION, COMPACT_FRACTION } from './pipeline/budgeter.js';
 import { RAW_WINDOW, STEP } from './pipeline/scheduler.js';
-import { DEFAULT_LORE_CAP } from './prompt/lore-cap.js';
+import { DEFAULT_LORE_FRACTION } from './prompt/lore-cap.js';
 import { error } from './util/log.js';
 
 /** Bump on any change to the settings shape. */
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 2;
 
 /**
- * Defaults must produce a working, inert extension: enabled but doing nothing
- * until a memory connection profile is chosen (DESIGN.md §3.1).
+ * Defaults must produce a working, inert extension: enabled but making no memory
+ * calls until a memory connection profile is chosen (DESIGN.md §3.1).
  */
 export const DEFAULT_SETTINGS = Object.freeze({
     version: SETTINGS_VERSION,
     enabled: true,
-    /** Connection profile id used for memory work. Never the roleplay profile. */
+    /** Connection profile id used for memory work. May be the chat's own (D-0097). */
     memoryProfileId: '',
     /**
      * The summary prompt. Empty means the built-in default, so an unedited install
@@ -39,8 +39,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
     showInspector: true,
     /** Verbose console output. */
     debugLogging: false,
-    /** Write each observed generation to data/<user>/user/files/. */
-    logToDisk: true,
+    /** Write each observed generation to data/<user>/user/files/. A diagnostic, so off. */
+    logToDisk: false,
     /** Keep World Info entries in the prompt once they have activated (D-0023). */
     holdWorldInfo: true,
     /**
@@ -72,11 +72,16 @@ export const DEFAULT_SETTINGS = Object.freeze({
      */
     dropExamples: true,
     /**
-     * The most tokens the lorebook may take in the prompt (docs/decisions.md D-0069).
-     * Written into ST's own `world_info_budget_cap`, which ships at 0 — no cap —
-     * so the percentage budget never binds. 0 here means the same: leave it alone.
+     * The lorebook's ceiling share of the max prompt (docs/decisions.md D-0069, D-0098).
+     * Written into ST's own `world_info_budget_cap` as tokens, which ships at 0 — no
+     * cap — so ST's percentage budget never binds. 0 here leaves ST's setting alone.
      */
-    loreCap: DEFAULT_LORE_CAP,
+    loreFraction: DEFAULT_LORE_FRACTION,
+    /**
+     * ST's `world_info_budget_cap` from before Cairn first set it, given back when Cairn
+     * is turned off or `loreFraction` is 0. Null while Cairn has not set it (D-0098).
+     */
+    loreCapBefore: null,
     /**
      * The budget's shares, as fractions (docs/decisions.md D-0085). The block's ceiling
      * share of the prompt, canon's of the block, and the compact tail's of what canon
@@ -117,7 +122,21 @@ export const DEFAULT_SETTINGS = Object.freeze({
  * @type {Record<number, (settings: object) => object>}
  */
 const SETTINGS_MIGRATIONS = {
-    // 1: (settings) => ({ ...settings, version: 2, newKey: default }),
+    /**
+     * The lorebook cap became a share of the prompt (D-0098). A token count cannot be
+     * converted without the context size, so 0 stays "leave ST alone" and any cap takes
+     * the default share. A v1 cap was already written into ST, so the value ST had
+     * before it is unknown: ST's shipped 0 is what a restore gives back.
+     */
+    1: ({ loreCap, ...settings }) => {
+        const capped = loreCap === undefined || Number(loreCap) !== 0;
+        return {
+            ...settings,
+            version: 2,
+            loreFraction: capped ? DEFAULT_LORE_FRACTION : 0,
+            loreCapBefore: capped ? 0 : null,
+        };
+    },
 };
 
 /**

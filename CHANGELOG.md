@@ -38,6 +38,18 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Changed
 
+- **The lorebook cap is a percentage now**, 11% of the prompt by default, so it grows
+  with your context: the same 3,500 tokens at 32k, about 14,000 at 128k. Turning
+  Cairn off, or setting it to 0, gives SillyTavern its previous World Info budget
+  cap back. An existing cap moves to the 11% default.
+
+- **The memory budget is a table** that is always open under Advanced settings:
+  the percentages you set, the tokens each comes to at your context size, and the
+  rows that make it add up. Diagnostics is now a fold like Memory prompts.
+
+- **Logging each generation to disk is off by default.** It is a diagnostic. An
+  install that had it on keeps it on.
+
 - **Cairn's memory profile can be the one your chat uses.** The toast that fired
   when they matched is gone. A quiet note under the connection profile picker now
   says a general-purpose model is fine for both, and that a roleplay finetune is the

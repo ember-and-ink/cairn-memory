@@ -102,6 +102,10 @@ the prompt and why.
 Everything else (budgets, prompts, diagnostics) is in
 **[docs/settings.md](docs/settings.md)**. The defaults work.
 
+Cairn sets SillyTavern's **World Info budget cap** (11% of the prompt by default) and
+gives the old value back when you turn Cairn off. Set **Lorebook** to 0 under Memory
+budget to leave it alone.
+
 ## Contributing
 
 Bug reports and ideas are welcome in

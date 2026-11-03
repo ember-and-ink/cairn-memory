@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LORE_CAP, createLoreCap } from '../src/prompt/lore-cap.js';
+import { DEFAULT_LORE_FRACTION, createLoreCap, loreCapTokens } from '../src/prompt/lore-cap.js';
 import { DEFAULT_SETTINGS, migrateSettings } from '../src/settings.js';
+import { SETTINGS_V1 } from './fixtures/settings-v1.js';
 import { makeWorldInfoModule } from './mocks/world-info.js';
 
 /**
@@ -113,22 +114,124 @@ describe('the lorebook cap', () => {
     });
 });
 
+/** D-0098: the cap is a share of this context, Cairn owns ST's field while on, and gives it back. */
+describe('the lorebook cap as a share of the prompt', () => {
+    function syncing({ budgetCap = 0, maxPrompt = 32_000, ...config } = {}) {
+        const worldInfo = makeWorldInfoModule({ budgetCap });
+        const settings = { enabled: true, loreFraction: DEFAULT_LORE_FRACTION, loreCapBefore: null, ...config };
+        let saves = 0;
+        let prompt = maxPrompt;
+        const loreCap = createLoreCap({
+            load: async () => worldInfo,
+            doc: undefined,
+            maxPromptTokens: async () => prompt,
+            settings: () => settings,
+            save: () => { saves += 1; },
+        });
+        return { worldInfo, settings, loreCap, saves: () => saves, setPrompt: (tokens) => { prompt = tokens; } };
+    }
+
+    it('is 11% of the max prompt, which is D-0069\'s 3,500 at 32k', () => {
+        expect(loreCapTokens(32_000, DEFAULT_LORE_FRACTION)).toBe(3_520);
+        expect(loreCapTokens(128_000, DEFAULT_LORE_FRACTION)).toBe(14_080);
+        expect(loreCapTokens(0, DEFAULT_LORE_FRACTION)).toBe(0);
+        expect(loreCapTokens(32_000, 0)).toBe(0);
+    });
+
+    it('writes the share of this context, and follows the context when it changes', async () => {
+        const { worldInfo, loreCap, setPrompt } = syncing();
+
+        await loreCap.sync({});
+        expect(worldInfo.world_info_budget_cap).toBe(3_520);
+
+        setPrompt(128_000);
+        await loreCap.sync({});
+        expect(worldInfo.world_info_budget_cap).toBe(14_080);
+    });
+
+    it('remembers what ST had before its first write, once', async () => {
+        const { settings, loreCap, saves } = syncing({ budgetCap: 6_000 });
+
+        await loreCap.sync({});
+        await loreCap.sync({});
+
+        expect(settings.loreCapBefore).toBe(6_000);
+        expect(saves()).toBe(1);
+    });
+
+    it('gives ST its own cap back when turned off', async () => {
+        const { worldInfo, settings, loreCap } = syncing({ budgetCap: 6_000 });
+        await loreCap.sync({});
+
+        settings.enabled = false;
+        await loreCap.sync({});
+
+        expect(worldInfo.world_info_budget_cap).toBe(6_000);
+        expect(settings.loreCapBefore).toBeNull();
+        expect(loreCap.applied).toBeNull();
+    });
+
+    it('gives it back at a share of 0, and then leaves the field alone', async () => {
+        const { worldInfo, settings, loreCap } = syncing();
+        await loreCap.sync({});
+
+        settings.loreFraction = 0;
+        await loreCap.sync({});
+        expect(worldInfo.world_info_budget_cap).toBe(0);
+
+        worldInfo.updateWorldInfoSettings({ world_info_budget_cap: 9_000 });
+        await loreCap.sync({});
+        expect(worldInfo.world_info_budget_cap).toBe(9_000);
+    });
+
+    it('never touches ST while off, if it never set the cap', async () => {
+        const { worldInfo, settings, loreCap } = syncing({ budgetCap: 9_000, enabled: false });
+
+        await loreCap.sync({});
+
+        expect(worldInfo.world_info_budget_cap).toBe(9_000);
+        expect(settings.loreCapBefore).toBeNull();
+    });
+
+    it('overwrites a hand edit while on: the field is Cairn\'s until it is turned off', async () => {
+        const { worldInfo, loreCap } = syncing();
+        await loreCap.sync({});
+
+        worldInfo.updateWorldInfoSettings({ world_info_budget_cap: 1_000 });
+        await loreCap.sync({});
+
+        expect(worldInfo.world_info_budget_cap).toBe(3_520);
+    });
+});
+
 describe('the lorebook cap as a setting', () => {
-    it('ships with a cap, because ST ships without one', async () => {
-        expect(DEFAULT_SETTINGS.loreCap).toBe(DEFAULT_LORE_CAP);
-        expect(DEFAULT_LORE_CAP).toBe(3_500);
+    it('ships as a share, because ST ships without a cap', () => {
+        expect(DEFAULT_SETTINGS.loreFraction).toBe(DEFAULT_LORE_FRACTION);
+        expect(DEFAULT_LORE_FRACTION).toBe(0.11);
+        expect(DEFAULT_SETTINGS.loreCapBefore).toBeNull();
+        expect('loreCap' in DEFAULT_SETTINGS).toBe(false);
     });
 
-    it('reaches an install that predates it, without a version bump', () => {
-        // Adding a key with a default needs no migration (settings.js).
-        const older = migrateSettings({ version: 1, enabled: true, holdWorldInfo: false });
+    it('migrates a v1 token cap to the default share, restoring to ST\'s shipped 0', () => {
+        const migrated = migrateSettings(SETTINGS_V1);
 
-        expect(older.loreCap).toBe(DEFAULT_LORE_CAP);
-        expect(older.holdWorldInfo).toBe(false);
+        expect(migrated.version).toBe(2);
+        expect(migrated.loreFraction).toBe(DEFAULT_LORE_FRACTION);
+        expect(migrated.loreCapBefore).toBe(0);
+        expect('loreCap' in migrated).toBe(false);
+        expect(migrated.memoryProfileId).toBe('profile-a');
     });
 
-    it('keeps a cap the user chose', () => {
-        expect(migrateSettings({ version: 1, loreCap: 0 }).loreCap).toBe(0);
-        expect(migrateSettings({ version: 1, loreCap: 6_000 }).loreCap).toBe(6_000);
+    it('keeps a v1 "leave ST alone" as a share of 0, with nothing to restore', () => {
+        const migrated = migrateSettings({ ...SETTINGS_V1, loreCap: 0 });
+
+        expect(migrated.loreFraction).toBe(0);
+        expect(migrated.loreCapBefore).toBeNull();
+    });
+
+    it('carries a stored diagnostic choice over rather than the new default', () => {
+        // logToDisk now ships off; an install that had it on keeps it on.
+        expect(migrateSettings(SETTINGS_V1).logToDisk).toBe(true);
+        expect(DEFAULT_SETTINGS.logToDisk).toBe(false);
     });
 });

@@ -8,6 +8,43 @@ what we believed and why it changed.
 
 ---
 
+## D-0098 — The lorebook cap is a share of the prompt; the budget reads as one table
+**2026-11-03.** Supersedes D-0069's 3,500-token default. Checked against context size before
+the public announcement: every budget scaled with the context except the lorebook cap. At
+32k the 3,500 cap is 11% of the prompt. At 128k it is 2.7%, while ST's own 25% would have
+allowed 32k. That is the setting most likely to starve a large-context user's lorebook.
+
+**What changes.**
+1. **`loreCap` (tokens) becomes `loreFraction`, defaulting to 11% of the max prompt.** At
+   32k that is the same 3,500, and at 128k it is ~14k. The base is the max prompt, which the
+   memory share also uses, not ST's max context. There is no floor for small contexts: an
+   8k user gets ~900 tokens and can raise the share.
+2. **Cairn writes the cap as tokens into ST's `world_info_budget_cap`**, the field that ships
+   at 0, and leaves alone the percentage that users actually tune. It recomputes on load and on
+   `GENERATION_STARTED`, which runs before the World Info scan (`script.js:4299`, `:4635`),
+   and writes only when the number changed. While Cairn is on it owns that field, so a hand
+   edit is overwritten by the next generation.
+3. **Restore.** The first write stores ST's previous value as `loreCapBefore`. Turning Cairn
+   off, or setting the share to 0, writes it back. Nothing is applied while Cairn is off. A
+   v1 install's cap was already Cairn's own, so its migration restores ST's shipped 0.
+   Uninstall cannot be hooked, which is why the README says what Cairn changes.
+4. **The Memory budget is a static table of ceilings**, always open at the top of Advanced
+   settings. The percentages are editable and the token column is read-only. Rows: max prompt,
+   memory (canon, one-liners, full summaries), lorebook, the fixed 5% margin, and the
+   remainder for card, persona and recent messages. It shows what each share *could* take,
+   not what a given chat got. That is shown under Last generation, because a big card or
+   long messages change it per chat.
+5. **The raw window stays a fixed 8, stepping by 8,** at every context size. D-0068's
+   reasoning holds. On a large context the user may raise it, at a cost in tokens every turn.
+
+Also out of the same review: `logToDisk` now ships off. It is a diagnostic, and it re-uploads
+a growing file every session. Diagnostics becomes a fold like Memory prompts.
+
+**Would reopen it:** a large-context user reporting lorebook entries going missing at the
+default, or a small-context one finding 11% too tight to play.
+
+---
+
 ## D-0097 — The memory profile may be the chat's own; the risk is a finetune, not sharing
 **2026-11-03.** Supersedes D-0006's "never the roleplay model". D-0006 came from Matt's own
 setup, which always splits the two to keep costs down. Plenty of users run a frontier

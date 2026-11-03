@@ -207,6 +207,32 @@ export function tierSplit({ sceneCap, available = 0, fraction = COMPACT_FRACTION
 }
 
 /**
+ * The settings panel's budget table: every share's **ceiling** in tokens at this max
+ * prompt, with the two remainders that make it add up (D-0098). Static on purpose. A
+ * chat's card, lorebook and messages decide what it actually gets (`deriveCap`), and
+ * that is the inspector's to show, not the settings'.
+ *
+ * @param {{maxPromptTokens: number, memoryFraction?: number, canonFraction?: number,
+ *          compactFraction?: number, loreFraction?: number}} input
+ * @returns {{maxPrompt: number, memory: number, canon: number, compact: number, full: number,
+ *            lore: number, margin: number, rest: number, restShare: number}}
+ */
+export function budgetCeilings({ maxPromptTokens, memoryFraction, canonFraction, compactFraction, loreFraction = 0 } = {}) {
+    const maxPrompt = nonNegative(maxPromptTokens);
+    const memoryShare = fractionOr(memoryFraction, CAP_FRACTION);
+    const loreShare = fractionOr(loreFraction, 0);
+    const memory = Math.floor(maxPrompt * memoryShare);
+    const canon = Math.floor(memory * fractionOr(canonFraction, CANON_FRACTION));
+    const compact = Math.floor((memory - canon) * fractionOr(compactFraction, COMPACT_FRACTION));
+    const lore = Math.floor(maxPrompt * loreShare);
+    const margin = Math.floor(maxPrompt * MARGIN_FRACTION);
+    const rest = Math.max(0, maxPrompt - memory - lore - margin);
+    const restShare = Math.max(0, Math.round((1 - memoryShare - loreShare - MARGIN_FRACTION) * 100));
+
+    return { maxPrompt, memory, canon, compact, full: memory - canon - compact, lore, margin, rest, restShare };
+}
+
+/**
  * @param {{floorFraction?: number}} [options]
  */
 export function createBudget({ floorFraction = FLOOR_FRACTION } = {}) {
