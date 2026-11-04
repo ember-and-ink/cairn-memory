@@ -315,6 +315,19 @@ While a state is being written, after a reply or from this button, its message
 says so with a spinner, **Cairn is updating the world state…**, which goes when
 the state lands or fails.
 
+**The pencils on the world state** edit the newest one by hand (D-0100). The one
+after **World state** opens the scene: location, weather and five **Present** boxes,
+one name each. A name already there keeps its hair and outfit (a change of case
+only respells it); a new name starts with nothing described; an empty box removes
+that character, so a rename starts them over. The pencil after a character's line
+opens their hair and outfit. In either, an empty box means `Not described`. The edit
+reaches the next prompt, the state reads `(edited)`, and the next update builds on
+it — though it lists whoever the story has in the scene, so a character you added
+stays only if the story keeps them there. Older states have no pencils. Neither
+popup saves while a state is being written or a rebuild is waiting, or if the state
+changed while it was open. Rebuild the world state replaces an edited state like
+any other.
+
 **The prompt** is the **Summary prompt** setting. `{{message}}` is the message as
 `Name: text`, and `{{history}}` is the summaries before it, one per line.
 `{{#if history}}…{{/if}}` works as it does in Qvink, so a Qvink prompt can be pasted

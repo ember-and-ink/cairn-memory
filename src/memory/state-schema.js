@@ -121,18 +121,29 @@ export function validState(value) {
  * @returns {string} `''` when there is nothing to say.
  */
 export function renderState(value) {
-    if (!validState(value) || !Object.keys(value).length) return '';
+    return stateLines(value).map((line) => line.text).join('\n');
+}
 
-    const lines = Object.keys(TEXT_FIELDS).map((field) => `${LABELS[field]}: ${shown(value[field])}`);
+/**
+ * `renderState`'s lines, each character's line carrying the name it describes, so the
+ * chat can put an edit pencil after it (D-0100). Who is present is the `Present:`
+ * heading and one line each, so a name is written once.
+ *
+ * @param {object} value
+ * @returns {Array<{text: string, character?: string}>} Empty when there is nothing to say.
+ */
+export function stateLines(value) {
+    if (!validState(value) || !Object.keys(value).length) return [];
+
+    const lines = Object.keys(TEXT_FIELDS).map((field) => ({ text: `${LABELS[field]}: ${shown(value[field])}` }));
     const characters = Object.entries(value.characters ?? {});
-    // Who is present is a fact of its own, as WTrackerLite rendered it.
-    if (characters.length) lines.push(`Present: ${characters.map(([name]) => oneLine(name)).join(', ')}`);
+    if (characters.length) lines.push({ text: 'Present:' });
     for (const [name, fields] of characters) {
         const parts = Object.keys(CHARACTER_FIELDS).map((field) => `${field}: ${shown(fields[field])}`);
-        lines.push(`${oneLine(name)} — ${parts.join('; ')}`);
+        lines.push({ text: `${oneLine(name)} — ${parts.join('; ')}`, character: name });
     }
 
-    return [STATE_HEADER, ...lines].join('\n');
+    return [{ text: STATE_HEADER }, ...lines];
 }
 
 /** A state stored before D-0096 can still hold a placeholder, so it renders as one too. */
@@ -255,7 +266,14 @@ function readText(entry, cap) {
     return { ok: true, text: entry };
 }
 
-function changedKinds(before, after) {
+/**
+ * What changed between two valid states, as `changed` records it: kinds, never content.
+ *
+ * @param {object} before
+ * @param {object} after
+ * @returns {string[]} In CHANGE_KINDS order.
+ */
+export function changedKinds(before, after) {
     const kinds = new Set(Object.keys(TEXT_FIELDS).filter((field) => before[field] !== after[field]));
 
     const was = before.characters ?? {};
@@ -271,6 +289,70 @@ function changedKinds(before, after) {
     }
     if (Object.keys(was).some((name) => !Object.hasOwn(now, name))) kinds.add('characters.left');
     return CHANGE_KINDS.filter((kind) => kinds.has(kind));
+}
+
+/**
+ * The state the scene editor's boxes describe (D-0100). Unlike a reply, an edit can
+ * unset: a blank or a placeholder leaves the field out. A name matching someone present
+ * (ignoring case) keeps their fields and takes the spelling typed; any other name joins
+ * with none; anyone in no box has left. A repeated name counts once.
+ *
+ * @param {object} current The valid state the editor opened on.
+ * @param {{location?: string, weather?: string, people?: string[]}} form
+ * @returns {{ok: true, value: object} | {ok: false, reason: 'too-long'|'bad-name'|'too-many', name?: string}}
+ */
+export function applySceneEdit(current, { location, weather, people = [] }) {
+    const value = {};
+    const texts = { location, weather };
+    for (const [field, cap] of Object.entries(TEXT_FIELDS)) {
+        const read = editedText(texts[field], cap);
+        if (!read.ok) return read;
+        if (read.text !== undefined) value[field] = read.text;
+    }
+
+    const stored = Object.entries(current.characters ?? {});
+    const cast = new Map();
+    for (const box of people) {
+        const name = oneLine(typeof box === 'string' ? box : '');
+        if (name === '' || [...cast.keys()].some((known) => fold(known) === fold(name))) continue;
+        if (!validName(name)) return { ok: false, reason: 'bad-name', name };
+        if (cast.size >= MAX_CHARACTERS) return { ok: false, reason: 'too-many' };
+        const kept = stored.find(([known]) => fold(known) === fold(name));
+        cast.set(name, kept ? { ...kept[1] } : {});
+    }
+    if (cast.size) value.characters = Object.fromEntries(cast);
+    return { ok: true, value };
+}
+
+/**
+ * The state with one character's hair and outfit replaced by the editor's (D-0100).
+ * A blank or a placeholder unsets the field.
+ *
+ * @param {object} current The valid state the editor opened on.
+ * @param {string} name Exactly as stored.
+ * @param {{hair?: string, outfit?: string}} form
+ * @returns {{ok: true, value: object} | {ok: false, reason: 'gone'|'too-long'}}
+ */
+export function applyCharacterEdit(current, name, form) {
+    if (!isObject(current.characters) || !Object.hasOwn(current.characters, name)) return { ok: false, reason: 'gone' };
+    const fields = {};
+    for (const [field, cap] of Object.entries(CHARACTER_FIELDS)) {
+        const read = editedText(form[field], cap);
+        if (!read.ok) return read;
+        if (read.text !== undefined) fields[field] = read.text;
+    }
+    // Replacing the key in place keeps everyone's order, so the rest renders the same bytes.
+    const characters = Object.fromEntries(Object.entries(current.characters)
+        .map(([known, entry]) => [known, known === name ? fields : { ...entry }]));
+    return { ok: true, value: { ...current, characters } };
+}
+
+/** A hand-typed value: whitespace collapsed, and blank or a placeholder meaning unset. */
+function editedText(entry, cap) {
+    const text = oneLine(typeof entry === 'string' ? entry : '');
+    if (text === '' || isPlaceholder(text)) return { ok: true, text: undefined };
+    if (text.length > cap) return { ok: false, reason: 'too-long' };
+    return { ok: true, text };
 }
 
 function validCharacters(characters) {

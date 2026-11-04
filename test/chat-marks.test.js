@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { EDIT_HTML, STATE_WRITING_HTML, markMessages, renderMark, stateTexts, stateWriting } from '../src/ui/chat-marks.js';
+import {
+    EDIT_HTML, STATE_WRITING_HTML, markMessages, renderMark, renderStateBody, renderStateTitle, stateMarks, stateWriting,
+} from '../src/ui/chat-marks.js';
 import { QVINK_EXTENSION, qvinkDisplaying } from '../src/interop/qvink.js';
-import { STATE_HEADER } from '../src/memory/state-schema.js';
-import { writeState } from '../src/store/chat-store.js';
+import { STATE_HEADER, renderState } from '../src/memory/state-schema.js';
+import { editState, writeState } from '../src/store/chat-store.js';
 import { createSummarizer } from '../src/pipeline/summarizer.js';
 import { MAX_ATTEMPTS } from '../src/pipeline/tally.js';
 import { cairnStore, cairnSummary, makeMixedChat } from './mocks/cairn.js';
@@ -122,10 +124,13 @@ describe('the world state on each message', () => {
     }
 
     it('shows every message that carries a state, rendered as the prompt carries it', () => {
-        const texts = stateTexts(played());
+        const chat = played();
+        const marks = stateMarks(chat);
 
-        expect([...texts.keys()]).toEqual([3, 5]);
-        expect(texts.get(5)).toBe(`${STATE_HEADER}\nLocation: The ferry, upper deck\nWeather: Not described\nPresent: Wren\nWren — hair: Not described; outfit: Wool coat, boots`);
+        expect([...marks.keys()]).toEqual([3, 5]);
+        expect(marks.get(5).lines.map((line) => line.text).join('\n')).toBe(renderState(DECK));
+        expect(marks.get(5).lines.map((line) => line.text).join('\n'))
+            .toBe(`${STATE_HEADER}\nLocation: The ferry, upper deck\nWeather: Not described\nPresent:\nWren — hair: Not described; outfit: Wool coat, boots`);
     });
 
     it('leaves out a state the reader wouldn\'t use: stale, out of schema, or empty', () => {
@@ -136,9 +141,39 @@ describe('the world state on each message', () => {
         const empty = makeChat(4);
         writeState(empty, 3, { value: {}, read: 2, changed: [], prompt: 'h:1', at: 'T' });
 
-        expect([...stateTexts(stale).keys()]).toEqual([3]);
-        expect([...stateTexts(broken).keys()]).toEqual([5]);
-        expect(stateTexts(empty).size).toBe(0);
+        expect([...stateMarks(stale).keys()]).toEqual([3]);
+        expect([...stateMarks(broken).keys()]).toEqual([5]);
+        expect(stateMarks(empty).size).toBe(0);
+    });
+
+    it('makes only the newest state editable, and says which were edited (D-0100)', () => {
+        const chat = played();
+        expect(editState(chat, 3, { value: { ...PIER, weather: 'Fog' }, changed: ['weather'], at: 'T2' }).written).toBe(true);
+        const marks = stateMarks(chat);
+
+        expect(marks.get(3)).toMatchObject({ editable: false, edited: true });
+        expect(marks.get(5)).toMatchObject({ editable: true, edited: false });
+    });
+
+    it('puts the pencil and (edited) after "World state" only where they apply', () => {
+        expect(renderStateTitle({ editable: false, edited: false })).toBe('World state');
+        expect(renderStateTitle({ editable: false, edited: true })).toBe('World state (edited)');
+        const newest = renderStateTitle({ editable: true, edited: true });
+        expect(newest).toMatch(/^World state&nbsp;<i class="cairn-state-edit [^>]*><\/i> \(edited\)$/);
+    });
+
+    it('puts a pencil after each character on the newest state, numbered by place, and escapes the text', () => {
+        const value = { location: 'Pier <b>', characters: { Wren: {}, 'A<x>': { hair: 'Short' } } };
+        const chat = makeChat(2);
+        writeState(chat, 1, { value, read: 2, changed: [], prompt: 'h:1', at: 'T' });
+        const mark = { lines: stateMarks(chat).get(1).lines };
+
+        const editable = renderStateBody({ ...mark, editable: true });
+        expect(editable).toContain('Location: Pier &lt;b&gt;');
+        expect(editable).not.toContain('<b>');
+        expect(editable.match(/data-character="(\d)"/g)).toEqual(['data-character="0"', 'data-character="1"']);
+        expect(editable).toContain('title="Edit A&lt;x&gt;"');
+        expect(renderStateBody({ ...mark, editable: false })).not.toContain('<i');
     });
 });
 

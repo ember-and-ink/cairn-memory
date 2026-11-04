@@ -8,6 +8,42 @@ what we believed and why it changed.
 
 ---
 
+## D-0100 — The newest world state can be edited by hand, in two small popups
+**2026-11-04.** The world state half of D-0099, kept out of that change because a state is
+structured and a form for it had to work on a phone, where a table of name, hair and outfit
+columns leaves each box about 100px wide.
+
+**Decided.**
+1. **Two popups of ST's own static inputs, no form of our own.** A pencil after "World state"
+   opens the scene: Location, Weather and `Present 1`–`Present 5`. A pencil after each
+   character's line opens that character: Hair and Outfit. Both are a `customInputs` list
+   (`public/scripts/popup.js:324`), so nothing is added or removed while a popup is open and
+   there is no new popup CSS. Long fields are two-row textareas so they wrap on a phone; every
+   input is capped at its schema limit.
+2. **Only the newest usable state has pencils**, since the next update builds on it. `(edited)`
+   follows the pencil on that line and stays on the state it describes after a newer one lands.
+3. **Who is present is a list of names.** A name that matches someone present, ignoring case,
+   keeps their hair and outfit and takes the spelling typed; any other name joins with nothing
+   described; an empty box removes. Renaming is therefore remove-and-add. A repeated name counts
+   once; a name the schema refuses keeps the popup open. The box order is the stored order.
+4. **A blank or a placeholder unsets the field**, the one thing a model reply can't do (D-0053).
+   It renders as `Not described`, as D-0096 has it, and the next update fills it if the story does.
+5. **Refused while a state request is out or a rebuild is asked for**, at the pencil and again
+   at Save, and at Save if the state's `at` moved. A job takes its copy of the state when it
+   starts, so one landing after the edit would merge onto the old value and undo it silently.
+6. **The edit keeps `read`, `hash` and `prompt`, sets `at`, and adds `edited: true`.** `changed`
+   is worked out from before and after, so the inspector reports the edit applied (§4.18). The
+   log gets a `kind: "edit"` line with the kinds that changed, never the values (D-0093).
+7. **The rendered state lists who is present under a `Present:` heading**, one line each, instead
+   of a `Present: A, B` line followed by the same names again. Supersedes that part of D-0043.
+   The chat shows the prompt's own text, pencils added, so each line needs to carry its
+   character; a name now appears once. One prefix miss at the tail when it ships.
+
+**Would reopen it:** the five-box cast proving clumsy in use (a per-row add/remove, or cards),
+or users needing to edit an older state.
+
+---
+
 ## D-0099 — A summary can be edited by hand, and an edit is user data
 **2026-11-04.** Users asked to fix a summary's wording, as qvink allows. Only the summary is
 editable, from a pencil at the end of Cairn's own summary under the message. The world state
