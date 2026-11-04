@@ -36,11 +36,11 @@ It is **not** for group chats, and it needs a second model to write memory.
 
 ## How it's built
 
-Cairn is test-driven, which is rare for a SillyTavern extension: over a thousand
-tests, CI on every change, and a [decision log](docs/decisions.md) of what was
-decided, why, and what would change it. It's AI-assisted and doesn't hide that,
-but it was planned, reviewed and measured. I've spent 15+ years building
-production machine learning systems and Cairn is held to the same bar.
+Cairn is test-driven, CI on every change, and a [decision log](docs/decisions.md)
+of what was decided, why, and what would change it. It's AI-assisted and doesn't
+hide that, but it was planned, reviewed, tested and measured. This is ultimately
+a hobby project, but I've tried to hold Cairn to the same bar as a production machine
+learning systems.
 
 It's also fast. Most of the work went into *when* Cairn calls the memory model,
 not just what it asks. Summaries start after a reply is shown and never hold up
