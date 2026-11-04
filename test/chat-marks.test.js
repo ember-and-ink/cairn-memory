@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STATE_WRITING_HTML, markMessages, renderMark, stateTexts, stateWriting } from '../src/ui/chat-marks.js';
+import { EDIT_HTML, STATE_WRITING_HTML, markMessages, renderMark, stateTexts, stateWriting } from '../src/ui/chat-marks.js';
 import { QVINK_EXTENSION, qvinkDisplaying } from '../src/interop/qvink.js';
 import { STATE_HEADER } from '../src/memory/state-schema.js';
 import { writeState } from '../src/store/chat-store.js';
@@ -148,6 +148,34 @@ describe('how a mark reads', () => {
 
         expect(html).toContain('&lt;img src=x onerror=alert(1)&gt; &amp; left.');
         expect(html).not.toContain('<img');
+    });
+
+    it('ends Cairn\'s own summary with the pencil, joined to the last word', () => {
+        const html = renderMark({ state: 'written', text: 'Fog arrived.' });
+
+        expect(html.endsWith(`Fog arrived.&nbsp;${EDIT_HTML}`)).toBe(true);
+        expect(html).not.toContain('(edited)');
+    });
+
+    it('says an edited summary was edited, after the pencil', () => {
+        expect(renderMark({ state: 'written', text: 'Fog arrived.', edited: true }).endsWith(`${EDIT_HTML} (edited)`)).toBe(true);
+    });
+
+    it('has no pencil on anything else: there is nothing of Cairn\'s to edit (D-0099)', () => {
+        const others = [
+            { state: 'qvink', text: 'Q.' }, { state: 'writing' }, { state: 'waiting' },
+            { state: 'failed', reason: 'empty', attempts: 1 }, { state: 'given-up', reason: 'empty', attempts: 3 },
+        ];
+        for (const mark of others) expect(renderMark(mark)).not.toContain('scene-edit');
+    });
+
+    it('carries the edited mark from the store', () => {
+        const chat = makeMixedChat({ length: 14, qvinkThrough: 9, cairnThrough: 11 });
+        chat[11].extra.cairn.scene.edited = true;
+        const marks = markMessages(chat, null);
+
+        expect(marks.get(11).edited).toBe(true);
+        expect(marks.get(10).edited).toBe(false);
     });
 
     it('names the failure, and what happens next', () => {

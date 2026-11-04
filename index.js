@@ -16,6 +16,7 @@ import { createInspector } from './src/ui/inspector.js';
 import { noteSharedProfile, refreshBudget, renderSettingsPanel } from './src/ui/panel.js';
 import { installResummariseButton } from './src/ui/resummarise-button.js';
 import { installAdoptControls } from './src/ui/adopt-panel.js';
+import { installEditPopup } from './src/ui/edit-popup.js';
 import { error, info, setDebugEnabled, warn } from './src/util/log.js';
 
 (async function init() {
@@ -77,6 +78,7 @@ import { error, info, setDebugEnabled, warn } from './src/util/log.js';
         // The summaries and states under their messages, and the only in-chat sign one is being written.
         const marks = createChatMarks(getContext, { status: () => summarizer.status, settings: () => settings });
         installResummariseButton(summarizer);
+        installEditPopup(getContext, summarizer);
 
         const observer = createObserver(getContext, {
             onSnapshot: (snapshot) => {

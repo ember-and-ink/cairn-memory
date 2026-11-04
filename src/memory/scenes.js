@@ -25,7 +25,7 @@ import { QVINK_KEY } from '../interop/qvink.js';
  * @param {Array<object>} chat ST's live message array. Read only, never mutated.
  * @param {{key?: string}} [options]
  * @returns {Array<object>} `{index, source, text, chars, eligible, remembered,
- *          excluded, include, lagging}`
+ *          excluded, include, lagging}`, plus `edited` on Cairn's own (D-0099)
  */
 export function readScenes(chat, { key = QVINK_KEY } = {}) {
     const scenes = [];
@@ -38,6 +38,7 @@ export function readScenes(chat, { key = QVINK_KEY } = {}) {
                 source: 'cairn',
                 text: cairn.scene.text,
                 chars: cairn.scene.text.length,
+                edited: cairn.scene.edited === true,
                 eligible: true,
                 remembered: false,
                 excluded: false,

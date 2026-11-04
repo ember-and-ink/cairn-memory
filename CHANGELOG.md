@@ -11,6 +11,10 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Added
 
+- **Edit a summary**: a pencil at the end of each Cairn summary opens it for editing.
+  The new wording reaches the next prompt and the summary reads "(edited)". Up to
+  1,500 characters; it can't be edited while Cairn is writing a new one.
+
 - **Tell it the chat is fiction**, under Memory model, on by default: each memory
   request starts by telling the memory model that the chat is a collaborative story,
   and that the task is to keep a record of it. It only says what the material is. If

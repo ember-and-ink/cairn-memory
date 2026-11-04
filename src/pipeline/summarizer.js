@@ -18,7 +18,8 @@
 import { pendingScenes, redoScenes } from '../memory/scenes.js';
 import { stateJobAt } from '../memory/state.js';
 import { describeReply } from '../memory/model-reply.js';
-import { readScene, summarisable } from '../store/chat-store.js';
+import { editScene, readScene, summarisable } from '../store/chat-store.js';
+import { MAX_SUMMARY_CHARS } from '../memory/scene-strategy.js';
 import { countTokens } from '../util/tokens.js';
 import { debug, error, toastOnce, warn } from '../util/log.js';
 import { assessCompaction, assessIndexing, assessStateUpdates, assessSummarizing } from './gates.js';
@@ -51,7 +52,8 @@ const EFFORT_REFUSED = (effort) => `The memory model's provider refused reasonin
  *        `memory` returns the assembler's pending compaction pass for the turn just
  *        planned — the budget lives there, so this file never re-derives it.
  *        `onCall` gets one entry per memory call once its outcome is known, for the
- *        chat's log (D-0093): sizes, timings and reasons, never a model's text.
+ *        chat's log (D-0093): sizes, timings and reasons, never a model's text. A
+ *        hand edit gets a `kind: 'edit'` entry the same way (D-0099).
  */
 export function createSummarizer(getContext, {
     settings, strategy, stateStrategy, canonStrategy, indexStrategy,
@@ -479,6 +481,43 @@ export function createSummarizer(getContext, {
     }
 
     /**
+     * Replace a summary with the user's own wording (D-0099). No model call, so no gate:
+     * only a summary that is valid and has no request out or asked for, since a job that
+     * lands afterwards would overwrite the edit (it re-checks `mes`, not the scene).
+     * Activity in the chat, so the stale index record is re-derived without waiting.
+     *
+     * @param {number} index
+     * @param {string} text
+     * @returns {Promise<{written: boolean, reason?: string}>}
+     */
+    async function editSummary(index, text) {
+        if (!running) return { written: false, reason: 'off' };
+        const context = getContext();
+        const message = context.chat?.[index];
+        if (!message) return { written: false, reason: 'no-message' };
+        if (message === summary.writing || asked.includes(message)) return { written: false, reason: 'writing' };
+        if (typeof text === 'string' && text.trim().length > MAX_SUMMARY_CHARS) return { written: false, reason: 'too-long' };
+
+        const at = new Date(clock()).toISOString();
+        const result = editScene(message, text, at);
+        if (!result.written) return { written: false, reason: result.reason };
+
+        try {
+            // Lengths only: the log never carries chat text (D-0093).
+            onCall?.({
+                kind: 'edit', at, job: 'summary', message: index,
+                chars_before: result.before, chars_after: result.after, chat_id: context.chatId ?? null,
+            });
+        } catch (err) {
+            warn('Could not log a summary edit.', err);
+        }
+        await save(context, 'an edited summary');
+        notify();
+        act(`an edit of #${index}`);
+        return { written: true };
+    }
+
+    /**
      * Rebuild the world state on a message, on the user's word (D-0089): it reads every
      * visible message since the state before it and replaces any state already there.
      * Only the newest state reaches the prompt, so this matters most on the newest
@@ -611,6 +650,8 @@ export function createSummarizer(getContext, {
         drain,
 
         resummarise,
+
+        editSummary,
 
         restate,
 

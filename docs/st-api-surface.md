@@ -151,6 +151,10 @@ literally against the cited line.
 | `POPUP_TYPE,` | ...as a confirmation | `public/scripts/st-context.js` | 225 |
 | `POPUP_RESULT,` | ...whose Enter is set to answer no | `public/scripts/st-context.js` | 226 |
 | `NEGATIVE: 0,` | The result an adoption treats as "don't" | `public/scripts/popup.js` | 26 |
+| `Popup,` | Editing a summary builds the popup itself, to cap its textarea before it opens (D-0099) | `public/scripts/st-context.js` | 224 |
+| `INPUT: 3,` | ...as an input popup | `public/scripts/popup.js` | 15 |
+| `/** @readonly @type {HTMLTextAreaElement} */ mainInput;` | ...whose textarea takes the length cap | `public/scripts/popup.js` | 157 |
+| `if (result >= POPUP_RESULT.AFFIRMATIVE) value = this.mainInput.value;` | ...and whose `show()` gives the text only on Save | `public/scripts/popup.js` | 761 |
 | `'openrouter': {` | A profile's `api` of `openrouter` resolves to the OpenRouter chat completion source | `public/scripts/slash-commands.js` | 191 |
 | `CONNECT_API_MAP,` | The map is on the context, so Cairn resolves a profile's source as ST does | `public/scripts/st-context.js` | 285 |
 | `disabledExtensions.includes('connection-manager')` | `sendRequest` refuses outright without Connection Manager, so the summarizer checks first | `public/scripts/extensions/shared.js` | 427 |
