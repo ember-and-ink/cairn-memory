@@ -185,6 +185,26 @@ export function writeState(chat, index, { value, read, changed, prompt, at = new
 }
 
 /**
+ * Replace a valid state's value with the user's own (docs/decisions.md D-0100). `read`,
+ * `hash` and `prompt` stay, since the messages it read are unchanged; `changed` is the
+ * caller's diff, so the inspector reports the edit that was applied. The caller checks
+ * the value against the schema; this only refuses what would corrupt the store.
+ *
+ * @param {Array<object>} chat The live chat.
+ * @param {number} index
+ * @param {{value: object, changed: string[], at?: string}} edit
+ * @returns {{written: boolean, reason?: 'no-state'|'unchanged'}}
+ */
+export function editState(chat, index, { value, changed, at = new Date().toISOString() }) {
+    const { status, state } = readState(chat, index);
+    if (status !== 'valid' || !isObject(value) || !Array.isArray(changed)) return { written: false, reason: 'no-state' };
+    if (JSON.stringify(value) === JSON.stringify(state.value)) return { written: false, reason: 'unchanged' };
+
+    const written = writeKey(chat[index], 'state', { ...state, value, changed, at, edited: true });
+    return written ? { written: true } : { written: false, reason: 'no-state' };
+}
+
+/**
  * The canon batch stored on `chat[index]`.
  *
  * No `stale`: a batch is checked for shape and nothing else (docs/decisions.md D-0055).

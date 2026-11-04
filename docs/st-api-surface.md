@@ -155,6 +155,12 @@ literally against the cited line.
 | `INPUT: 3,` | ...as an input popup | `public/scripts/popup.js` | 15 |
 | `/** @readonly @type {HTMLTextAreaElement} */ mainInput;` | ...whose textarea takes the length cap | `public/scripts/popup.js` | 157 |
 | `if (result >= POPUP_RESULT.AFFIRMATIVE) value = this.mainInput.value;` | ...and whose `show()` gives the text only on Save | `public/scripts/popup.js` | 761 |
+| `CONFIRM: 2,` | Editing the world state is a confirmation popup (D-0100) | `public/scripts/popup.js` | 13 |
+| `customInputs = null,` | ...whose fields are ST's own static inputs, so Cairn adds no form markup | `public/scripts/popup.js` | 212 |
+| `inputElement.value = String(input.defaultState ?? '');` | ...each filled with the stored value, and capped by Cairn after construction | `public/scripts/popup.js` | 364 |
+| `this.inputResults = new Map(this.customInputs.map(input => {` | ...whose answers are read before `onClosing` runs | `public/scripts/popup.js` | 775 |
+| `const shouldClose = await this.onClosing(this);` | ...which returns `false` to keep the popup open on a name the schema refuses | `public/scripts/popup.js` | 787 |
+| `AFFIRMATIVE: 1,` | The result for Save | `public/scripts/popup.js` | 25 |
 | `'openrouter': {` | A profile's `api` of `openrouter` resolves to the OpenRouter chat completion source | `public/scripts/slash-commands.js` | 191 |
 | `CONNECT_API_MAP,` | The map is on the context, so Cairn resolves a profile's source as ST does | `public/scripts/st-context.js` | 285 |
 | `disabledExtensions.includes('connection-manager')` | `sendRequest` refuses outright without Connection Manager, so the summarizer checks first | `public/scripts/extensions/shared.js` | 427 |

@@ -11,6 +11,11 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Added
 
+- **Edit the world state**: pencils on the newest World state open the scene
+  (location, weather, who is present) and each character's hair and outfit. An empty
+  box means "Not described"; the state then reads "(edited)" and the next update
+  builds on it. It can't be edited while Cairn is updating it.
+
 - **Edit a summary**: a pencil at the end of each Cairn summary opens it for editing.
   The new wording reaches the next prompt and the summary reads "(edited)". Up to
   1,500 characters; it can't be edited while Cairn is writing a new one.
@@ -41,6 +46,11 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
   against the yardstick as 0d was.
 
 ### Changed
+
+- **The world state lists who is present under a `Present:` heading**, one line per
+  character, instead of a `Present:` line of names followed by the same names again.
+  The roleplay model gets the same facts in fewer tokens; the first prompt after
+  updating misses the cache at the state.
 
 - **The lorebook cap is a percentage now**, 11% of the prompt by default, so it grows
   with your context: the same 3,500 tokens at 32k, about 14,000 at 128k. Turning

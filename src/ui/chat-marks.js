@@ -13,10 +13,10 @@
 import { SLUG } from '../constants.js';
 import { pendingScenes, readScenes } from '../memory/scenes.js';
 import { qvinkDisplaying } from '../interop/qvink.js';
-import { usableState } from '../memory/state.js';
+import { newestState, usableState } from '../memory/state.js';
 import { wtrackerLoaded } from '../interop/wtracker.js';
 import { canonTexts } from './canon-section.js';
-import { renderState } from '../memory/state-schema.js';
+import { stateLines } from '../memory/state-schema.js';
 import { MAX_ATTEMPTS } from '../pipeline/tally.js';
 import { warn } from '../util/log.js';
 import { escapeHtml } from './html.js';
@@ -54,20 +54,40 @@ export function markMessages(chat, status, { showQvink = false } = {}) {
 }
 
 /**
- * The world state on each message that carries one the reader would use, rendered as
- * the prompt carries it. A state with nothing recorded has nothing to show.
+ * The world state on each message that carries one the reader would use, as the prompt
+ * carries it. A state with nothing recorded has nothing to show. Only the newest is
+ * `editable`, since the next update builds on it (D-0100).
  *
  * @param {Array<object>} chat
- * @returns {Map<number, string>}
+ * @returns {Map<number, {lines: Array<{text: string, character?: string}>, edited: boolean, editable: boolean}>}
  */
-export function stateTexts(chat) {
-    const texts = new Map();
+export function stateMarks(chat) {
+    const marks = new Map();
+    const newest = newestState(chat)?.index;
     (chat ?? []).forEach((_, index) => {
         const found = usableState(chat, index);
-        const text = found ? renderState(found.state.value) : '';
-        if (text) texts.set(index, text);
+        const lines = found ? stateLines(found.state.value) : [];
+        if (lines.length) marks.set(index, { lines, edited: found.state.edited === true, editable: index === newest });
     });
-    return texts;
+    return marks;
+}
+
+/** The World state line: the pencil on the newest state, `(edited)` on any edited one (D-0100). */
+export function renderStateTitle({ edited, editable }) {
+    const pencil = editable
+        ? `&nbsp;<i class="${SLUG}-state-edit fa-solid fa-pen" role="button" tabindex="0" title="Edit the world state"></i>`
+        : '';
+    return `World state${pencil}${edited ? ' (edited)' : ''}`;
+}
+
+/** The state's text, escaped, with a pencil after each character on the newest state. */
+export function renderStateBody({ lines, editable }) {
+    let place = 0;
+    return lines.map(({ text, character }) => {
+        if (character === undefined || !editable) return escapeHtml(text);
+        return `${escapeHtml(text)}&nbsp;<i class="${SLUG}-character-edit fa-solid fa-pen" role="button" tabindex="0"`
+            + ` data-character="${place++}" title="Edit ${escapeHtml(character)}"></i>`;
+    }).join('\n');
 }
 
 /**
@@ -137,7 +157,7 @@ export function createChatMarks(getContext, { status, settings }) {
                 : new Map();
             // Hidden where no state goes in the prompt: switched off, or a WTracker keeps its own.
             const showStates = running && settings?.()?.worldState !== false && !wtrackerLoaded(context);
-            const states = showStates ? stateTexts(context.chat) : new Map();
+            const states = showStates ? stateMarks(context.chat) : new Map();
             const updating = showStates ? stateWriting(status()) : null;
             // Hidden where no canon goes in the prompt. Unlike a summary or a state, a
             // fact cannot be taken back, so seeing it is the only check there is.
@@ -197,22 +217,25 @@ export function createChatMarks(getContext, { status, settings }) {
      * Below the summary if there is one. A summary drawn later goes directly after the
      * body, so it still lands above this.
      */
-    function drawState(element, text) {
-        drawDetails(element, 'state', 'World state', text, ['state-writing', 'scene']);
+    function drawState(element, mark) {
+        drawDetails(element, 'state', mark && { title: renderStateTitle(mark), body: renderStateBody(mark) },
+            ['state-writing', 'scene']);
     }
 
     /** Below the state, so the head of the block reads last where it was written. */
     function drawCanon(element, text) {
-        drawDetails(element, 'canon', 'Established facts', text, ['state', 'scene']);
+        drawDetails(element, 'canon', text !== undefined && { title: 'Established facts', body: escapeHtml(text) },
+            ['state', 'scene']);
     }
 
     /**
      * A collapsed section under a message, placed after the first of `after` it has, else
-     * after the body. Only the text is rewritten, so an open section stays open.
+     * after the body. Only its two parts are rewritten, and only when they change, so an
+     * open section stays open.
      */
-    function drawDetails(element, kind, title, text, after) {
+    function drawDetails(element, kind, html, after) {
         let node = element.querySelector(`.${SLUG}-${kind}`);
-        if (text === undefined) {
+        if (!html) {
             node?.remove();
             return;
         }
@@ -221,12 +244,17 @@ export function createChatMarks(getContext, { status, settings }) {
             if (!body) return;
             node = document.createElement('details');
             node.className = `${SLUG}-${kind}`;
-            node.innerHTML = `<summary>${title}</summary><pre></pre>`;
+            node.innerHTML = '<summary></summary><pre></pre>';
             const anchor = after.map((name) => element.querySelector(`.${SLUG}-${name}`)).find(Boolean);
             (anchor ?? body).after(node);
         }
-        const pre = node.querySelector('pre');
-        if (pre.textContent !== text) pre.textContent = text;
+        for (const [selector, part] of [['summary', html.title], ['pre', html.body]]) {
+            const child = node.querySelector(selector);
+            if (drawn.get(child) !== part) {
+                child.innerHTML = part;
+                drawn.set(child, part);
+            }
+        }
     }
 
     /** Every event after which ST has built or rebuilt message elements. */

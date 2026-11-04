@@ -16,9 +16,11 @@
  * does today. Nothing here may reach ST's event path (CLAUDE.md §4.17).
  */
 import { pendingScenes, redoScenes } from '../memory/scenes.js';
-import { stateJobAt } from '../memory/state.js';
+import { newestState, stateJobAt } from '../memory/state.js';
+import { changedKinds, validState } from '../memory/state-schema.js';
+import { wtrackerLoaded } from '../interop/wtracker.js';
 import { describeReply } from '../memory/model-reply.js';
-import { editScene, readScene, summarisable } from '../store/chat-store.js';
+import { editScene, editState as writeEditedState, readScene, summarisable } from '../store/chat-store.js';
 import { MAX_SUMMARY_CHARS } from '../memory/scene-strategy.js';
 import { countTokens } from '../util/tokens.js';
 import { debug, error, toastOnce, warn } from '../util/log.js';
@@ -518,6 +520,61 @@ export function createSummarizer(getContext, {
     }
 
     /**
+     * Whether the world state on `index` may be edited by hand now (D-0100), and the
+     * state the editor opens on. Only the newest, since the next update builds on it, and
+     * never while a state request is out or a rebuild is asked for: that job took its copy
+     * of the state when it started and would land on top of the edit. No model call, so
+     * no connection gate; only what hides the state from the chat.
+     *
+     * @param {number} index
+     * @returns {{ok: true, state: object} | {ok: false, reason: string}}
+     */
+    function stateEditable(index) {
+        const refused = (reason) => ({ ok: false, reason });
+        if (!running) return refused('disabled');
+        const context = getContext();
+        if (readSettings().worldState === false) return refused('off');
+        if (wtrackerLoaded(context)) return refused('wtracker-loaded');
+        if (!context.chat?.[index]) return refused('no-message');
+        if (state.tally.inFlight !== null || restating || askedStates.length) return refused('writing');
+        const newest = newestState(context.chat);
+        if (newest?.index !== index) return refused('not-newest');
+        return { ok: true, state: newest.state };
+    }
+
+    /**
+     * Replace the newest world state's value with the user's (D-0100), provided it is
+     * still the state the editor opened on (`at`). The inspector and the log get the
+     * kinds that changed, never the values (D-0093).
+     *
+     * @param {number} index
+     * @param {object} value
+     * @param {string} at The edited state's `at` when the editor opened.
+     * @returns {Promise<{written: boolean, reason?: string}>}
+     */
+    async function editState(index, value, at) {
+        const editable = stateEditable(index);
+        if (!editable.ok) return { written: false, reason: editable.reason };
+        if (editable.state.at !== at) return { written: false, reason: 'changed' };
+        if (!validState(value)) return { written: false, reason: 'invalid' };
+
+        const context = getContext();
+        const changed = changedKinds(editable.state.value, value);
+        const now = new Date(clock()).toISOString();
+        const result = writeEditedState(context.chat, index, { value, changed, at: now });
+        if (!result.written) return { written: false, reason: result.reason };
+
+        try {
+            onCall?.({ kind: 'edit', at: now, job: 'state', message: index, changed, chat_id: context.chatId ?? null });
+        } catch (err) {
+            warn('Could not log a world state edit.', err);
+        }
+        await save(context, 'an edited world state');
+        notify();
+        return { written: true };
+    }
+
+    /**
      * Rebuild the world state on a message, on the user's word (D-0089): it reads every
      * visible message since the state before it and replaces any state already there.
      * Only the newest state reaches the prompt, so this matters most on the newest
@@ -652,6 +709,10 @@ export function createSummarizer(getContext, {
         resummarise,
 
         editSummary,
+
+        stateEditable,
+
+        editState,
 
         restate,
 

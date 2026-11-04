@@ -291,14 +291,20 @@
     font-weight: bold;
 }
 
-/* The pencil after Cairn's summary: the text's own size and colour, no box (D-0099). */
-.cairn-scene-edit {
+/* The pencils after Cairn's summary and world state: the text's own size and colour, no box (D-0099, D-0100). */
+.cairn-scene-edit,
+.cairn-state-edit,
+.cairn-character-edit {
     font-size: inherit;
     cursor: pointer;
 }
 
 .cairn-scene-edit:hover,
-.cairn-scene-edit:focus-visible {
+.cairn-scene-edit:focus-visible,
+.cairn-state-edit:hover,
+.cairn-state-edit:focus-visible,
+.cairn-character-edit:hover,
+.cairn-character-edit:focus-visible {
     opacity: 1;
     color: var(--SmartThemeQuoteColor);
 }

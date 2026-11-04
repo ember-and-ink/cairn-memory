@@ -327,12 +327,12 @@ describe('dropping what breaks the schema', () => {
 });
 
 describe('rendering', () => {
-    it('renders the decided format in fixed order (docs/decisions.md D-0043)', () => {
+    it('renders the decided format in fixed order (docs/decisions.md D-0043, D-0100)', () => {
         expect(renderState(STORE_V2.state.value)).toBe([
             '[Current scene]',
             'Location: The ferry terminal, waiting room',
             'Weather: Drizzle outside; damp and cold indoors',
-            'Present: Aster, Wren',
+            'Present:',
             'Aster — hair: Pinned up; outfit: Oilskin coat over a fisherman\'s jumper',
             'Wren — hair: Loose, damp from the rain; outfit: Wool coat over a grey jumper, jeans, boots',
         ].join('\n'));
@@ -353,7 +353,7 @@ describe('rendering', () => {
     it('appends a newcomer to who is present and puts their line last', () => {
         const lines = renderState(mergeReply(TERMINAL, { characters: cast({ Brannock: { outfit: 'Harbour uniform' } }) }).value).split('\n');
 
-        expect(lines).toContain('Present: Aster, Wren, Brannock');
+        expect(lines.filter((line) => line.includes(' — hair: ')).map((line) => line.split(' — ')[0])).toEqual(['Aster', 'Wren', 'Brannock']);
         expect(lines.at(-1)).toBe(`Brannock — hair: ${UNSET_TEXT}; outfit: Harbour uniform`);
     });
 
@@ -364,7 +364,7 @@ describe('rendering', () => {
             STATE_HEADER,
             `Location: ${UNSET_TEXT}`,
             `Weather: ${UNSET_TEXT}`,
-            'Present: Wren',
+            'Present:',
             `Wren — hair: ${UNSET_TEXT}; outfit: ${UNSET_TEXT}`,
         ].join('\n'));
     });
@@ -377,7 +377,7 @@ describe('rendering', () => {
             STATE_HEADER,
             'Location: The pier',
             `Weather: ${UNSET_TEXT}`,
-            'Present: Wren',
+            'Present:',
             `Wren — hair: ${UNSET_TEXT}; outfit: Grey jumper`,
         ]);
     });
@@ -396,8 +396,8 @@ describe('rendering', () => {
 });
 
 describe('the bound', () => {
-    it('is about 1,750 characters, the widest state (docs/decisions.md D-0043)', () => {
-        expect(MAX_STATE_CHARS).toBe(1754);
+    it('is about 1,550 characters, the widest state (docs/decisions.md D-0043, D-0100)', () => {
+        expect(MAX_STATE_CHARS).toBe(1545);
     });
 
     it('is reached exactly by a state with every field full', () => {
