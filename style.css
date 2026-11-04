@@ -291,6 +291,18 @@
     font-weight: bold;
 }
 
+/* The pencil after Cairn's summary: the text's own size and colour, no box (D-0099). */
+.cairn-scene-edit {
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.cairn-scene-edit:hover,
+.cairn-scene-edit:focus-visible {
+    opacity: 1;
+    color: var(--SmartThemeQuoteColor);
+}
+
 .cairn-scene-writing,
 .cairn-scene-waiting,
 .cairn-state-writing {

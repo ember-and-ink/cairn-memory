@@ -296,6 +296,14 @@ Replacing a summary that is already in the memory block changes the block from
 that summary on, so the next prompt misses the cache from there, as an edit would.
 The same click redoes the summary's index record, so it costs two calls.
 
+**The pencil** at the end of a Cairn summary opens it for editing (D-0099). Up to
+1,500 characters, the most a model's summary may be; a blank summary is refused, and
+saving it unchanged does nothing. The new wording reaches the next prompt, as a
+resummarise does, and the summary then reads `(edited)`. Its index record is redone
+from the new text right away, which is one call. It can't be edited while Cairn is
+writing a new summary for that message. Summarise with Cairn, or editing the message
+itself, replaces an edited summary like any other.
+
 **Rebuild the world state**, beside it (the stacked-boxes icon), redoes the world
 state on that message (D-0089). It reads every message since the state before it,
 builds on that state, and replaces any state already on the message; a failure

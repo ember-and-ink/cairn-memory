@@ -35,7 +35,7 @@ import { escapeHtml } from './html.js';
 export function markMessages(chat, status, { showQvink = false } = {}) {
     const marks = new Map();
     for (const scene of readScenes(chat)) {
-        if (scene.source === 'cairn') marks.set(scene.index, { state: 'written', text: scene.text });
+        if (scene.source === 'cairn') marks.set(scene.index, { state: 'written', text: scene.text, edited: scene.edited });
         else if (showQvink) marks.set(scene.index, { state: 'qvink', text: scene.text, excluded: !scene.eligible });
     }
     if (!status) return marks;
@@ -84,11 +84,19 @@ export function stateWriting(status) {
 
 export const STATE_WRITING_HTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cairn is updating the world state…';
 
+/**
+ * The pencil at the end of Cairn's own summary, and only there: a summary being written,
+ * waiting or failed has nothing to edit, and qvink's is qvink's (D-0099).
+ */
+export const EDIT_HTML = `<i class="${SLUG}-scene-edit fa-solid fa-pen" role="button" tabindex="0" title="Edit this summary"></i>`;
+
 /** @returns {string} The mark's inner HTML. Scene text is escaped, never formatted. */
 export function renderMark(mark) {
     switch (mark.state) {
         case 'written':
-            return `<span class="${SLUG}-scene-label">Cairn:</span> ${escapeHtml(mark.text)}`;
+            // A no-break space, so the pencil wraps with the last word rather than alone.
+            return `<span class="${SLUG}-scene-label">Cairn:</span> ${escapeHtml(mark.text)}&nbsp;${EDIT_HTML}`
+                + (mark.edited ? ' (edited)' : '');
         case 'qvink':
             // Excluded in qvink, so the block leaves it out.
             return `<span class="${SLUG}-scene-label">${mark.excluded ? 'Qvink (excluded):' : 'Qvink:'}</span> ${escapeHtml(mark.text)}`;

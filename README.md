@@ -86,6 +86,8 @@ summary, with a collapsed **World state** under it. In a message's actions menu:
 - **Summarise with Cairn** (stacked cubes) redoes that message's summary.
 - **Rebuild the world state** (stacked boxes) redoes the world state on that message.
 
+The pencil at the end of a summary lets you fix its wording by hand.
+
 **Last generation**, at the bottom of the settings panel, shows what Cairn put in
 the prompt and why.
 

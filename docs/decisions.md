@@ -8,6 +8,42 @@ what we believed and why it changed.
 
 ---
 
+## D-0099 — A summary can be edited by hand, and an edit is user data
+**2026-11-04.** Users asked to fix a summary's wording, as qvink allows. Only the summary is
+editable, from a pencil at the end of Cairn's own summary under the message. The world state
+follows in its own change; canon and index records stay read-only.
+
+**Decided.**
+1. **Only a written Cairn summary has the pencil** — adopted ones included, since adoption makes
+   them Cairn's. A summary being written, waiting, failed or given up has none, and qvink's is
+   qvink's. Nothing is written from scratch.
+2. **ST's input popup, capped at `MAX_SUMMARY_CHARS`** on the textarea itself, so a paste can't
+   exceed what the budget is sized for. Blank is refused; unchanged text writes nothing.
+3. **The edit keeps `prompt` and `hash`, sets `at`, and adds `edited: true`.** The label stays
+   `Cairn:`; `(edited)` follows the pencil. Readers ignore the extra field, so no store bump.
+4. **It reaches the next prompt**, as a resummarise does: one prefix miss from that summary on.
+   Holding it for the rebuild turn would make an edit look broken for a whole step.
+5. **Refused while that message has a summary job out or asked for**, because a job that lands
+   later re-checks `mes`, not the scene, and would overwrite the edit.
+6. **Nothing else is edited, because everything else is derived.** The index record hashes the
+   summary's text, so it goes stale and the queue re-derives it at once (the edit counts as
+   activity, D-0088); a canon fact citing only that record drops until the next pick.
+7. **Resummarise does not ask first.** Opening the menu and choosing Cairn's icon is already
+   deliberate, and its fresh scene clears `edited`. Editing the message itself discards the
+   hand-written summary like any other: the hash rule outranks the edit.
+8. **The log gets a `kind: "edit"` line** with the message and the lengths before and after,
+   never the text (D-0093).
+
+**What this changes about D-0077.** D-0077 was cheap because everything a shape change could
+lose was re-derivable from the summaries. An edited summary is the first thing in the store that
+isn't: a future change to the scene's shape must carry `edited` scenes forward, not invalidate
+them.
+
+**Would reopen it:** users editing the world state or canon as often as summaries, or edits
+being lost to a job the refusal misses.
+
+---
+
 ## D-0098 — The lorebook cap is a share of the prompt; the budget reads as one table
 **2026-11-03.** Supersedes D-0069's 3,500-token default. Checked against context size before
 the public announcement: every budget scaled with the context except the lorebook cap. At

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STORE_VERSION } from '../src/store/schema.js';
 import {
-    MIN_SUMMARY_TOKENS, clearDerived, hashRange, readCanon, readIndex, readRange, readScene, readState,
+    MIN_SUMMARY_TOKENS, clearDerived, editScene, hashRange, readCanon, readIndex, readRange, readScene, readState,
     summarisable, writeCanon, writeIndex, writeScene, writeState,
 } from '../src/store/chat-store.js';
 import { hashString } from '../src/util/hash.js';
@@ -266,6 +266,61 @@ function plainChat(length = 6) {
 function stateOn(chat, index, read, value = { location: 'The pier' }) {
     expect(writeState(chat, index, { value, read, changed: ['location'], prompt: 'h:1', at: 'T' })).toBe(true);
 }
+
+describe('editing a scene by hand (D-0099)', () => {
+    const scened = () => {
+        const message = { name: 'Aster', mes: 'The fog came in over the harbour.', extra: {} };
+        writeScene(message, { text: 'Fog arrived.', prompt: 'h:00000000000001', at: 'T0' });
+        return message;
+    };
+
+    it('replaces the text and marks it edited, keeping the prompt and the message hash', () => {
+        const message = scened();
+
+        expect(editScene(message, '  Fog rolled in over the harbour.  ', 'T1'))
+            .toEqual({ written: true, before: 12, after: 31 });
+        expect(message.extra.cairn.scene).toEqual({
+            text: 'Fog rolled in over the harbour.', hash: hashString(message.mes),
+            prompt: 'h:00000000000001', at: 'T1', edited: true,
+        });
+        expect(readScene(message).status).toBe('valid');
+    });
+
+    it('lets the index record go stale, so the queue re-derives it', () => {
+        const chat = [scened()];
+        writeIndex(chat, 0, { record: RECORD, prompt: 'h:index', at: 'T' });
+        expect(readIndex(chat[0]).status).toBe('valid');
+
+        editScene(chat[0], 'Fog rolled in.', 'T1');
+
+        expect(readIndex(chat[0]).status).toBe('stale');
+    });
+
+    it('refuses blank text, and writes nothing for unchanged text', () => {
+        const message = scened();
+        const before = structuredClone(message.extra);
+
+        expect(editScene(message, '   ', 'T1')).toEqual({ written: false, reason: 'blank' });
+        expect(editScene(message, ' Fog arrived. ', 'T1')).toEqual({ written: false, reason: 'unchanged' });
+        expect(message.extra).toEqual(before);
+    });
+
+    it('refuses a message with no valid summary, stale ones included', () => {
+        const message = scened();
+        message.mes = 'Edited since.';
+
+        expect(editScene(message, 'New.', 'T1')).toEqual({ written: false, reason: 'no-summary' });
+        expect(editScene({ mes: 'No summary.', extra: {} }, 'New.')).toEqual({ written: false, reason: 'no-summary' });
+    });
+
+    it('is undone by a fresh summary, which carries no mark', () => {
+        const message = scened();
+        editScene(message, 'Hand-written.', 'T1');
+        writeScene(message, { text: 'Model-written.', prompt: 'h:00000000000001', at: 'T2' });
+
+        expect(message.extra.cairn.scene.edited).toBeUndefined();
+    });
+});
 
 describe('the range a state read', () => {
     it('is the visible messages ending at the state, oldest first', () => {

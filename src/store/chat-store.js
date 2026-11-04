@@ -79,6 +79,31 @@ export function writeScene(message, { text, prompt, at = new Date().toISOString(
 }
 
 /**
+ * Replace a valid summary's text with the user's own (docs/decisions.md D-0099). The
+ * `prompt` it came from and the `hash` of `mes` stay, since the message is unchanged, and
+ * `edited` marks it as the one thing in the store no backfill can rebuild. Its index record
+ * hashes the old text, so it goes stale on its own and the queue re-derives it.
+ *
+ * @param {object} message The live chat message.
+ * @param {string} text Trimmed here; blank is refused and unchanged writes nothing.
+ * @param {string} [at]
+ * @returns {{written: boolean, reason?: 'no-summary'|'blank'|'unchanged',
+ *          before?: number, after?: number}} The lengths, for the log.
+ */
+export function editScene(message, text, at = new Date().toISOString()) {
+    const { status, scene } = readScene(message);
+    if (status !== 'valid') return { written: false, reason: 'no-summary' };
+    const next = typeof text === 'string' ? text.trim() : '';
+    if (next === '') return { written: false, reason: 'blank' };
+    if (next === scene.text) return { written: false, reason: 'unchanged' };
+
+    const written = writeKey(message, 'scene', { ...scene, text: next, at, edited: true });
+    return written
+        ? { written: true, before: scene.text.length, after: next.length }
+        : { written: false, reason: 'no-summary' };
+}
+
+/**
  * The visible messages a state read: `read` of them, ending at `index`, oldest
  * first. Hidden ones are skipped the way ST leaves them out of the prompt
  * (`coreChat`, public/script.js:4496), so hiding, unhiding or deleting one inside
