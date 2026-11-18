@@ -44,94 +44,95 @@ export const RAW_WINDOW = 8;
 export const STEP = 8;
 
 /** The step reason for a cold first turn: no previous block, so the head moves anyway (prompt/rebuild.js). */
-export const FIRST_TURN = 'first-turn';
+export const FIRST_TURN = "first-turn";
 
 /** The step reason for an ordinary step: the threshold moved on by `step` messages. */
-export const STEP_TURN = 'step';
+export const STEP_TURN = "step";
 
 /**
  * @param {{rawWindow?: number, step?: number}} [options]
  */
 export function createSeeSaw({ rawWindow = RAW_WINDOW, step = STEP } = {}) {
-    /** Highest message index whose summary may be in the block. null = no turn yet. */
-    let summarisedThrough = null;
+  /** Highest message index whose summary may be in the block. null = no turn yet. */
+  /** @type {number|null} */
+  let summarisedThrough = null;
 
-    return {
-        /**
-         * Advance the threshold if this turn has earned it.
-         *
-         * `firstPending` clamps an advance to just before the oldest message still
-         * waiting for its summary (docs/decisions.md D-0037), so nothing is blanked
-         * without one. It never pulls the threshold back: a gap below it is an
-         * edit, and the assembler already stops blanking that message.
-         *
-         * @param {number} chatLength `context.chat.length`
-         * @param {{firstPending?: number|null}} [options]
-         * @returns {{summarisedThrough: number, stepped: boolean, reason: string,
-         *            waiting: boolean}} `waiting`: the clamp cut short a due step.
-         */
-        advance(chatLength, { firstPending = null } = {}) {
-            const length = Number.isFinite(chatLength) ? Math.max(0, chatLength) : 0;
-            const base = Math.max(-1, length - 1 - rawWindow);
-            const reach = Number.isInteger(firstPending) ? Math.min(base, firstPending - 1) : base;
+  return {
+    /**
+     * Advance the threshold if this turn has earned it.
+     *
+     * `firstPending` clamps an advance to just before the oldest message still
+     * waiting for its summary (docs/decisions.md D-0037), so nothing is blanked
+     * without one. It never pulls the threshold back: a gap below it is an
+     * edit, and the assembler already stops blanking that message.
+     *
+     * @param {number} chatLength `context.chat.length`
+     * @param {{firstPending?: number|null}} [options]
+     * @returns {{summarisedThrough: number, stepped: boolean, reason: string,
+     *            waiting: boolean}} `waiting`: the clamp cut short a due step.
+     */
+    advance(chatLength, { firstPending = null } = {}) {
+      const length = Number.isFinite(chatLength) ? Math.max(0, chatLength) : 0;
+      const base = Math.max(-1, length - 1 - rawWindow);
+      const reach = Number.isInteger(firstPending) ? Math.min(base, firstPending - 1) : base;
 
-            if (summarisedThrough === null) {
-                summarisedThrough = reach;
-                return { summarisedThrough, stepped: true, reason: FIRST_TURN, waiting: reach < base };
-            }
+      if (summarisedThrough === null) {
+        summarisedThrough = reach;
+        return { summarisedThrough, stepped: true, reason: FIRST_TURN, waiting: reach < base };
+      }
 
-            // The chat got shorter: a branch or a swipe (DESIGN.md §9). Holding the
-            // old threshold would inject summaries for messages that no longer
-            // exist, which is quiet wrongness rather than an error. Follow it down
-            // immediately — a rebuild on a branch is expected and unavoidable.
-            if (base < summarisedThrough) {
-                summarisedThrough = base;
-                return { summarisedThrough, stepped: true, reason: 'rollback', waiting: false };
-            }
+      // The chat got shorter: a branch or a swipe (DESIGN.md §9). Holding the
+      // old threshold would inject summaries for messages that no longer
+      // exist, which is quiet wrongness rather than an error. Follow it down
+      // immediately — a rebuild on a branch is expected and unavoidable.
+      if (base < summarisedThrough) {
+        summarisedThrough = base;
+        return { summarisedThrough, stepped: true, reason: "rollback", waiting: false };
+      }
 
-            const due = base > summarisedThrough && base - summarisedThrough >= step;
-            const waiting = due && reach < base;
-            if (due && reach > summarisedThrough && reach - summarisedThrough >= step) {
-                summarisedThrough = reach;
-                return { summarisedThrough, stepped: true, reason: STEP_TURN, waiting };
-            }
+      const due = base > summarisedThrough && base - summarisedThrough >= step;
+      const waiting = due && reach < base;
+      if (due && reach > summarisedThrough && reach - summarisedThrough >= step) {
+        summarisedThrough = reach;
+        return { summarisedThrough, stepped: true, reason: STEP_TURN, waiting };
+      }
 
-            return { summarisedThrough, stepped: false, reason: 'held', waiting };
-        },
+      return { summarisedThrough, stepped: false, reason: "held", waiting };
+    },
 
-        /** A new chat is a new see-saw. */
-        reset() {
-            summarisedThrough = null;
-        },
+    /** A new chat is a new see-saw. */
+    reset() {
+      summarisedThrough = null;
+    },
 
-        /**
-         * Take new sizes from the settings (docs/decisions.md D-0085). A change starts the
-         * see-saw over, so the next turn is a first turn and rebuilds: the threshold it
-         * held was worked out for the old window.
-         *
-         * @param {{rawWindow?: number, step?: number}} sizes Unset or invalid keeps the current.
-         * @returns {boolean} Whether anything changed.
-         */
-        configure({ rawWindow: nextWindow, step: nextStep } = {}) {
-            const window = Number.isInteger(nextWindow) && nextWindow >= 1 ? nextWindow : rawWindow;
-            const stride = Number.isInteger(nextStep) && nextStep >= 0 ? nextStep : step;
-            if (window === rawWindow && stride === step) return false;
-            rawWindow = window;
-            step = stride;
-            summarisedThrough = null;
-            return true;
-        },
+    /**
+     * Take new sizes from the settings (docs/decisions.md D-0085). A change starts the
+     * see-saw over, so the next turn is a first turn and rebuilds: the threshold it
+     * held was worked out for the old window.
+     *
+     * @param {{rawWindow?: number, step?: number}} sizes Unset or invalid keeps the current.
+     * @returns {boolean} Whether anything changed.
+     */
+    configure({ rawWindow: nextWindow, step: nextStep } = {}) {
+      const window = Number.isInteger(nextWindow) && nextWindow >= 1 ? nextWindow : rawWindow;
+      const stride = Number.isInteger(nextStep) && nextStep >= 0 ? nextStep : step;
+      if (window === rawWindow && stride === step) return false;
+      rawWindow = window;
+      step = stride;
+      summarisedThrough = null;
+      return true;
+    },
 
-        get summarisedThrough() {
-            return summarisedThrough;
-        },
+    get summarisedThrough() {
+      return summarisedThrough;
+    },
 
-        get rawWindow() {
-            return rawWindow;
-        },
+    get rawWindow() {
+      return rawWindow;
+    },
 
-        get step() {
-            return step;
-        },
-    };
+    get step() {
+      return step;
+    },
+  };
 }

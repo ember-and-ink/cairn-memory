@@ -10,47 +10,49 @@
  *
  * `markMessages`, `renderMark` and `renderSceneTitle` are pure. `createChatMarks` is the DOM glue.
  */
-import { SLUG } from '../constants.js';
-import { pendingScenes, readScenes } from '../memory/scenes.js';
-import { qvinkDisplaying } from '../interop/qvink.js';
-import { newestState, usableState } from '../memory/state.js';
-import { wtrackerLoaded } from '../interop/wtracker.js';
-import { canonTexts } from './canon-section.js';
-import { stateLines } from '../memory/state-schema.js';
-import { MAX_ATTEMPTS } from '../pipeline/tally.js';
-import { warn } from '../util/log.js';
-import { escapeHtml } from './html.js';
+import { SLUG } from "../constants.js";
+import { pendingScenes, readScenes } from "../memory/scenes.js";
+import { qvinkDisplaying } from "../interop/qvink.js";
+import { newestState, usableState } from "../memory/state.js";
+import { wtrackerLoaded } from "../interop/wtracker.js";
+import { canonTexts } from "./canon-section.js";
+import { stateLines } from "../memory/state-schema.js";
+import { MAX_ATTEMPTS } from "../pipeline/tally.js";
+import { warn } from "../util/log.js";
+import { escapeHtml } from "./html.js";
 
 /**
  * What each message shows: the summary the memory block reads for it, and Cairn's
  * work in progress. A stale Cairn summary hides qvink's on the same message too,
  * because the block reads neither (memory/scenes.js).
  *
- * @param {Array<object>} chat
- * @param {object|null} status The summarizer's `status`.
+ * @param {StMessage[]} chat
+ * @param {SummarizerStatus|null} status The summarizer's `status`.
  * @param {{showQvink?: boolean}} [options] `showQvink` while qvink isn't drawing its own.
  * @returns {Map<number, {state: 'written'|'qvink'|'writing'|'waiting'|'failed'|'given-up',
  *          text?: string, excluded?: boolean, reason?: string, attempts?: number}>}
  */
 export function markMessages(chat, status, { showQvink = false } = {}) {
-    const marks = new Map();
-    for (const scene of readScenes(chat)) {
-        if (scene.source === 'cairn') marks.set(scene.index, { state: 'written', text: scene.text, edited: scene.edited });
-        else if (showQvink) marks.set(scene.index, { state: 'qvink', text: scene.text, excluded: !scene.eligible });
-    }
-    if (!status) return marks;
+  const marks = new Map();
+  for (const scene of readScenes(chat)) {
+    if (scene.source === "cairn")
+      marks.set(scene.index, { state: "written", text: scene.text, edited: scene.edited });
+    else if (showQvink)
+      marks.set(scene.index, { state: "qvink", text: scene.text, excluded: !scene.eligible });
+  }
+  if (!status) return marks;
 
-    for (const { index, attempts, reason } of status.failed ?? []) {
-        marks.set(index, { state: attempts >= MAX_ATTEMPTS ? 'given-up' : 'failed', attempts, reason });
+  for (const { index, attempts, reason } of status.failed ?? []) {
+    marks.set(index, { state: attempts >= MAX_ATTEMPTS ? "given-up" : "failed", attempts, reason });
+  }
+  // "Waiting" only while it is true: behind a closed gate nothing is coming.
+  if (status.gate === "ready") {
+    for (const index of pendingScenes(chat)) {
+      if (!marks.has(index)) marks.set(index, { state: "waiting" });
     }
-    // "Waiting" only while it is true: behind a closed gate nothing is coming.
-    if (status.gate === 'ready') {
-        for (const index of pendingScenes(chat)) {
-            if (!marks.has(index)) marks.set(index, { state: 'waiting' });
-        }
-    }
-    if (Number.isInteger(status.inFlight)) marks.set(status.inFlight, { state: 'writing' });
-    return marks;
+  }
+  if (Number.isInteger(status.inFlight)) marks.set(status.inFlight, { state: "writing" });
+  return marks;
 }
 
 /**
@@ -58,51 +60,57 @@ export function markMessages(chat, status, { showQvink = false } = {}) {
  * carries it. A state with nothing recorded has nothing to show. Only the newest is
  * `editable`, since the next update builds on it (D-0100).
  *
- * @param {Array<object>} chat
+ * @param {StMessage[]} chat
  * @returns {Map<number, {lines: Array<{text: string, character?: string}>, edited: boolean, editable: boolean}>}
  */
 export function stateMarks(chat) {
-    const marks = new Map();
-    const newest = newestState(chat)?.index;
-    (chat ?? []).forEach((_, index) => {
-        const found = usableState(chat, index);
-        const lines = found ? stateLines(found.state.value) : [];
-        if (lines.length) marks.set(index, { lines, edited: found.state.edited === true, editable: index === newest });
-    });
-    return marks;
+  const marks = new Map();
+  const newest = newestState(chat)?.index;
+  (chat ?? []).forEach((_, index) => {
+    const found = usableState(chat, index);
+    const lines = found ? stateLines(found.state.value) : [];
+    if (found && lines.length)
+      marks.set(index, { lines, edited: found.state.edited === true, editable: index === newest });
+  });
+  return marks;
 }
 
 /** The World state line: the pencil on the newest state, `(edited)` on any edited one (D-0100). */
 export function renderStateTitle({ edited, editable }) {
-    const pencil = editable
-        ? `&nbsp;<i class="${SLUG}-state-edit fa-solid fa-pen" role="button" tabindex="0" title="Edit the world state"></i>`
-        : '';
-    return `World state${pencil}${edited ? ' (edited)' : ''}`;
+  const pencil = editable
+    ? `&nbsp;<i class="${SLUG}-state-edit fa-solid fa-pen" role="button" tabindex="0" title="Edit the world state"></i>`
+    : "";
+  return `World state${pencil}${edited ? " (edited)" : ""}`;
 }
 
 /** The state's text, escaped, with a pencil after each character on the newest state. */
 export function renderStateBody({ lines, editable }) {
-    let place = 0;
-    return lines.map(({ text, character }) => {
-        if (character === undefined || !editable) return escapeHtml(text);
-        return `${escapeHtml(text)}&nbsp;<i class="${SLUG}-character-edit fa-solid fa-pen" role="button" tabindex="0"`
-            + ` data-character="${place++}" title="Edit ${escapeHtml(character)}"></i>`;
-    }).join('\n');
+  let place = 0;
+  return lines
+    .map(({ text, character }) => {
+      if (character === undefined || !editable) return escapeHtml(text);
+      return (
+        `${escapeHtml(text)}&nbsp;<i class="${SLUG}-character-edit fa-solid fa-pen" role="button" tabindex="0"` +
+        ` data-character="${place++}" title="Edit ${escapeHtml(character)}"></i>`
+      );
+    })
+    .join("\n");
 }
 
 /**
  * The message a world state is being written for right now, or null. One at a time, so
  * there is no queue to show: the state is brought up to date after each reply.
  *
- * @param {object|null} status The summarizer's `status`.
+ * @param {SummarizerStatus|null} status The summarizer's `status`.
  * @returns {number|null}
  */
 export function stateWriting(status) {
-    const index = status?.state?.inFlight;
-    return Number.isInteger(index) ? index : null;
+  const index = status?.state?.inFlight;
+  return Number.isInteger(index) ? index : null;
 }
 
-export const STATE_WRITING_HTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cairn is updating the world state…';
+export const STATE_WRITING_HTML =
+  '<i class="fa-solid fa-spinner fa-spin"></i> Cairn is updating the world state…';
 
 /**
  * The pencil at the end of Cairn's own summary, and only there: a summary being written,
@@ -115,204 +123,230 @@ export const EDIT_HTML = `<i class="${SLUG}-scene-edit fa-solid fa-pen" role="bu
  * is nothing behind "writing" or a failure to fold away.
  */
 export function renderSceneTitle(mark) {
-    if (mark.state === 'written') return 'Cairn summary';
-    // Excluded in qvink, so the block leaves it out.
-    if (mark.state === 'qvink') return mark.excluded ? 'Qvink summary (excluded)' : 'Qvink summary';
-    return null;
+  if (mark.state === "written") return "Cairn summary";
+  // Excluded in qvink, so the block leaves it out.
+  if (mark.state === "qvink") return mark.excluded ? "Qvink summary (excluded)" : "Qvink summary";
+  return null;
 }
 
 /** @returns {string} The mark's inner HTML. Scene text is escaped, never formatted. */
 export function renderMark(mark) {
-    switch (mark.state) {
-        case 'written':
-            // A no-break space, so the pencil wraps with the last word rather than alone.
-            return `${escapeHtml(mark.text)}&nbsp;${EDIT_HTML}` + (mark.edited ? ' (edited)' : '');
-        case 'qvink':
-            return escapeHtml(mark.text);
-        case 'writing':
-            return `<i class="fa-solid fa-spinner fa-spin"></i> Cairn is summarising this message…`;
-        case 'waiting':
-            return 'Waiting for Cairn to summarise this message.';
-        case 'failed':
-            return `Cairn's summary failed (${escapeHtml(mark.reason)}). It will try again after the next reply.`;
-        case 'given-up':
-            return `Cairn gave up on this summary after ${mark.attempts} failures (${escapeHtml(mark.reason)}). `
-                + 'The memory step waits here until you edit the message or reload the page.';
-        default:
-            return '';
-    }
+  switch (mark.state) {
+    case "written":
+      // A no-break space, so the pencil wraps with the last word rather than alone.
+      return `${escapeHtml(mark.text)}&nbsp;${EDIT_HTML}` + (mark.edited ? " (edited)" : "");
+    case "qvink":
+      return escapeHtml(mark.text);
+    case "writing":
+      return `<i class="fa-solid fa-spinner fa-spin"></i> Cairn is summarising this message…`;
+    case "waiting":
+      return "Waiting for Cairn to summarise this message.";
+    case "failed":
+      return `Cairn's summary failed (${escapeHtml(mark.reason)}). It will try again after the next reply.`;
+    case "given-up":
+      return (
+        `Cairn gave up on this summary after ${mark.attempts} failures (${escapeHtml(mark.reason)}). ` +
+        "The memory step waits here until you edit the message or reload the page."
+      );
+    default:
+      return "";
+  }
 }
 
 /**
- * @param {() => object} getContext
- * @param {{status: () => (object|null),
+ * @param {() => StContext} getContext
+ * @param {{status: () => (SummarizerStatus|null),
  *          settings?: () => {worldState?: boolean, keepCanon?: boolean, collapseSummaries?: boolean}}} options
  */
 export function createChatMarks(getContext, { status, settings }) {
-    let running = false;
-    /** What each mark element last drew, so an unchanged mark is not rewritten. */
-    const drawn = new WeakMap();
-    /** The fold the summaries were last given, so a change of setting reaches those already drawn. */
-    let folded = null;
+  let running = false;
+  /** What each mark element last drew, so an unchanged mark is not rewritten. */
+  const drawn = new WeakMap();
+  /** The fold the summaries were last given, so a change of setting reaches those already drawn. */
+  /** @type {boolean|null} */
+  let folded = null;
 
-    /** Never throws: a mark that cannot be drawn costs the mark (CLAUDE.md §4.17). */
-    function refresh() {
-        try {
-            // #chat and .mes[mesid] are ST's (public/script.js:449, :1654); .mes_text is
-            // the message body inside each (public/index.html:7461).
-            const root = document.getElementById('chat');
-            if (!root) return;
-            const context = getContext();
-            const marks = running
-                ? markMessages(context.chat, status(), { showQvink: !qvinkDisplaying(context) })
-                : new Map();
-            // Hidden where no state goes in the prompt: switched off, or a WTracker keeps its own.
-            const showStates = running && settings?.()?.worldState !== false && !wtrackerLoaded(context);
-            const states = showStates ? stateMarks(context.chat) : new Map();
-            const updating = showStates ? stateWriting(status()) : null;
-            // Hidden where no canon goes in the prompt. Unlike a summary or a state, a
-            // fact cannot be taken back, so seeing it is the only check there is.
-            const showCanon = running && settings?.()?.keepCanon !== false;
-            const facts = showCanon ? canonTexts(context.chat) : new Map();
-            const fold = settings?.()?.collapseSummaries === true;
-            if (folded !== null && folded !== fold) {
-                for (const node of root.querySelectorAll(`details.${SLUG}-scene`)) node.open = !fold;
-            }
-            folded = fold;
-            for (const element of root.querySelectorAll('.mes[mesid]')) {
-                const index = Number(element.getAttribute('mesid'));
-                draw(element, marks.get(index));
-                drawStateWriting(element, index === updating);
-                drawState(element, states.get(index));
-                drawCanon(element, facts.get(index));
-            }
-        } catch (err) {
-            warn('Could not show summaries in the chat.', err);
-        }
+  /** Never throws: a mark that cannot be drawn costs the mark (CLAUDE.md §4.17). */
+  function refresh() {
+    try {
+      // #chat and .mes[mesid] are ST's (public/script.js:449, :1654); .mes_text is
+      // the message body inside each (public/index.html:7461).
+      const root = document.getElementById("chat");
+      if (!root) return;
+      const context = getContext();
+      const marks = running
+        ? markMessages(context.chat, status(), { showQvink: !qvinkDisplaying(context) })
+        : new Map();
+      // Hidden where no state goes in the prompt: switched off, or a WTracker keeps its own.
+      const showStates = running && settings?.()?.worldState !== false && !wtrackerLoaded(context);
+      const states = showStates ? stateMarks(context.chat) : new Map();
+      const updating = showStates ? stateWriting(status()) : null;
+      // Hidden where no canon goes in the prompt. Unlike a summary or a state, a
+      // fact cannot be taken back, so seeing it is the only check there is.
+      const showCanon = running && settings?.()?.keepCanon !== false;
+      const facts = showCanon ? canonTexts(context.chat) : new Map();
+      const fold = settings?.()?.collapseSummaries === true;
+      if (folded !== null && folded !== fold) {
+        const scenes = /** @type {NodeListOf<HTMLDetailsElement>} */ (
+          root.querySelectorAll(`details.${SLUG}-scene`)
+        );
+        for (const node of scenes) node.open = !fold;
+      }
+      folded = fold;
+      for (const element of root.querySelectorAll(".mes[mesid]")) {
+        const index = Number(element.getAttribute("mesid"));
+        draw(element, marks.get(index));
+        drawStateWriting(element, index === updating);
+        drawState(element, states.get(index));
+        drawCanon(element, facts.get(index));
+      }
+    } catch (err) {
+      warn("Could not show summaries in the chat.", err);
     }
+  }
 
-    function draw(element, mark) {
-        let node = element.querySelector(`.${SLUG}-scene`);
-        const title = mark ? renderSceneTitle(mark) : null;
-        // A summary folds and a status line does not, so going from one to the other is a new node.
-        if (!mark || (node && (node.tagName === 'DETAILS') !== (title !== null))) {
-            node?.remove();
-            node = null;
-        }
-        if (!mark) return;
-        const className = `${SLUG}-scene ${SLUG}-scene-${mark.state}${mark.excluded ? ` ${SLUG}-scene-excluded` : ''}`;
-        if (title !== null) {
-            drawDetails(element, 'scene', { title, body: renderMark(mark) }, [], { className, open: !folded });
-            return;
-        }
-        const html = renderMark(mark);
-        if (node && drawn.get(node) === html) return;
-        if (!node) {
-            const body = element.querySelector('.mes_text');
-            if (!body) return;
-            node = document.createElement('div');
-            body.after(node);
-        }
-        node.className = className;
-        node.innerHTML = html;
-        drawn.set(node, html);
+  function draw(element, mark) {
+    let node = element.querySelector(`.${SLUG}-scene`);
+    const title = mark ? renderSceneTitle(mark) : null;
+    // A summary folds and a status line does not, so going from one to the other is a new node.
+    if (!mark || (node && (node.tagName === "DETAILS") !== (title !== null))) {
+      node?.remove();
+      node = null;
     }
-
-    /**
-     * Its own line, above the state it will replace, so an open World state section is
-     * never redrawn and closed by the spinner coming and going.
-     */
-    function drawStateWriting(element, writing) {
-        let node = element.querySelector(`.${SLUG}-state-writing`);
-        if (!writing) {
-            node?.remove();
-            return;
-        }
-        if (node) return;
-        const body = element.querySelector('.mes_text');
-        if (!body) return;
-        node = document.createElement('div');
-        node.className = `${SLUG}-state-writing`;
-        node.innerHTML = STATE_WRITING_HTML;
-        (element.querySelector(`.${SLUG}-scene`) ?? body).after(node);
+    if (!mark) return;
+    const className = `${SLUG}-scene ${SLUG}-scene-${mark.state}${mark.excluded ? ` ${SLUG}-scene-excluded` : ""}`;
+    if (title !== null) {
+      drawDetails(element, "scene", { title, body: renderMark(mark) }, [], {
+        className,
+        open: !folded,
+      });
+      return;
     }
-
-    /**
-     * Below the summary if there is one. A summary drawn later goes directly after the
-     * body, so it still lands above this.
-     */
-    function drawState(element, mark) {
-        drawDetails(element, 'state', mark && { title: renderStateTitle(mark), body: renderStateBody(mark) },
-            ['state-writing', 'scene']);
+    const html = renderMark(mark);
+    if (node && drawn.get(node) === html) return;
+    if (!node) {
+      const body = element.querySelector(".mes_text");
+      if (!body) return;
+      node = document.createElement("div");
+      body.after(node);
     }
+    node.className = className;
+    node.innerHTML = html;
+    drawn.set(node, html);
+  }
 
-    /** Below the state, so the head of the block reads last where it was written. */
-    function drawCanon(element, text) {
-        drawDetails(element, 'canon', text !== undefined && { title: 'Established facts', body: escapeHtml(text) },
-            ['state', 'scene']);
+  /**
+   * Its own line, above the state it will replace, so an open World state section is
+   * never redrawn and closed by the spinner coming and going.
+   */
+  function drawStateWriting(element, writing) {
+    let node = element.querySelector(`.${SLUG}-state-writing`);
+    if (!writing) {
+      node?.remove();
+      return;
     }
+    if (node) return;
+    const body = element.querySelector(".mes_text");
+    if (!body) return;
+    node = document.createElement("div");
+    node.className = `${SLUG}-state-writing`;
+    node.innerHTML = STATE_WRITING_HTML;
+    (element.querySelector(`.${SLUG}-scene`) ?? body).after(node);
+  }
 
-    /**
-     * A section under a message, placed after the first of `after` it has, else after the
-     * body, and collapsed unless `open`. Only its two parts are rewritten, and only when
-     * they change, so a section the reader opened or folded stays that way.
-     */
-    function drawDetails(element, kind, html, after, { className = `${SLUG}-${kind}`, open = false } = {}) {
-        let node = element.querySelector(`.${SLUG}-${kind}`);
-        if (!html) {
-            node?.remove();
-            return;
-        }
-        if (!node) {
-            const body = element.querySelector('.mes_text');
-            if (!body) return;
-            node = document.createElement('details');
-            node.innerHTML = '<summary></summary><pre></pre>';
-            node.open = open;
-            const anchor = after.map((name) => element.querySelector(`.${SLUG}-${name}`)).find(Boolean);
-            (anchor ?? body).after(node);
-        }
-        // A qvink summary can become excluded, or stop being, while its section is open.
-        if (node.className !== className) node.className = className;
-        for (const [selector, part] of [['summary', html.title], ['pre', html.body]]) {
-            const child = node.querySelector(selector);
-            if (drawn.get(child) !== part) {
-                child.innerHTML = part;
-                drawn.set(child, part);
-            }
-        }
+  /**
+   * Below the summary if there is one. A summary drawn later goes directly after the
+   * body, so it still lands above this.
+   */
+  function drawState(element, mark) {
+    drawDetails(
+      element,
+      "state",
+      mark && { title: renderStateTitle(mark), body: renderStateBody(mark) },
+      ["state-writing", "scene"],
+    );
+  }
+
+  /** Below the state, so the head of the block reads last where it was written. */
+  function drawCanon(element, text) {
+    drawDetails(
+      element,
+      "canon",
+      text !== undefined && { title: "Established facts", body: escapeHtml(text) },
+      ["state", "scene"],
+    );
+  }
+
+  /**
+   * A section under a message, placed after the first of `after` it has, else after the
+   * body, and collapsed unless `open`. Only its two parts are rewritten, and only when
+   * they change, so a section the reader opened or folded stays that way.
+   */
+  function drawDetails(
+    element,
+    kind,
+    html,
+    after,
+    { className = `${SLUG}-${kind}`, open = false } = {},
+  ) {
+    let node = element.querySelector(`.${SLUG}-${kind}`);
+    if (!html) {
+      node?.remove();
+      return;
     }
-
-    /** Every event after which ST has built or rebuilt message elements. */
-    function events({ eventTypes }) {
-        return [
-            eventTypes.CHAT_CHANGED,
-            eventTypes.MORE_MESSAGES_LOADED,
-            eventTypes.CHARACTER_MESSAGE_RENDERED,
-            eventTypes.USER_MESSAGE_RENDERED,
-            eventTypes.MESSAGE_UPDATED,
-            eventTypes.MESSAGE_DELETED,
-            eventTypes.MESSAGE_SWIPED,
-        ];
+    if (!node) {
+      const body = element.querySelector(".mes_text");
+      if (!body) return;
+      node = document.createElement("details");
+      node.innerHTML = "<summary></summary><pre></pre>";
+      node.open = open;
+      const anchor = after.map((name) => element.querySelector(`.${SLUG}-${name}`)).find(Boolean);
+      (anchor ?? body).after(node);
     }
+    // A qvink summary can become excluded, or stop being, while its section is open.
+    if (node.className !== className) node.className = className;
+    for (const [selector, part] of [
+      ["summary", html.title],
+      ["pre", html.body],
+    ]) {
+      const child = node.querySelector(selector);
+      if (drawn.get(child) !== part) {
+        child.innerHTML = part;
+        drawn.set(child, part);
+      }
+    }
+  }
 
-    return {
-        refresh,
+  /** Every event after which ST has built or rebuilt message elements. */
+  function events({ eventTypes }) {
+    return [
+      eventTypes.CHAT_CHANGED,
+      eventTypes.MORE_MESSAGES_LOADED,
+      eventTypes.CHARACTER_MESSAGE_RENDERED,
+      eventTypes.USER_MESSAGE_RENDERED,
+      eventTypes.MESSAGE_UPDATED,
+      eventTypes.MESSAGE_DELETED,
+      eventTypes.MESSAGE_SWIPED,
+    ];
+  }
 
-        start() {
-            if (running) return;
-            const context = getContext();
-            for (const type of events(context)) context.eventSource.on(type, refresh);
-            running = true;
-            refresh();
-        },
+  return {
+    refresh,
 
-        stop() {
-            if (!running) return;
-            const context = getContext();
-            for (const type of events(context)) context.eventSource.removeListener(type, refresh);
-            running = false;
-            refresh();
-        },
-    };
+    start() {
+      if (running) return;
+      const context = getContext();
+      for (const type of events(context)) context.eventSource.on(type, refresh);
+      running = true;
+      refresh();
+    },
+
+    stop() {
+      if (!running) return;
+      const context = getContext();
+      for (const type of events(context)) context.eventSource.removeListener(type, refresh);
+      running = false;
+      refresh();
+    },
+  };
 }

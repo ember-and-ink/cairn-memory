@@ -59,7 +59,7 @@ export const MARGIN_FRACTION = 0.05;
  * summaries. Conservative on purpose: the first run's numbers are the evidence for
  * moving it, not an argument made in advance.
  */
-export const CANON_FRACTION = 0.20;
+export const CANON_FRACTION = 0.2;
 
 /**
  * The compact tier's **ceiling** share of the scene budget (docs/decisions.md D-0085).
@@ -67,7 +67,7 @@ export const CANON_FRACTION = 0.20;
  * model 0d tried — 3.4 to 5.7 — so the share is now a setting like canon's, defaulting
  * near what GLM-class models measure (`r` ≈ 4, a share of ~20%).
  */
-export const COMPACT_FRACTION = 0.20;
+export const COMPACT_FRACTION = 0.2;
 
 /**
  * The floor under the cap. A card, lorebook and raw window that already fill the
@@ -76,7 +76,7 @@ export const COMPACT_FRACTION = 0.20;
  * `starved`, because it is a judgement call and not a budget that adds up
  * (docs/decisions.md D-0052).
  */
-export const MIN_CAP_FRACTION = 0.10;
+export const MIN_CAP_FRACTION = 0.1;
 
 /**
  * How much room the memory block gets, from what the rest of the prompt needs.
@@ -86,45 +86,54 @@ export const MIN_CAP_FRACTION = 0.10;
  * function of the chat: the same chat and settings always give the same number,
  * and a reload costs nothing (docs/decisions.md D-0033).
  *
- * @param {{maxPromptTokens: number, fraction?: number,
- *          reserves?: {card: number, lore: number, window: number, state: number}|null}} input
+ * @param {{maxPromptTokens?: number, fraction?: number,
+ *          reserves?: {card: number, lore: number, window: number, state: number}|null}} [input]
  *        `reserves` null means a reserve could not be read at all; the cap falls
  *        back to the plain share rather than guessing (CLAUDE.md §4.17).
  * @returns {{cap: number, share: number, room: number|null, margin: number|null,
- *            minimum: number, parts: object|null,
+ *            minimum: number,
+ *            parts: {card: number, lore: number, window: number, state: number}|null,
  *            limitedBy: 'share'|'room'|'starved'|'unknown'}}
  */
 export function deriveCap({ maxPromptTokens, reserves, fraction = CAP_FRACTION } = {}) {
-    const max = Number.isFinite(maxPromptTokens) ? Math.max(0, maxPromptTokens) : 0;
-    const share = Math.floor(max * fractionOr(fraction, CAP_FRACTION));
-    const minimum = Math.floor(max * MIN_CAP_FRACTION);
+  const max = Number.isFinite(maxPromptTokens) ? Math.max(0, maxPromptTokens) : 0;
+  const share = Math.floor(max * fractionOr(fraction, CAP_FRACTION));
+  const minimum = Math.floor(max * MIN_CAP_FRACTION);
 
-    if (!reserves) {
-        return { cap: share, share, room: null, margin: null, minimum, parts: null, limitedBy: 'unknown' };
-    }
-
-    const parts = {
-        card: nonNegative(reserves.card),
-        lore: nonNegative(reserves.lore),
-        window: nonNegative(reserves.window),
-        state: nonNegative(reserves.state),
+  if (!reserves) {
+    return {
+      cap: share,
+      share,
+      room: null,
+      margin: null,
+      minimum,
+      parts: null,
+      limitedBy: "unknown",
     };
-    const margin = Math.floor(max * MARGIN_FRACTION);
-    const room = max - parts.card - parts.lore - parts.window - parts.state - margin;
+  }
 
-    const limitedBy = share <= room ? 'share' : (room >= minimum ? 'room' : 'starved');
-    const cap = { share, room, starved: minimum }[limitedBy];
+  const parts = {
+    card: nonNegative(reserves.card),
+    lore: nonNegative(reserves.lore),
+    window: nonNegative(reserves.window),
+    state: nonNegative(reserves.state),
+  };
+  const margin = Math.floor(max * MARGIN_FRACTION);
+  const room = max - parts.card - parts.lore - parts.window - parts.state - margin;
 
-    return { cap, share, room, margin, minimum, parts, limitedBy };
+  const limitedBy = share <= room ? "share" : room >= minimum ? "room" : "starved";
+  const cap = { share, room, starved: minimum }[limitedBy];
+
+  return { cap, share, room, margin, minimum, parts, limitedBy };
 }
 
 function nonNegative(value) {
-    return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+  return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
 }
 
 /** A share from the settings, or the default when it is not a number in [0, 1]. */
 export function fractionOr(value, fallback) {
-    return Number.isFinite(value) && value >= 0 && value <= 1 ? value : fallback;
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : fallback;
 }
 
 /**
@@ -137,22 +146,22 @@ export function fractionOr(value, fallback) {
  * canon at all, which is the right order of sacrifice — the summaries are the memory,
  * and canon is what is left of the ones already dropped.
  *
- * @param {{cap: number, stepTokens: number, fraction?: number}} input The block's cap and what one
+ * @param {{cap?: number, stepTokens?: number, fraction?: number}} [input] The block's cap and what one
  *        see-saw step adds, both as the assembler works them out.
  * @returns {{cap: number, share: number, guard: number, limitedBy: 'share'|'guard'}}
  */
 export function canonCap({ cap, stepTokens, fraction = CANON_FRACTION } = {}) {
-    const block = nonNegative(cap);
-    const step = nonNegative(stepTokens);
-    const share = Math.floor(block * fractionOr(fraction, CANON_FRACTION));
-    const guard = block - 2 * step;
+  const block = nonNegative(cap);
+  const step = nonNegative(stepTokens);
+  const share = Math.floor(block * fractionOr(fraction, CANON_FRACTION));
+  const guard = block - 2 * step;
 
-    return {
-        cap: Math.max(0, Math.min(share, guard)),
-        share,
-        guard,
-        limitedBy: share <= guard ? 'share' : 'guard',
-    };
+  return {
+    cap: Math.max(0, Math.min(share, guard)),
+    share,
+    guard,
+    limitedBy: share <= guard ? "share" : "guard",
+  };
 }
 
 /**
@@ -174,8 +183,8 @@ export function canonCap({ cap, stepTokens, fraction = CANON_FRACTION } = {}) {
  *        `stepTokens` is what one step adds, estimated from the block itself.
  */
 export function recoupled({ fullCap, floor, stepTokens }) {
-    if (!(fullCap > 0) || !(stepTokens > 0)) return false;
-    return fullCap - floor < stepTokens;
+  if (!(fullCap > 0) || !(stepTokens > 0)) return false;
+  return fullCap - floor < stepTokens;
 }
 
 /**
@@ -193,17 +202,17 @@ export function recoupled({ fullCap, floor, stepTokens }) {
  * assembler holds the result across a see-saw cycle so that a split which moves as lines
  * are written cannot demote a summary on an ordinary turn (D-0059's pattern).
  *
- * @param {{sceneCap: number, available?: number, fraction?: number}} input `available` is the token cost of
+ * @param {{sceneCap?: number, available?: number, fraction?: number}} [input] `available` is the token cost of
  *        the compact texts that could be held, or 0 when there are none.
  * @returns {{fullCap: number, compactCap: number, share: number}}
  */
 export function tierSplit({ sceneCap, available = 0, fraction = COMPACT_FRACTION } = {}) {
-    const budget = nonNegative(sceneCap);
-    const share = fractionOr(fraction, COMPACT_FRACTION);
-    const ceiling = Math.floor(budget * share);
-    const compactCap = Math.min(ceiling, nonNegative(available));
+  const budget = nonNegative(sceneCap);
+  const share = fractionOr(fraction, COMPACT_FRACTION);
+  const ceiling = Math.floor(budget * share);
+  const compactCap = Math.min(ceiling, nonNegative(available));
 
-    return { fullCap: budget - compactCap, compactCap, share };
+  return { fullCap: budget - compactCap, compactCap, share };
 }
 
 /**
@@ -212,185 +221,202 @@ export function tierSplit({ sceneCap, available = 0, fraction = COMPACT_FRACTION
  * chat's card, lorebook and messages decide what it actually gets (`deriveCap`), and
  * that is the inspector's to show, not the settings'.
  *
- * @param {{maxPromptTokens: number, memoryFraction?: number, canonFraction?: number,
- *          compactFraction?: number, loreFraction?: number}} input
+ * @param {{maxPromptTokens?: number, memoryFraction?: number, canonFraction?: number,
+ *          compactFraction?: number, loreFraction?: number}} [input]
  * @returns {{maxPrompt: number, memory: number, canon: number, compact: number, full: number,
  *            lore: number, margin: number, rest: number, restShare: number}}
  */
-export function budgetCeilings({ maxPromptTokens, memoryFraction, canonFraction, compactFraction, loreFraction = 0 } = {}) {
-    const maxPrompt = nonNegative(maxPromptTokens);
-    const memoryShare = fractionOr(memoryFraction, CAP_FRACTION);
-    const loreShare = fractionOr(loreFraction, 0);
-    const memory = Math.floor(maxPrompt * memoryShare);
-    const canon = Math.floor(memory * fractionOr(canonFraction, CANON_FRACTION));
-    const compact = Math.floor((memory - canon) * fractionOr(compactFraction, COMPACT_FRACTION));
-    const lore = Math.floor(maxPrompt * loreShare);
-    const margin = Math.floor(maxPrompt * MARGIN_FRACTION);
-    const rest = Math.max(0, maxPrompt - memory - lore - margin);
-    const restShare = Math.max(0, Math.round((1 - memoryShare - loreShare - MARGIN_FRACTION) * 100));
+export function budgetCeilings({
+  maxPromptTokens,
+  memoryFraction,
+  canonFraction,
+  compactFraction,
+  loreFraction = 0,
+} = {}) {
+  const maxPrompt = nonNegative(maxPromptTokens);
+  const memoryShare = fractionOr(memoryFraction, CAP_FRACTION);
+  const loreShare = fractionOr(loreFraction, 0);
+  const memory = Math.floor(maxPrompt * memoryShare);
+  const canon = Math.floor(memory * fractionOr(canonFraction, CANON_FRACTION));
+  const compact = Math.floor((memory - canon) * fractionOr(compactFraction, COMPACT_FRACTION));
+  const lore = Math.floor(maxPrompt * loreShare);
+  const margin = Math.floor(maxPrompt * MARGIN_FRACTION);
+  const rest = Math.max(0, maxPrompt - memory - lore - margin);
+  const restShare = Math.max(0, Math.round((1 - memoryShare - loreShare - MARGIN_FRACTION) * 100));
 
-    return { maxPrompt, memory, canon, compact, full: memory - canon - compact, lore, margin, rest, restShare };
+  return {
+    maxPrompt,
+    memory,
+    canon,
+    compact,
+    full: memory - canon - compact,
+    lore,
+    margin,
+    rest,
+    restShare,
+  };
 }
 
 /**
  * @param {{floorFraction?: number}} [options]
  */
 export function createBudget({ floorFraction = FLOOR_FRACTION } = {}) {
-    /** Oldest message index still in the block, either fidelity. Monotonic. */
-    let oldest = -Infinity;
+  /** Oldest message index still in the block, either fidelity. Monotonic. */
+  let oldest = -Infinity;
+  /**
+   * Oldest message still held as a *full* summary; everything between `oldest` and
+   * this is compact. Monotonic for the same reason `oldest` is — a summary that went
+   * back to full would grow the block above the cap it was just trimmed to.
+   */
+  let boundary = -Infinity;
+
+  return {
     /**
-     * Oldest message still held as a *full* summary; everything between `oldest` and
-     * this is compact. Monotonic for the same reason `oldest` is — a summary that went
-     * back to full would grow the block above the cap it was just trimmed to.
+     * Choose what stays in the block, and at which fidelity.
+     *
+     * **Demote before evict** (docs/decisions.md D-0075). A summary pushed out of the
+     * full tier becomes a compact line if it has one, and is evicted only if it does
+     * not — so the order of sacrifice is full prose, then one sentence, then nothing.
+     * The compact tail is trimmed after, oldest first, to whatever room the split left
+     * it. Both drops move the block's head, which is why everything here is expected
+     * to land on a rebuild turn: the caps come from the assembler, which holds them
+     * still between rebuilds (D-0059's pattern), so an ordinary turn has nothing to do.
+     *
+     * With no `compactOf` this is exactly the single-fidelity fit it was before: the
+     * compact tier is empty, `fullCap` is the scene cap, and `demoted` is 0.
+     *
+     * @param {{scenes: SceneEntry[], sceneCap: number,
+     *          tokensOf: (scenes: Array<SceneEntry & {tier: string}>) => number,
+     *          compactCap?: number, compactOf?: ((scene: SceneEntry) => string|null)|null,
+     *          rebuild?: boolean}} input
+     *        `sceneCap` is the block's cap less canon's share, and `compactCap` the
+     *        part of it the compact tier may use (`tierSplit`). `tokensOf` sizes a
+     *        candidate list and is called once per dropped summary, so it must be
+     *        cheap; it sees the list this function will return, compact texts and all.
+     *        `compactOf` returns a summary's compact line, or null when it has none.
+     *        `rebuild` means this turn changes the block's head whatever we do — the
+     *        first turn of a session — so trimming to the floor now costs nothing.
+     * @returns {{kept: Array<SceneEntry & {tier: string}>, evicted: number, demoted: number,
+     *            unlined: number,
+     *            oldest: number, boundary: number|null, tokens: number,
+     *            sceneCap: number, fullCap: number, compactCap: number,
+     *            full: number, compact: number, floor: number, over: boolean}}
+     *          `kept` is chronological, each entry carrying `tier` and the `text` its
+     *          fidelity renders with.
      */
-    let boundary = -Infinity;
+    fit({ scenes, sceneCap, tokensOf, compactCap = 0, compactOf = null, rebuild = false }) {
+      const all = scenes ?? [];
+      const room = Math.min(nonNegative(compactCap), nonNegative(sceneCap));
+      const fullCap = nonNegative(sceneCap) - room;
+      // The compact form of a summary, or null. `chars` moves with `text` because
+      // that is the field the block's own sizing reads (prompt/assembler.js
+      // `blockChars`) — a swapped text left on the full summary's length would be
+      // priced as the summary it replaced, and the tier would buy nothing.
+      const compactItem = (scene) => {
+        const line = compactOf ? compactOf(scene) : null;
+        return line ? { ...scene, tier: "compact", text: line, chars: line.length } : null;
+      };
 
-    return {
-        /**
-         * Choose what stays in the block, and at which fidelity.
-         *
-         * **Demote before evict** (docs/decisions.md D-0075). A summary pushed out of the
-         * full tier becomes a compact line if it has one, and is evicted only if it does
-         * not — so the order of sacrifice is full prose, then one sentence, then nothing.
-         * The compact tail is trimmed after, oldest first, to whatever room the split left
-         * it. Both drops move the block's head, which is why everything here is expected
-         * to land on a rebuild turn: the caps come from the assembler, which holds them
-         * still between rebuilds (D-0059's pattern), so an ordinary turn has nothing to do.
-         *
-         * With no `compactOf` this is exactly the single-fidelity fit it was before: the
-         * compact tier is empty, `fullCap` is the scene cap, and `demoted` is 0.
-         *
-         * @param {{scenes: Array<{index: number}>, sceneCap: number,
-         *          tokensOf: (scenes: Array<object>) => number,
-         *          compactCap?: number, compactOf?: ((scene: object) => string|null)|null,
-         *          rebuild?: boolean}} input
-         *        `sceneCap` is the block's cap less canon's share, and `compactCap` the
-         *        part of it the compact tier may use (`tierSplit`). `tokensOf` sizes a
-         *        candidate list and is called once per dropped summary, so it must be
-         *        cheap; it sees the list this function will return, compact texts and all.
-         *        `compactOf` returns a summary's compact line, or null when it has none.
-         *        `rebuild` means this turn changes the block's head whatever we do — the
-         *        first turn of a session — so trimming to the floor now costs nothing.
-         * @returns {{kept: Array<object>, evicted: number, demoted: number, unlined: number,
-         *            oldest: number, boundary: number|null, tokens: number,
-         *            sceneCap: number, fullCap: number, compactCap: number,
-         *            full: number, compact: number, floor: number, over: boolean}}
-         *          `kept` is chronological, each entry carrying `tier` and the `text` its
-         *          fidelity renders with.
-         */
-        fit({ scenes, sceneCap, tokensOf, compactCap = 0, compactOf = null, rebuild = false }) {
-            const all = scenes ?? [];
-            const room = Math.min(nonNegative(compactCap), nonNegative(sceneCap));
-            const fullCap = nonNegative(sceneCap) - room;
-            // The compact form of a summary, or null. `chars` moves with `text` because
-            // that is the field the block's own sizing reads (prompt/assembler.js
-            // `blockChars`) — a swapped text left on the full summary's length would be
-            // priced as the summary it replaced, and the tier would buy nothing.
-            const compactItem = (scene) => {
-                const line = compactOf ? compactOf(scene) : null;
-                return line ? { ...scene, tier: 'compact', text: line, chars: line.length } : null;
-            };
+      // A branch or swipe can take the chat back past our marks, leaving
+      // nothing to keep. Rewinding is correct: those summaries are gone, and
+      // the marks were statements about a chat that no longer exists.
+      if (all.length && !all.some((scene) => scene.index >= oldest)) {
+        oldest = -Infinity;
+        boundary = -Infinity;
+      }
+      if (all.length && !all.some((scene) => scene.index >= boundary)) boundary = -Infinity;
 
-            // A branch or swipe can take the chat back past our marks, leaving
-            // nothing to keep. Rewinding is correct: those summaries are gone, and
-            // the marks were statements about a chat that no longer exists.
-            if (all.length && !all.some((scene) => scene.index >= oldest)) {
-                oldest = -Infinity;
-                boundary = -Infinity;
-            }
-            if (all.length && !all.some((scene) => scene.index >= boundary)) boundary = -Infinity;
+      const kept = all.filter((scene) => scene.index >= oldest);
+      // Anything already behind the boundary is compact; a summary that lost its
+      // line since (a resummarise, a failed pass) is evicted rather than restored,
+      // because restoring it would grow the block above the cap it was trimmed to.
+      const compact = [];
+      let full = [];
+      let evicted = 0;
+      /** Evictions that happened only because a summary had no compact line. */
+      let unlined = 0;
+      for (const scene of kept) {
+        if (scene.index >= boundary) {
+          full.push({ ...scene, tier: "full" });
+          continue;
+        }
+        const line = compactItem(scene);
+        if (line) compact.push(line);
+        else {
+          evicted++;
+          unlined++;
+        }
+      }
 
-            const kept = all.filter((scene) => scene.index >= oldest);
-            // Anything already behind the boundary is compact; a summary that lost its
-            // line since (a resummarise, a failed pass) is evicted rather than restored,
-            // because restoring it would grow the block above the cap it was trimmed to.
-            const compact = [];
-            let full = [];
-            let evicted = 0;
-            /** Evictions that happened only because a summary had no compact line. */
-            let unlined = 0;
-            for (const scene of kept) {
-                if (scene.index >= boundary) {
-                    full.push({ ...scene, tier: 'full' });
-                    continue;
-                }
-                const line = compactItem(scene);
-                if (line) compact.push(line);
-                else {
-                    evicted++;
-                    unlined++;
-                }
-            }
+      const floor = Math.max(0, Math.floor(fullCap * floorFraction));
+      let fullTokens = tokensOf(full);
+      const over = fullCap > 0 && fullTokens > fullCap;
+      let demoted = 0;
 
-            const floor = Math.max(0, Math.floor(fullCap * floorFraction));
-            let fullTokens = tokensOf(full);
-            const over = fullCap > 0 && fullTokens > fullCap;
-            let demoted = 0;
+      if (over || (rebuild && fullCap > 0 && fullTokens > floor)) {
+        // Down to the floor in one pass, oldest first. Never to nothing: an
+        // empty full tier is a rebuild *and* the readable memory gone with it.
+        while (full.length > 1 && fullTokens > floor) {
+          const [leaving] = full;
+          full = full.slice(1);
+          fullTokens = tokensOf(full);
+          const line = compactItem(leaving);
+          if (line) {
+            compact.push(line);
+            demoted++;
+          } else {
+            evicted++;
+            unlined++;
+          }
+        }
+        if (full.length) boundary = full[0].index;
+      }
 
-            if (over || (rebuild && fullCap > 0 && fullTokens > floor)) {
-                // Down to the floor in one pass, oldest first. Never to nothing: an
-                // empty full tier is a rebuild *and* the readable memory gone with it.
-                while (full.length > 1 && fullTokens > floor) {
-                    const [leaving] = full;
-                    full = full.slice(1);
-                    fullTokens = tokensOf(full);
-                    const line = compactItem(leaving);
-                    if (line) {
-                        compact.push(line);
-                        demoted++;
-                    } else {
-                        evicted++;
-                        unlined++;
-                    }
-                }
-                if (full.length) boundary = full[0].index;
-            }
+      // The tail, to whatever room the split left it. Ordered, so the oldest
+      // line goes first — the same sacrifice order one fidelity up.
+      let compactTokens = tokensOf(compact);
+      while (compact.length && compactTokens > room) {
+        compact.shift();
+        compactTokens = tokensOf(compact);
+        evicted++;
+      }
 
-            // The tail, to whatever room the split left it. Ordered, so the oldest
-            // line goes first — the same sacrifice order one fidelity up.
-            let compactTokens = tokensOf(compact);
-            while (compact.length && compactTokens > room) {
-                compact.shift();
-                compactTokens = tokensOf(compact);
-                evicted++;
-            }
+      const list = [...compact, ...full];
+      if (list.length) oldest = list[0].index;
 
-            const list = [...compact, ...full];
-            if (list.length) oldest = list[0].index;
+      return {
+        kept: list,
+        evicted,
+        demoted,
+        unlined,
+        oldest,
+        boundary: Number.isFinite(boundary) ? boundary : null,
+        // Sized as one list rather than as the sum of two: the rendering puts a
+        // separator between them, and the reported number is the block's own.
+        tokens: tokensOf(list),
+        sceneCap: nonNegative(sceneCap),
+        fullCap,
+        compactCap: room,
+        full: full.length,
+        compact: compact.length,
+        floor,
+        over,
+      };
+    },
 
-            return {
-                kept: list,
-                evicted,
-                demoted,
-                unlined,
-                oldest,
-                boundary: Number.isFinite(boundary) ? boundary : null,
-                // Sized as one list rather than as the sum of two: the rendering puts a
-                // separator between them, and the reported number is the block's own.
-                tokens: tokensOf(list),
-                sceneCap: nonNegative(sceneCap),
-                fullCap,
-                compactCap: room,
-                full: full.length,
-                compact: compact.length,
-                floor,
-                over,
-            };
-        },
+    /** A new chat is a new block. */
+    reset() {
+      oldest = -Infinity;
+      boundary = -Infinity;
+    },
 
-        /** A new chat is a new block. */
-        reset() {
-            oldest = -Infinity;
-            boundary = -Infinity;
-        },
+    get oldest() {
+      return oldest;
+    },
 
-        get oldest() {
-            return oldest;
-        },
-
-        /** Oldest summary still held in full, or null before anything is demoted. */
-        get boundary() {
-            return Number.isFinite(boundary) ? boundary : null;
-        },
-    };
+    /** Oldest summary still held in full, or null before anything is demoted. */
+    get boundary() {
+      return Number.isFinite(boundary) ? boundary : null;
+    },
+  };
 }

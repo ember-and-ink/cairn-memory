@@ -1,6 +1,6 @@
 # Cairn — house rules
 
-Cairn is a SillyTavern memory extension. `DESIGN.md` is the *why*; this file is the *how*.
+Cairn is a SillyTavern memory extension. `DESIGN.md` is the _why_; this file is the _how_.
 
 These rules override general SillyTavern-extension convention and any default habit. They exist
 so we stop re-deciding settled things. **If a rule is wrong, change the rule in a deliberate
@@ -8,14 +8,14 @@ edit — do not quietly work around it.**
 
 ## 0. Settled facts
 
-| | |
-|---|---|
-| Repo | `cairn-memory` — deliberately **no** `SillyTavern-` prefix |
-| Extension name | **Cairn-Memory** — `display_name: "Cairn-Memory"` |
-| Slug | `cairn` — CSS prefix, settings key, log namespace, `message.extra` key |
-| Target ST | **1.19.0** (`06bde939f`), local checkout `~/workspaces/SillyTavern` |
-| Style | raw browser ES modules, **no build step**; `manifest.json` lists what loads |
-| Scope | single-character chats only (`DESIGN.md` §3.5) |
+|                |                                                                             |
+| -------------- | --------------------------------------------------------------------------- |
+| Repo           | `cairn-memory` — deliberately **no** `SillyTavern-` prefix                  |
+| Extension name | **Cairn-Memory** — `display_name: "Cairn-Memory"`                           |
+| Slug           | `cairn` — CSS prefix, settings key, log namespace, `message.extra` key      |
+| Target ST      | **1.19.0** (`06bde939f`), local checkout `~/workspaces/SillyTavern`         |
+| Style          | raw browser ES modules, **no build step**; `manifest.json` lists what loads |
+| Scope          | single-character chats only (`DESIGN.md` §3.5)                              |
 
 `NAMES.md` is closed. It moves to `docs/` as a record; the shortlist is not reopened.
 
@@ -31,12 +31,14 @@ edit — do not quietly work around it.**
 3. Pure logic must be importable and runnable without a browser, without ST, and without a
    network. If a module cannot be tested that way, the ST coupling is in the wrong place.
 4. **Zero runtime dependencies.** ST loads our files directly. Dev dependencies only
-   (oxlint, vitest, jscpd; Task and prek to run them), and each one earns its place.
+   (oxlint, oxfmt, TypeScript, vitest, jscpd; Task and prek to run them), and each one earns
+   its place. TypeScript only checks the JSDoc; nothing is compiled (D-0109).
+   The formatter's output is the style: nothing about layout is a house rule (D-0108).
 
 ## 2. SillyTavern first
 
 5. Before inventing a mechanism, check whether ST already has the **lever** — and if it does,
-   the work is the *timing*, not the mechanism (`docs/decisions.md` D-0066).
+   the work is the _timing_, not the mechanism (`docs/decisions.md` D-0066).
    `world_info_position.outlet` was the cautionary tale; `strip_examples`,
    `world_info_budget_cap` and ordered World Info trimming make it four. ST ships these off,
    static, or needing per-card configuration nobody does. That gap is the product.
@@ -59,17 +61,17 @@ edit — do not quietly work around it.**
 11. Mocks are realistic or they are worthless. `test/mocks/` models the real shapes —
     `SillyTavern.getContext()`, `ConnectionManagerRequestService`, event payloads, `message.extra` —
     and each mock cites the ST `file:line` it mirrors. When in doubt, read the checkout.
-12. LLM mocks return *plausible* model output, including the bad kinds: fenced JSON, preamble
+12. LLM mocks return _plausible_ model output, including the bad kinds: fenced JSON, preamble
     chatter, truncation, refusal, a schema-violating field. Parsers get tested against mess.
 13. Fixtures are **synthetic in content, real in shape**. This repo is public: no real chat
     logs, character cards, personas or names ever land in it — not in tests, not in docs, not in
-    examples. But a fixture whose *shape* was invented proves only that the test agrees with our
+    examples. But a fixture whose _shape_ was invented proves only that the test agrees with our
     guess. So: read the real chats locally, confirm the shape against them, then write the
     fixture fresh. The corpus lives outside the repo (`~/workspaces/cairn-corpus`) and a fixture
     derived from it says in a comment which real shape it mirrors.
 14. Nothing in the corpus is modified or deleted — not a chat, not a card, not a run log; those
     chats are not reproducible. Before installing anything that touches `message.extra`, check
-    the backup is current. A calibration pass *may add* derived files under a directory of their
+    the backup is current. A calibration pass _may add_ derived files under a directory of their
     own (`scripts/calibrate-tier.mjs` writes `~/workspaces/cairn-corpus/p5-stage0`, reading the
     chat read-only), because that is where the plan already says its output belongs and the
     alternative is content in a public repo.
@@ -83,7 +85,7 @@ edit — do not quietly work around it.**
     that works unconfigured, and a migration when its shape changes.
 17. **Cairn never breaks the chat.** Any failure inside a generate hook degrades to "inject
     nothing new" plus one toast. Errors do not escape into ST's generation path.
-18. Anything reported to the user reflects the *actual* applied change, not the model's claimed
+18. Anything reported to the user reflects the _actual_ applied change, not the model's claimed
     output (`DESIGN.md` §12). Capture pre-state before applying.
 19. Logging goes through `util/log.js`, namespaced `cairn`, quiet by default. No bare
     `console.log` in shipped code.
@@ -94,7 +96,7 @@ edit — do not quietly work around it.**
     choices, and the ST version floor. It is not the design document.
 21. `docs/` — the depth: how-it-works, development, the ST API surface, prompt design, the
     decision log. Where an explanation wants to be long, it goes here, not into a comment block.
-22. Comments explain *why*, not *what*. Three lines is a lot. No walls of text — if it needs
+22. Comments explain _why_, not _what_. Three lines is a lot. No walls of text — if it needs
     more, it wants a `docs/` page and a one-line pointer.
 23. Behaviour changes and their docs land together. A doc that describes last month's behaviour
     is worse than no doc.
@@ -123,7 +125,7 @@ edit — do not quietly work around it.**
 31. `CHANGELOG.md` in Keep a Changelog format. Every user-visible change gets a line.
 32. **Breaking = the stored data shape changed**, not the API. Any change to what we write into
     `message.extra` or `chatMetadata` bumps `store/schema.js`'s version, ships a migration, and
-    adds a fixture of the *old* shape to the test suite. We never orphan someone's memory.
+    adds a fixture of the _old_ shape to the test suite. We never orphan someone's memory.
     **Suspended while we are pre-release** (`docs/decisions.md` D-0077): a shape change may simply
     invalidate what is stored, because the artefacts at risk are derived and a backfill rebuilds
     them. Existing migrations and fixtures stay, a future store is still refused rather than

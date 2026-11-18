@@ -1,10 +1,10 @@
-import { createSummarizer } from '../../src/pipeline/summarizer.js';
-import { createRequestService } from '../mocks/llm.js';
-import { createContext, startActive } from '../mocks/sillytavern.js';
+import { createSummarizer } from "../../src/pipeline/summarizer.js";
+import { createRequestService } from "../mocks/llm.js";
+import { createContext, startActive } from "../mocks/sillytavern.js";
 
 /** The memory profile, and the roleplay one the chat uses: never the same (DESIGN.md §3.1). */
-export const MEMORY = Object.freeze({ id: 'memory-profile', name: 'GLM (memory)' });
-export const ROLEPLAY = Object.freeze({ id: 'roleplay-profile', name: 'Local (roleplay)' });
+export const MEMORY = Object.freeze({ id: "memory-profile", name: "GLM (memory)" });
+export const ROLEPLAY = Object.freeze({ id: "roleplay-profile", name: "Local (roleplay)" });
 
 /**
  * A summarizer over `chat`, answering from `responses`, as the queue tests drive it.
@@ -22,21 +22,28 @@ export const ROLEPLAY = Object.freeze({ id: 'roleplay-profile', name: 'Local (ro
  *        `onCall` and the strategies.
  */
 export function queueHarness({
-    chat, responses = [], service, defaults = {}, settings = {}, context: contextOptions = {}, start = true, ...rest
+  chat,
+  responses = [],
+  service,
+  defaults = {},
+  settings = {},
+  context: contextOptions = {},
+  start = true,
+  ...rest
 }) {
-    const requests = service ?? createRequestService({ responses });
-    const context = createContext({
-        chat,
-        profiles: [MEMORY, ROLEPLAY],
-        selectedProfile: ROLEPLAY.id,
-        requestService: requests,
-        ...contextOptions,
-    });
-    const summarizer = createSummarizer(() => context, {
-        // The frame is off here so `prompt[0]` is the task; test/summarizer.test.js sends it.
-        settings: () => ({ memoryProfileId: MEMORY.id, fictionFrame: false, ...defaults, ...settings }),
-        ...rest,
-    });
-    if (start) startActive(summarizer, context);
-    return { context, service: requests, summarizer, chat: context.chat };
+  const requests = service ?? createRequestService({ responses });
+  const context = createContext({
+    chat,
+    profiles: [MEMORY, ROLEPLAY],
+    selectedProfile: ROLEPLAY.id,
+    requestService: requests,
+    ...contextOptions,
+  });
+  const summarizer = createSummarizer(() => context, {
+    // The frame is off here so `prompt[0]` is the task; test/summarizer.test.js sends it.
+    settings: () => ({ memoryProfileId: MEMORY.id, fictionFrame: false, ...defaults, ...settings }),
+    ...rest,
+  });
+  if (start) startActive(summarizer, context);
+  return { context, service: requests, summarizer, chat: context.chat };
 }

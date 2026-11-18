@@ -1,282 +1,376 @@
 <div class="cairn-settings">
-    <div class="inline-drawer">
-        <div class="inline-drawer-toggle inline-drawer-header">
-            <b>Cairn-Memory</b>
-            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
-        </div>
-        <div class="inline-drawer-content">
-
-            <label class="checkbox_label" for="cairn_enabled">
-                <input id="cairn_enabled" type="checkbox">
-                <span>Enabled</span>
-            </label>
-            <div class="cairn-hint">Turns Cairn off without uninstalling it. Memory already written is kept.</div>
-
-            <label class="checkbox_label" for="cairn_collapseSummaries">
-                <input id="cairn_collapseSummaries" type="checkbox">
-                <span>Collapse Cairn summaries automatically</span>
-            </label>
-            <div class="cairn-hint">Starts each summary under its message folded. Click one to open it.</div>
-
-            <section class="cairn-card">
-                <h4 class="cairn-section">Memory model</h4>
-
-                <label for="cairn_memoryProfileId">Connection profile</label>
-                <select id="cairn_memoryProfileId" class="text_pole"></select>
-                <div class="cairn-hint">
-                    The model that writes Cairn's memory. Any capable general-purpose model works,
-                    including your roleplay one; a cheaper one saves money. Nothing happens until
-                    one is chosen.
-                </div>
-                <div id="cairn_sharedProfileNote" class="cairn-hint cairn-note" hidden>
-                    This is the profile your chat uses. That works if it's a general-purpose model.
-                    Roleplay finetunes tend to drift when writing summaries, so pick a separate
-                    profile if yours is one.
-                </div>
-
-                <label for="cairn_memoryReasoning">Reasoning</label>
-                <select id="cairn_memoryReasoning" class="text_pole">
-                    <option value="none">None</option>
-                    <option value="low">Low</option>
-                    <option value="preset">As the profile's preset says</option>
-                </select>
-                <div class="cairn-hint">How much the memory model thinks first. Memory work needs none; thinking is slow and billed.</div>
-
-                <label class="checkbox_label" for="cairn_fictionFrame">
-                    <input id="cairn_fictionFrame" type="checkbox">
-                    <span>Tell it the chat is fiction</span>
-                </label>
-                <div class="cairn-hint">Starts each memory request by saying the chat is a collaborative story, so the model reads it as one.</div>
-            </section>
-
-            <section class="cairn-card">
-                <h4 class="cairn-section">What Cairn keeps</h4>
-
-                <label class="checkbox_label" for="cairn_ownMemoryBlock">
-                    <input id="cairn_ownMemoryBlock" type="checkbox">
-                    <span>Replace old messages with summaries</span>
-                </label>
-                <div class="cairn-hint">Waits while Qvink Memory is still injecting its own — the inspector says what for.</div>
-
-                <label class="checkbox_label" for="cairn_worldState">
-                    <input id="cairn_worldState" type="checkbox">
-                    <span>Track the world state</span>
-                </label>
-                <div class="cairn-hint">Where the scene is, who is there, the weather, hair and outfits — just above your newest message.</div>
-
-                <label class="checkbox_label" for="cairn_dropExamples">
-                    <input id="cairn_dropExamples" type="checkbox">
-                    <span>Drop example dialogue once summarised</span>
-                </label>
-                <div class="cairn-hint">The card's examples help early on; once the chat has real history, they only cost tokens.</div>
-
-                <label class="checkbox_label" for="cairn_holdWorldInfo">
-                    <input id="cairn_holdWorldInfo" type="checkbox">
-                    <span>Hold lorebook entries</span>
-                </label>
-                <div class="cairn-hint">Keeps an entry in the prompt once it has triggered, so a missed keyword doesn't reshuffle the prompt.</div>
-            </section>
-
-            <section class="cairn-card">
-                <h4 class="cairn-section">Canon</h4>
-
-                <label class="checkbox_label" for="cairn_keepCanon">
-                    <input id="cairn_keepCanon" type="checkbox">
-                    <span>Keep canon</span>
-                </label>
-                <div class="cairn-hint">The few facts the whole story depends on — a death, a promise, a debt — kept at the top of memory.</div>
-
-                <div class="cairn-field cairn-indent">
-                    <label for="cairn_canonSlots">Canon entries</label>
-                    <input id="cairn_canonSlots" type="number" class="text_pole" min="1" max="16" step="1">
-                </div>
-
-                <div id="cairn_canonView" class="cairn-canon-card"></div>
-
-                <div class="cairn-buttons">
-                    <div id="cairn_canonRebuild" class="menu_button menu_button_icon">
-                        <i class="fa-solid fa-arrows-rotate"></i>
-                        <span>Rebuild canon</span>
-                    </div>
-                </div>
-                <div class="cairn-hint">Canon is picked again as the story grows and reaches the prompt at the next step. Rebuild picks it fresh from the whole story, in one memory call, and puts it in on your next message.</div>
-                <div id="cairn_canonStatus" class="cairn-hint"></div>
-            </section>
-
-            <details class="cairn-card cairn-group">
-                <summary>Advanced settings</summary>
-
-                <div class="cairn-budget">
-                    <h4 class="cairn-section">Memory budget</h4>
-                    <div class="cairn-hint">The defaults work for most chats. Each row is the most that part of the prompt can use, worked out from your context size.</div>
-
-                    <table class="cairn-budget-table">
-                        <thead>
-                            <tr><th></th><th>%</th><th>≈ tokens</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr class="cairn-budget-total">
-                                <td>Max prompt</td>
-                                <td>100</td>
-                                <td id="cairn_budgetMaxPrompt">—</td>
-                            </tr>
-                            <tr>
-                                <td><label for="cairn_memoryFraction">Memory</label></td>
-                                <td><input id="cairn_memoryFraction" type="number" class="text_pole" min="0" max="90" step="1"></td>
-                                <td id="cairn_budgetMemory">—</td>
-                            </tr>
-                            <tr class="cairn-budget-sub">
-                                <td><label for="cairn_canonFraction">Canon, of memory</label></td>
-                                <td><input id="cairn_canonFraction" type="number" class="text_pole" min="0" max="90" step="1"></td>
-                                <td id="cairn_budgetCanon">—</td>
-                            </tr>
-                            <tr class="cairn-budget-sub">
-                                <td><label for="cairn_compactFraction">One-line summaries, of summaries</label></td>
-                                <td><input id="cairn_compactFraction" type="number" class="text_pole" min="0" max="90" step="1"></td>
-                                <td id="cairn_budgetCompact">—</td>
-                            </tr>
-                            <tr class="cairn-budget-sub">
-                                <td>Full summaries</td>
-                                <td>rest</td>
-                                <td id="cairn_budgetFull">—</td>
-                            </tr>
-                            <tr>
-                                <td><label for="cairn_loreFraction">Lorebook</label></td>
-                                <td><input id="cairn_loreFraction" type="number" class="text_pole" min="0" max="90" step="1"></td>
-                                <td id="cairn_budgetLore">—</td>
-                            </tr>
-                            <tr>
-                                <td>Safety margin</td>
-                                <td id="cairn_budgetMarginShare">—</td>
-                                <td id="cairn_budgetMargin">—</td>
-                            </tr>
-                            <tr>
-                                <td>Card, persona, recent messages</td>
-                                <td id="cairn_budgetRestShare">—</td>
-                                <td id="cairn_budgetRest">—</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div class="cairn-hint"><i>
-                        These are limits, not what every chat uses. Room that canon or one-line summaries
-                        don't need goes to full summaries, and a long card or long messages leave less
-                        room for memory. To see what this chat actually used, open Last generation below.
-                    </i></div>
-                    <div class="cairn-hint">
-                        <b>One-line summaries:</b> a bigger share covers more of the story's past, in less
-                        detail. A smaller share keeps more of the recent summaries at full length.
-                    </div>
-                    <div class="cairn-hint">
-                        <b>Lorebook:</b> Cairn uses this row to set SillyTavern's World Info budget cap,
-                        in every chat. Set it to <b>0</b> to manage the cap yourself.
-                    </div>
-
-                    <div class="cairn-field">
-                        <label for="cairn_rawWindow">Recent messages kept in full</label>
-                        <input id="cairn_rawWindow" type="number" class="text_pole" min="1" max="100" step="1">
-                    </div>
-                    <div class="cairn-field">
-                        <label for="cairn_step">Messages per summary step</label>
-                        <input id="cairn_step" type="number" class="text_pole" min="0" max="100" step="1">
-                    </div>
-                    <div class="cairn-hint">
-                        A bigger step means the prompt changes less often, so the cache stays warm longer.
-                        Changing either of these numbers makes Cairn rebuild its memory once.
-                    </div>
-                </div>
-
-                <details class="cairn-details">
-                    <summary>Memory prompts</summary>
-                    <div class="cairn-hint">
-                        What the memory model is asked. An edit that drops a required placeholder
-                        falls back to the default; editing does not rewrite memory already written.
-                    </div>
-                    <label for="cairn_summaryPrompt">Summary prompt</label>
-                    <textarea id="cairn_summaryPrompt" class="text_pole textarea_compact" rows="8"></textarea>
-                    <div class="cairn-hint">Summarises one message: <code>{{message}}</code> is the message, <code>{{history}}</code> the summaries just before it.</div>
-                    <div id="cairn_summaryPromptReset" class="menu_button menu_button_icon">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>Reset to default</span>
-                    </div>
-                    <label for="cairn_indexPrompt">Index prompt</label>
-                    <textarea id="cairn_indexPrompt" class="text_pole textarea_compact" rows="8"></textarea>
-                    <div class="cairn-hint">Turns up to fifteen summaries into index records and one-line versions: <code>{{summaries}}</code> is the numbered list, and is required.</div>
-                    <div id="cairn_indexPromptReset" class="menu_button menu_button_icon">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>Reset to default</span>
-                    </div>
-                    <label for="cairn_canonPrompt">Canon prompt</label>
-                    <textarea id="cairn_canonPrompt" class="text_pole textarea_compact" rows="8"></textarea>
-                    <div class="cairn-hint">Picks the canon from the whole index: <code>{{index}}</code> is the index and is required, <code>{{slots}}</code> the number of canon entries.</div>
-                    <div id="cairn_canonPromptReset" class="menu_button menu_button_icon">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>Reset to default</span>
-                    </div>
-                    <label for="cairn_statePrompt">World state prompt</label>
-                    <textarea id="cairn_statePrompt" class="text_pole textarea_compact" rows="8"></textarea>
-                    <div class="cairn-hint">Keeps the world state current: <code>{{state}}</code> is the record so far and <code>{{messages}}</code> the new messages, and both are required; <code>{{earlier}}</code> holds summaries before them.</div>
-                    <div id="cairn_statePromptReset" class="menu_button menu_button_icon">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>Reset to default</span>
-                    </div>
-                </details>
-
-                <details class="cairn-details">
-                    <summary>Adopt this chat</summary>
-                    <div class="cairn-hint">
-                        For a chat started before Cairn: walks it from the first message as if Cairn
-                        had been on all along, taking Qvink's summaries where they exist. It makes
-                        many memory-model calls, so it says how many and asks first.
-                    </div>
-                    <div class="cairn-hint">
-                        <b>Redo from scratch</b> summarises every message again and rebuilds the index
-                        and canon from nothing — for an old chat you want redone on today's model.
-                    </div>
-                    <div class="cairn-buttons">
-                        <div id="cairn_adopt" class="menu_button menu_button_icon">
-                            <i class="fa-solid fa-person-walking-arrow-right"></i>
-                            <span>Adopt this chat…</span>
-                        </div>
-                        <div id="cairn_adoptRedo" class="menu_button menu_button_icon">
-                            <i class="fa-solid fa-arrows-rotate"></i>
-                            <span>Redo from scratch…</span>
-                        </div>
-                        <div id="cairn_adoptCancel" class="menu_button menu_button_icon" hidden>
-                            <i class="fa-solid fa-stop"></i>
-                            <span>Stop adopting</span>
-                        </div>
-                    </div>
-                    <div id="cairn_adoptStatus" class="cairn-hint"></div>
-                </details>
-
-                <details class="cairn-details">
-                    <summary>Diagnostics</summary>
-
-                    <label class="checkbox_label" for="cairn_showInspector">
-                        <input id="cairn_showInspector" type="checkbox">
-                        <span>Show last generation</span>
-                    </label>
-                    <div class="cairn-hint">What Cairn put in the prompt, from where, and how stable the prompt is.</div>
-
-                    <label class="checkbox_label" for="cairn_logToDisk">
-                        <input id="cairn_logToDisk" type="checkbox">
-                        <span>Log each generation to disk</span>
-                    </label>
-                    <div class="cairn-hint">One file per chat, <code>user/files/cairn-&lt;chat&gt;-&lt;id&gt;.jsonl</code>, across sessions.</div>
-
-                    <label class="checkbox_label" for="cairn_debugLogging">
-                        <input id="cairn_debugLogging" type="checkbox">
-                        <span>Debug logging</span>
-                    </label>
-                    <div class="cairn-hint">Verbose browser-console output. Only needed for bug reports.</div>
-                </details>
-            </details>
-
-            <details id="cairn_inspector_block" class="cairn-card cairn-group cairn-inspector-block">
-                <summary>Last generation</summary>
-                <div id="cairn_inspector" class="cairn-inspector"></div>
-            </details>
-
-        </div>
+  <div class="inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+      <b>Cairn-Memory</b>
+      <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
+    <div class="inline-drawer-content">
+      <label class="checkbox_label" for="cairn_enabled">
+        <input id="cairn_enabled" type="checkbox" />
+        <span>Enabled</span>
+      </label>
+      <div class="cairn-hint">
+        Turns Cairn off without uninstalling it. Memory already written is kept.
+      </div>
+
+      <label class="checkbox_label" for="cairn_collapseSummaries">
+        <input id="cairn_collapseSummaries" type="checkbox" />
+        <span>Collapse Cairn summaries automatically</span>
+      </label>
+      <div class="cairn-hint">
+        Starts each summary under its message folded. Click one to open it.
+      </div>
+
+      <section class="cairn-card">
+        <h4 class="cairn-section">Memory model</h4>
+
+        <label for="cairn_memoryProfileId">Connection profile</label>
+        <select id="cairn_memoryProfileId" class="text_pole"></select>
+        <div class="cairn-hint">
+          The model that writes Cairn's memory. Any capable general-purpose model works, including
+          your roleplay one; a cheaper one saves money. Nothing happens until one is chosen.
+        </div>
+        <div id="cairn_sharedProfileNote" class="cairn-hint cairn-note" hidden>
+          This is the profile your chat uses. That works if it's a general-purpose model. Roleplay
+          finetunes tend to drift when writing summaries, so pick a separate profile if yours is
+          one.
+        </div>
+
+        <label for="cairn_memoryReasoning">Reasoning</label>
+        <select id="cairn_memoryReasoning" class="text_pole">
+          <option value="none">None</option>
+          <option value="low">Low</option>
+          <option value="preset">As the profile's preset says</option>
+        </select>
+        <div class="cairn-hint">
+          How much the memory model thinks first. Memory work needs none; thinking is slow and
+          billed.
+        </div>
+
+        <label class="checkbox_label" for="cairn_fictionFrame">
+          <input id="cairn_fictionFrame" type="checkbox" />
+          <span>Tell it the chat is fiction</span>
+        </label>
+        <div class="cairn-hint">
+          Starts each memory request by saying the chat is a collaborative story, so the model reads
+          it as one.
+        </div>
+      </section>
+
+      <section class="cairn-card">
+        <h4 class="cairn-section">What Cairn keeps</h4>
+
+        <label class="checkbox_label" for="cairn_ownMemoryBlock">
+          <input id="cairn_ownMemoryBlock" type="checkbox" />
+          <span>Replace old messages with summaries</span>
+        </label>
+        <div class="cairn-hint">
+          Waits while Qvink Memory is still injecting its own — the inspector says what for.
+        </div>
+
+        <label class="checkbox_label" for="cairn_worldState">
+          <input id="cairn_worldState" type="checkbox" />
+          <span>Track the world state</span>
+        </label>
+        <div class="cairn-hint">
+          Where the scene is, who is there, the weather, hair and outfits — just above your newest
+          message.
+        </div>
+
+        <label class="checkbox_label" for="cairn_dropExamples">
+          <input id="cairn_dropExamples" type="checkbox" />
+          <span>Drop example dialogue once summarised</span>
+        </label>
+        <div class="cairn-hint">
+          The card's examples help early on; once the chat has real history, they only cost tokens.
+        </div>
+
+        <label class="checkbox_label" for="cairn_holdWorldInfo">
+          <input id="cairn_holdWorldInfo" type="checkbox" />
+          <span>Hold lorebook entries</span>
+        </label>
+        <div class="cairn-hint">
+          Keeps an entry in the prompt once it has triggered, so a missed keyword doesn't reshuffle
+          the prompt.
+        </div>
+      </section>
+
+      <section class="cairn-card">
+        <h4 class="cairn-section">Canon</h4>
+
+        <label class="checkbox_label" for="cairn_keepCanon">
+          <input id="cairn_keepCanon" type="checkbox" />
+          <span>Keep canon</span>
+        </label>
+        <div class="cairn-hint">
+          The few facts the whole story depends on — a death, a promise, a debt — kept at the top of
+          memory.
+        </div>
+
+        <div class="cairn-field cairn-indent">
+          <label for="cairn_canonSlots">Canon entries</label>
+          <input id="cairn_canonSlots" type="number" class="text_pole" min="1" max="16" step="1" />
+        </div>
+
+        <div id="cairn_canonView" class="cairn-canon-card"></div>
+
+        <div class="cairn-buttons">
+          <div id="cairn_canonRebuild" class="menu_button menu_button_icon">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Rebuild canon</span>
+          </div>
+        </div>
+        <div class="cairn-hint">
+          Canon is picked again as the story grows and reaches the prompt at the next step. Rebuild
+          picks it fresh from the whole story, in one memory call, and puts it in on your next
+          message.
+        </div>
+        <div id="cairn_canonStatus" class="cairn-hint"></div>
+      </section>
+
+      <details class="cairn-card cairn-group">
+        <summary>Advanced settings</summary>
+
+        <div class="cairn-budget">
+          <h4 class="cairn-section">Memory budget</h4>
+          <div class="cairn-hint">
+            The defaults work for most chats. Each row is the most that part of the prompt can use,
+            worked out from your context size.
+          </div>
+
+          <table class="cairn-budget-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>%</th>
+                <th>≈ tokens</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="cairn-budget-total">
+                <td>Max prompt</td>
+                <td>100</td>
+                <td id="cairn_budgetMaxPrompt">—</td>
+              </tr>
+              <tr>
+                <td><label for="cairn_memoryFraction">Memory</label></td>
+                <td>
+                  <input
+                    id="cairn_memoryFraction"
+                    type="number"
+                    class="text_pole"
+                    min="0"
+                    max="90"
+                    step="1"
+                  />
+                </td>
+                <td id="cairn_budgetMemory">—</td>
+              </tr>
+              <tr class="cairn-budget-sub">
+                <td><label for="cairn_canonFraction">Canon, of memory</label></td>
+                <td>
+                  <input
+                    id="cairn_canonFraction"
+                    type="number"
+                    class="text_pole"
+                    min="0"
+                    max="90"
+                    step="1"
+                  />
+                </td>
+                <td id="cairn_budgetCanon">—</td>
+              </tr>
+              <tr class="cairn-budget-sub">
+                <td><label for="cairn_compactFraction">One-line summaries, of summaries</label></td>
+                <td>
+                  <input
+                    id="cairn_compactFraction"
+                    type="number"
+                    class="text_pole"
+                    min="0"
+                    max="90"
+                    step="1"
+                  />
+                </td>
+                <td id="cairn_budgetCompact">—</td>
+              </tr>
+              <tr class="cairn-budget-sub">
+                <td>Full summaries</td>
+                <td>rest</td>
+                <td id="cairn_budgetFull">—</td>
+              </tr>
+              <tr>
+                <td><label for="cairn_loreFraction">Lorebook</label></td>
+                <td>
+                  <input
+                    id="cairn_loreFraction"
+                    type="number"
+                    class="text_pole"
+                    min="0"
+                    max="90"
+                    step="1"
+                  />
+                </td>
+                <td id="cairn_budgetLore">—</td>
+              </tr>
+              <tr>
+                <td>Safety margin</td>
+                <td id="cairn_budgetMarginShare">—</td>
+                <td id="cairn_budgetMargin">—</td>
+              </tr>
+              <tr>
+                <td>Card, persona, recent messages</td>
+                <td id="cairn_budgetRestShare">—</td>
+                <td id="cairn_budgetRest">—</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="cairn-hint">
+            <i>
+              These are limits, not what every chat uses. Room that canon or one-line summaries
+              don't need goes to full summaries, and a long card or long messages leave less room
+              for memory. To see what this chat actually used, open Last generation below.
+            </i>
+          </div>
+          <div class="cairn-hint">
+            <b>One-line summaries:</b> a bigger share covers more of the story's past, in less
+            detail. A smaller share keeps more of the recent summaries at full length.
+          </div>
+          <div class="cairn-hint">
+            <b>Lorebook:</b> Cairn uses this row to set SillyTavern's World Info budget cap, in
+            every chat. Set it to <b>0</b> to manage the cap yourself.
+          </div>
+
+          <div class="cairn-field">
+            <label for="cairn_rawWindow">Recent messages kept in full</label>
+            <input
+              id="cairn_rawWindow"
+              type="number"
+              class="text_pole"
+              min="1"
+              max="100"
+              step="1"
+            />
+          </div>
+          <div class="cairn-field">
+            <label for="cairn_step">Messages per summary step</label>
+            <input id="cairn_step" type="number" class="text_pole" min="0" max="100" step="1" />
+          </div>
+          <div class="cairn-hint">
+            A bigger step means the prompt changes less often, so the cache stays warm longer.
+            Changing either of these numbers makes Cairn rebuild its memory once.
+          </div>
+        </div>
+
+        <details class="cairn-details">
+          <summary>Memory prompts</summary>
+          <div class="cairn-hint">
+            What the memory model is asked. An edit that drops a required placeholder falls back to
+            the default; editing does not rewrite memory already written.
+          </div>
+          <label for="cairn_summaryPrompt">Summary prompt</label>
+          <textarea id="cairn_summaryPrompt" class="text_pole textarea_compact" rows="8"></textarea>
+          <div class="cairn-hint">
+            Summarises one message: <code>{{message}}</code> is the message,
+            <code>{{history}}</code> the summaries just before it.
+          </div>
+          <div id="cairn_summaryPromptReset" class="menu_button menu_button_icon">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>Reset to default</span>
+          </div>
+          <label for="cairn_indexPrompt">Index prompt</label>
+          <textarea id="cairn_indexPrompt" class="text_pole textarea_compact" rows="8"></textarea>
+          <div class="cairn-hint">
+            Turns up to fifteen summaries into index records and one-line versions:
+            <code>{{summaries}}</code> is the numbered list, and is required.
+          </div>
+          <div id="cairn_indexPromptReset" class="menu_button menu_button_icon">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>Reset to default</span>
+          </div>
+          <label for="cairn_canonPrompt">Canon prompt</label>
+          <textarea id="cairn_canonPrompt" class="text_pole textarea_compact" rows="8"></textarea>
+          <div class="cairn-hint">
+            Picks the canon from the whole index: <code>{{index}}</code> is the index and is
+            required, <code>{{slots}}</code> the number of canon entries.
+          </div>
+          <div id="cairn_canonPromptReset" class="menu_button menu_button_icon">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>Reset to default</span>
+          </div>
+          <label for="cairn_statePrompt">World state prompt</label>
+          <textarea id="cairn_statePrompt" class="text_pole textarea_compact" rows="8"></textarea>
+          <div class="cairn-hint">
+            Keeps the world state current: <code>{{state}}</code> is the record so far and
+            <code>{{messages}}</code> the new messages, and both are required;
+            <code>{{earlier}}</code> holds summaries before them.
+          </div>
+          <div id="cairn_statePromptReset" class="menu_button menu_button_icon">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>Reset to default</span>
+          </div>
+        </details>
+
+        <details class="cairn-details">
+          <summary>Adopt this chat</summary>
+          <div class="cairn-hint">
+            For a chat started before Cairn: walks it from the first message as if Cairn had been on
+            all along, taking Qvink's summaries where they exist. It makes many memory-model calls,
+            so it says how many and asks first.
+          </div>
+          <div class="cairn-hint">
+            <b>Redo from scratch</b> summarises every message again and rebuilds the index and canon
+            from nothing — for an old chat you want redone on today's model.
+          </div>
+          <div class="cairn-buttons">
+            <div id="cairn_adopt" class="menu_button menu_button_icon">
+              <i class="fa-solid fa-person-walking-arrow-right"></i>
+              <span>Adopt this chat…</span>
+            </div>
+            <div id="cairn_adoptRedo" class="menu_button menu_button_icon">
+              <i class="fa-solid fa-arrows-rotate"></i>
+              <span>Redo from scratch…</span>
+            </div>
+            <div id="cairn_adoptCancel" class="menu_button menu_button_icon" hidden>
+              <i class="fa-solid fa-stop"></i>
+              <span>Stop adopting</span>
+            </div>
+          </div>
+          <div id="cairn_adoptStatus" class="cairn-hint"></div>
+        </details>
+
+        <details class="cairn-details">
+          <summary>Diagnostics</summary>
+
+          <label class="checkbox_label" for="cairn_showInspector">
+            <input id="cairn_showInspector" type="checkbox" />
+            <span>Show last generation</span>
+          </label>
+          <div class="cairn-hint">
+            What Cairn put in the prompt, from where, and how stable the prompt is.
+          </div>
+
+          <label class="checkbox_label" for="cairn_logToDisk">
+            <input id="cairn_logToDisk" type="checkbox" />
+            <span>Log each generation to disk</span>
+          </label>
+          <div class="cairn-hint">
+            One file per chat, <code>user/files/cairn-&lt;chat&gt;-&lt;id&gt;.jsonl</code>, across
+            sessions.
+          </div>
+
+          <label class="checkbox_label" for="cairn_debugLogging">
+            <input id="cairn_debugLogging" type="checkbox" />
+            <span>Debug logging</span>
+          </label>
+          <div class="cairn-hint">Verbose browser-console output. Only needed for bug reports.</div>
+        </details>
+      </details>
+
+      <details id="cairn_inspector_block" class="cairn-card cairn-group cairn-inspector-block">
+        <summary>Last generation</summary>
+        <div id="cairn_inspector" class="cairn-inspector"></div>
+      </details>
+    </div>
+  </div>
 </div>

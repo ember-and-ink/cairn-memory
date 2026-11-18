@@ -11,11 +11,11 @@
  * — which happened the first time a rule was added (CLAUDE.md §9.35: if a
  * mistake can be caught mechanically, catch it mechanically).
  */
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 
 const ROOT = process.cwd();
-const SKIP = new Set(['node_modules', '.git', 'coverage', '.github']);
+const SKIP = new Set(["node_modules", ".git", "coverage", ".github"]);
 const REFERENCE = /CLAUDE\.md §(\d+)\.(\d+)/g;
 const DOC = /\bdocs\/([\w-]+\.md)\b/g;
 const DECISION = /\bD-(\d{4})\b/g;
@@ -24,25 +24,28 @@ const DECISION = /\bD-(\d{4})\b/g;
  * comments and docs cite them. The lookbehind keeps ST's own paths
  * (`public/scripts/...`) and relative imports (`../util/log.js`) out.
  */
-const SOURCE = /(?<![\w./-])(?:src\/)?((?:interop|pipeline|memory|prompt|store|ui|util)\/[\w-]+\.js)\b/g;
+const SOURCE =
+  /(?<![\w./-])(?:src\/)?((?:interop|pipeline|memory|prompt|store|ui|util)\/[\w-]+\.js)\b/g;
 /** Interfaces DESIGN.md §11 names before they exist; a citation of one is a plan, not a pointer. */
-const PLANNED = new Set(['store/entity-index.js']);
+const PLANNED = new Set(["store/entity-index.js"]);
 /** Dated records: they name files as they were then, and a later move does not rewrite them (CLAUDE.md §6.26). */
-const RECORDS = new Set(['CHANGELOG.md', 'docs/decisions.md']);
+const RECORDS = new Set(["CHANGELOG.md", "docs/decisions.md"]);
 
 const decisions = new Set(
-    [...readFileSync('docs/decisions.md', 'utf8').matchAll(/^## D-(\d{4})\b/gm)].map((match) => match[1]),
+  [...readFileSync("docs/decisions.md", "utf8").matchAll(/^## D-(\d{4})\b/gm)].map(
+    (match) => match[1],
+  ),
 );
 
 // Rule N lives under section S; both are needed to validate a §S.N reference.
 const rules = new Map();
 let section = 0;
-for (const line of readFileSync('CLAUDE.md', 'utf8').split('\n')) {
-    const heading = line.match(/^## (\d+)\./);
-    if (heading) section = Number(heading[1]);
+for (const line of readFileSync("CLAUDE.md", "utf8").split("\n")) {
+  const heading = line.match(/^## (\d+)\./);
+  if (heading) section = Number(heading[1]);
 
-    const rule = line.match(/^(\d+)\. (.*)/);
-    if (rule) rules.set(Number(rule[1]), { section, text: rule[2] });
+  const rule = line.match(/^(\d+)\. (.*)/);
+  if (rule) rules.set(Number(rule[1]), { section, text: rule[2] });
 }
 
 const failures = [];
@@ -51,64 +54,70 @@ let pointers = 0;
 let sources = 0;
 
 for (const file of walk(ROOT)) {
-    if (file.endsWith('CLAUDE.md')) continue;
+  if (file.endsWith("CLAUDE.md")) continue;
 
-    let text;
-    try {
-        text = readFileSync(file, 'utf8');
-    } catch {
-        continue; // Binary or unreadable — nothing to check.
+  let text;
+  try {
+    text = readFileSync(file, "utf8");
+  } catch {
+    continue; // Binary or unreadable — nothing to check.
+  }
+
+  for (const [, sectionText, ruleText] of text.matchAll(REFERENCE)) {
+    checked++;
+    const wanted = Number(ruleText);
+    const rule = rules.get(wanted);
+    const where = `${relative(ROOT, file)} → §${sectionText}.${ruleText}`;
+
+    if (!rule) {
+      failures.push(`${where}: rule ${wanted} does not exist (CLAUDE.md has ${rules.size}).`);
+    } else if (rule.section !== Number(sectionText)) {
+      failures.push(`${where}: rule ${wanted} is in section ${rule.section}, not ${sectionText}.`);
     }
+  }
 
-    for (const [, sectionText, ruleText] of text.matchAll(REFERENCE)) {
-        checked++;
-        const wanted = Number(ruleText);
-        const rule = rules.get(wanted);
-        const where = `${relative(ROOT, file)} → §${sectionText}.${ruleText}`;
+  // The changelog records what was true then, including pages since removed.
+  if (relative(ROOT, file) === "CHANGELOG.md") continue;
 
-        if (!rule) {
-            failures.push(`${where}: rule ${wanted} does not exist (CLAUDE.md has ${rules.size}).`);
-        } else if (rule.section !== Number(sectionText)) {
-            failures.push(`${where}: rule ${wanted} is in section ${rule.section}, not ${sectionText}.`);
-        }
+  for (const [, number] of text.matchAll(DECISION)) {
+    pointers++;
+    if (!decisions.has(number))
+      failures.push(`${relative(ROOT, file)} → D-${number}: no such decision.`);
+  }
+
+  // The log names pages as they were then, the archived phase plans among them.
+  if (RECORDS.has(relative(ROOT, file))) continue;
+  for (const [, page] of text.matchAll(DOC)) {
+    pointers++;
+    if (!existsSync(join(ROOT, "docs", page)))
+      failures.push(`${relative(ROOT, file)} → docs/${page}: no such page.`);
+  }
+  for (const [, path] of text.matchAll(SOURCE)) {
+    sources++;
+    if (!PLANNED.has(path) && !existsSync(join(ROOT, "src", path))) {
+      failures.push(`${relative(ROOT, file)} → ${path}: no such source file.`);
     }
-
-    // The changelog records what was true then, including pages since removed.
-    if (relative(ROOT, file) === 'CHANGELOG.md') continue;
-
-    for (const [, number] of text.matchAll(DECISION)) {
-        pointers++;
-        if (!decisions.has(number)) failures.push(`${relative(ROOT, file)} → D-${number}: no such decision.`);
-    }
-
-    // The log names pages as they were then, the archived phase plans among them.
-    if (RECORDS.has(relative(ROOT, file))) continue;
-    for (const [, page] of text.matchAll(DOC)) {
-        pointers++;
-        if (!existsSync(join(ROOT, 'docs', page))) failures.push(`${relative(ROOT, file)} → docs/${page}: no such page.`);
-    }
-    for (const [, path] of text.matchAll(SOURCE)) {
-        sources++;
-        if (!PLANNED.has(path) && !existsSync(join(ROOT, 'src', path))) {
-            failures.push(`${relative(ROOT, file)} → ${path}: no such source file.`);
-        }
-    }
+  }
 }
 
 function* walk(dir) {
-    for (const name of readdirSync(dir)) {
-        if (SKIP.has(name)) continue;
-        const path = join(dir, name);
-        if (statSync(path).isDirectory()) yield* walk(path);
-        else if (/\.(js|mjs|md|html|css|json)$/.test(name)) yield path;
-    }
+  for (const name of readdirSync(dir)) {
+    if (SKIP.has(name)) continue;
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) yield* walk(path);
+    else if (/\.(js|mjs|md|html|css|json)$/.test(name)) yield path;
+  }
 }
 
 if (failures.length) {
-    console.error(`✗ ${failures.length} stale reference(s):\n`);
-    for (const failure of failures) console.error(`  ${failure}`);
-    console.error('\nA rule was renumbered, or a page, decision or source file moved or removed. Fix the references.');
-    process.exit(1);
+  console.error(`✗ ${failures.length} stale reference(s):\n`);
+  for (const failure of failures) console.error(`  ${failure}`);
+  console.error(
+    "\nA rule was renumbered, or a page, decision or source file moved or removed. Fix the references.",
+  );
+  process.exit(1);
 }
 
-console.log(`✓ ${checked} rule references, ${pointers} doc and decision references and ${sources} source paths resolve`);
+console.log(
+  `✓ ${checked} rule references, ${pointers} doc and decision references and ${sources} source paths resolve`,
+);

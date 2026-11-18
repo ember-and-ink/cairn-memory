@@ -14,10 +14,10 @@ export const HARD_CAP_RATIO = 1.5;
 
 /** The hard cap for a soft one. */
 export function hardCap(soft) {
-    return Math.floor(soft * HARD_CAP_RATIO);
+  return Math.floor(soft * HARD_CAP_RATIO);
 }
 
-const ELLIPSIS = '…';
+const ELLIPSIS = "…";
 
 /**
  * The text within `hard` characters, cut at the last word boundary with an ellipsis
@@ -29,10 +29,10 @@ const ELLIPSIS = '…';
  * @returns {{text: string, clipped: boolean}}
  */
 export function clip(text, hard) {
-    if (text.length <= hard) return { text, clipped: false };
-    const room = hard - ELLIPSIS.length;
-    const head = text.slice(0, room + 1);
-    const space = head.lastIndexOf(' ');
-    const cut = space >= room / 2 ? head.slice(0, space) : text.slice(0, room);
-    return { text: cut.replace(/[\s,;:.—-]+$/, '') + ELLIPSIS, clipped: true };
+  if (text.length <= hard) return { text, clipped: false };
+  const room = hard - ELLIPSIS.length;
+  const head = text.slice(0, room + 1);
+  const space = head.lastIndexOf(" ");
+  const cut = space >= room / 2 ? head.slice(0, space) : text.slice(0, room);
+  return { text: cut.replace(/[\s,;:.—-]+$/, "") + ELLIPSIS, clipped: true };
 }

@@ -21,26 +21,30 @@
  * (memory/index-strategy.js), and the compact line is a compression of one summary in
  * isolation. Context would cost tokens and buy nothing.
  *
- * @param {Array<object>} chat ST's live message array. Read only.
- * @param {{readScene: (message: object) => {status: string, scene: object|null},
+ * @param {StMessage[]} chat ST's live message array. Read only.
+ * @param {{readScene: typeof import("../store/chat-store.js").readScene,
  *          readIndex: (message: object) => {status: string}}} readers
  *        The store's readers, passed in so this file stays pure (store/chat-store.js).
  * @param {{limit?: number, through?: number}} [options] `through` is the newest index
  *        to consider; an adoption indexes the chat a step at a time.
  * @returns {Array<{index: number, text: string}>} Oldest first, at most `limit`.
  */
-export function pendingIndex(chat, { readScene, readIndex }, { limit = Infinity, through = Infinity } = {}) {
-    const waiting = [];
+export function pendingIndex(
+  chat,
+  { readScene, readIndex },
+  { limit = Infinity, through = Infinity } = {},
+) {
+  const waiting = [];
 
-    (chat ?? []).forEach((message, index) => {
-        if (waiting.length >= limit || index > through) return;
-        const scene = readScene(message);
-        if (scene.status !== 'valid') return;
-        if (readIndex(message).status === 'valid') return;
-        waiting.push({ index, text: scene.scene.text });
-    });
+  (chat ?? []).forEach((message, index) => {
+    if (waiting.length >= limit || index > through) return;
+    const scene = readScene(message);
+    if (scene.status !== "valid") return;
+    if (readIndex(message).status === "valid") return;
+    waiting.push({ index, text: scene.scene.text });
+  });
 
-    return waiting;
+  return waiting;
 }
 
 /**
@@ -50,17 +54,17 @@ export function pendingIndex(chat, { readScene, readIndex }, { limit = Infinity,
  * block — which is the single sentence D-0062's three gaps reduce to. A chat whose
  * defining scenes were evicted from the prompt long ago still offers their records here.
  *
- * @param {Array<object>} chat ST's live message array. Read only.
- * @param {{readIndex: (message: object) => {status: string, index: object|null}}} readers
- * @returns {Array<{index: number, record: object}>} Oldest first.
+ * @param {StMessage[]} chat ST's live message array. Read only.
+ * @param {{readIndex: typeof import("../store/chat-store.js").readIndex}} readers
+ * @returns {IndexedRecord[]} Oldest first.
  */
 export function indexRecords(chat, { readIndex }) {
-    const records = [];
+  const records = [];
 
-    (chat ?? []).forEach((message, index) => {
-        const found = readIndex(message);
-        if (found.status === 'valid') records.push({ index, record: found.index.record });
-    });
+  (chat ?? []).forEach((message, index) => {
+    const found = readIndex(message);
+    if (found.status === "valid") records.push({ index, record: found.index.record });
+  });
 
-    return records;
+  return records;
 }

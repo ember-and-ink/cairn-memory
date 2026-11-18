@@ -24,13 +24,19 @@
  *
  * Pure: no ST, no network. ST's macro expansion comes in as `expand`.
  */
-import { readJsonReply, reject } from './model-reply.js';
+import { readJsonReply, reject } from "./model-reply.js";
 import {
-    KINDS, KIND_MEANINGS, MAX_LINE_CHARS, MAX_SLOT_CHARS, MAX_WHO, MAX_WHO_CHARS, normaliseRecord,
-} from './index-record.js';
-import { hashString } from '../util/hash.js';
-import { renderTemplate, resolvePrompt } from '../util/template.js';
-import { isObject } from '../util/values.js';
+  KINDS,
+  KIND_MEANINGS,
+  MAX_LINE_CHARS,
+  MAX_SLOT_CHARS,
+  MAX_WHO,
+  MAX_WHO_CHARS,
+  normaliseRecord,
+} from "./index-record.js";
+import { hashString } from "../util/hash.js";
+import { renderTemplate, resolvePrompt } from "../util/template.js";
+import { isObject } from "../util/values.js";
 
 /**
  * The most summaries one batch may carry. D-0064's 10–15, at the top of that range:
@@ -47,7 +53,7 @@ export const MAX_BATCH = 15;
  */
 export const INDEX_MAX_TOKENS = 6144;
 
-const KIND_LINES = KINDS.map((kind) => `- ${kind} — ${KIND_MEANINGS[kind]}.`).join('\n');
+const KIND_LINES = KINDS.map((kind) => `- ${kind} — ${KIND_MEANINGS[kind]}.`).join("\n");
 
 export const INDEX_PROMPT = `Your task: write one JSON record for each numbered scene summary you are given. The records become an index of the whole story, so that later a single pass over it can pick out the few scenes that carry the story's spine.
 
@@ -90,52 +96,56 @@ Now reply with the JSON object: one record for every summary above, numbered as 
 
 /** The template to send for an `indexPrompt` setting (`resolvePrompt`). */
 export function resolveIndexPrompt(setting) {
-    return resolvePrompt(setting, INDEX_PROMPT, ['summaries']);
+  return resolvePrompt(setting, INDEX_PROMPT, ["summaries"]);
 }
 
 /** The tiebreaker, spelled out from the ranking so it cannot drift from `KINDS`. */
 const SMALLER_CLAIM = `${KINDS[KINDS.length - 1]} over ${KINDS[1]}, and an empty changed over a guessed one`;
 
 export const indexBatch = {
-    id: 'index-batch-v1',
+  id: "index-batch-v1",
 
-    /**
-     * @param {object} request
-     * @param {Array<string|{text: string}>} request.summaries The summaries to index,
-     *        oldest first, 1 to MAX_BATCH. Numbered from 1 in the prompt; mapping those
-     *        positions back to chat indexes is the caller's, since only it knows the
-     *        batch's overlap with the last one.
-     * @param {string} [request.template] The `indexPrompt` setting, raw.
-     * @param {(text: string) => string} [request.expand] ST's `substituteParams`
-     *        (public/scripts/st-context.js:163), applied to the template only.
-     * @returns {{messages: Array<{role: string, content: string}>, maxTokens: number,
-     *            prompt: string, count: number, fallback: boolean}}
-     *          `prompt` is stored as `index.prompt`.
-     */
-    build({ summaries, template, expand }) {
-        if (!Array.isArray(summaries) || summaries.length < 1) {
-            throw new RangeError('An index pass reads at least one summary');
-        }
-        if (summaries.length > MAX_BATCH) {
-            throw new RangeError(`An index pass reads at most ${MAX_BATCH} summaries`);
-        }
+  /**
+   * @param {object} request
+   * @param {Array<string|{text: string}>} request.summaries The summaries to index,
+   *        oldest first, 1 to MAX_BATCH. Numbered from 1 in the prompt; mapping those
+   *        positions back to chat indexes is the caller's, since only it knows the
+   *        batch's overlap with the last one.
+   * @param {string} [request.template] The `indexPrompt` setting, raw.
+   * @param {(text: string) => string} [request.expand] ST's `substituteParams`
+   *        (public/scripts/st-context.js:163), applied to the template only.
+   * @returns {{messages: Array<{role: string, content: string}>, maxTokens: number,
+   *            prompt: string, count: number, fallback: boolean}}
+   *          `prompt` is stored as `index.prompt`.
+   */
+  build({ summaries, template, expand }) {
+    if (!Array.isArray(summaries) || summaries.length < 1) {
+      throw new RangeError("An index pass reads at least one summary");
+    }
+    if (summaries.length > MAX_BATCH) {
+      throw new RangeError(`An index pass reads at most ${MAX_BATCH} summaries`);
+    }
 
-        const resolved = resolveIndexPrompt(template);
-        const content = renderTemplate(resolved.template, {
-            smaller: SMALLER_CLAIM,
-            summaries: summaries.map((scene, i) => `${i + 1}. ${textOf(scene)}`).join('\n'),
-        }, { expand });
+    const resolved = resolveIndexPrompt(template);
+    const content = renderTemplate(
+      resolved.template,
+      {
+        smaller: SMALLER_CLAIM,
+        summaries: summaries.map((scene, i) => `${i + 1}. ${textOf(scene)}`).join("\n"),
+      },
+      { expand },
+    );
 
-        return {
-            messages: [{ role: 'user', content }],
-            maxTokens: INDEX_MAX_TOKENS,
-            prompt: hashString(resolved.template),
-            count: summaries.length,
-            fallback: resolved.fallback,
-        };
-    },
+    return {
+      messages: [{ role: "user", content }],
+      maxTokens: INDEX_MAX_TOKENS,
+      prompt: hashString(resolved.template),
+      count: summaries.length,
+      fallback: resolved.fallback,
+    };
+  },
 
-    parse: parseIndexReply,
+  parse: parseIndexReply,
 };
 
 /**
@@ -147,7 +157,7 @@ export const indexBatch = {
  * decides whether a partial batch is enough to write — the parser only says what came
  * back and how much of it was usable.
  *
- * @param {string} content
+ * @param {unknown} content The reply's `content`, as the model sent it.
  * @param {{count?: number}} [limits] `count` is the batch size `build` was given.
  * @returns {{ok: true, records: Array<{n: number, kind: string, who: string[],
  *            what: string, changed: string, because: string, background: string,
@@ -157,43 +167,43 @@ export const indexBatch = {
  *          | {ok: false, reason: 'empty'|'refusal'|'format'|'truncated'}}
  */
 export function parseIndexReply(content, { count = MAX_BATCH } = {}) {
-    const found = readJsonReply(content);
-    if (!found.ok) return found;
-    // A bare array is a model dropping the envelope, which is a shape we can still read.
-    const value = Array.isArray(found.value) ? { records: found.value } : found.value;
-    if (!isObject(value) || !Array.isArray(value.records)) return reject('format');
+  const found = readJsonReply(content);
+  if (!found.ok) return found;
+  // A bare array is a model dropping the envelope, which is a shape we can still read.
+  const value = Array.isArray(found.value) ? { records: found.value } : found.value;
+  if (!isObject(value) || !Array.isArray(value.records)) return reject("format");
 
-    const records = [];
-    const dropped = [];
-    const clipped = [];
-    const seen = new Set();
+  const records = [];
+  const dropped = [];
+  const clipped = [];
+  const seen = new Set();
 
-    for (const entry of value.records) {
-        const n = isObject(entry) ? Number(entry.n) : NaN;
-        if (!Number.isInteger(n) || n < 1 || n > count) {
-            dropped.push({ slot: 'n', reason: Number.isInteger(n) ? 'out-of-batch' : 'no-index' });
-            continue;
-        }
-        // First answer wins. A model that answers twice has changed its mind without
-        // saying so, and taking the later one would make the batch order matter.
-        if (seen.has(n)) {
-            dropped.push({ slot: 'n', reason: 'duplicate-index', n });
-            continue;
-        }
-
-        const { record, dropped: slots, clipped: cut } = normaliseRecord(entry);
-        for (const drop of slots) dropped.push({ ...drop, n });
-        for (const slot of cut) clipped.push({ slot, n });
-        if (!record) continue;
-
-        seen.add(n);
-        records.push({ n, ...record });
+  for (const entry of value.records) {
+    const n = isObject(entry) ? Number(entry.n) : NaN;
+    if (!Number.isInteger(n) || n < 1 || n > count) {
+      dropped.push({ slot: "n", reason: Number.isInteger(n) ? "out-of-batch" : "no-index" });
+      continue;
+    }
+    // First answer wins. A model that answers twice has changed its mind without
+    // saying so, and taking the later one would make the batch order matter.
+    if (seen.has(n)) {
+      dropped.push({ slot: "n", reason: "duplicate-index", n });
+      continue;
     }
 
-    records.sort((a, b) => a.n - b.n);
-    return { ok: true, records, dropped, clipped };
+    const { record, dropped: slots, clipped: cut } = normaliseRecord(entry);
+    for (const drop of slots) dropped.push({ ...drop, n });
+    for (const slot of cut) clipped.push({ slot, n });
+    if (!record) continue;
+
+    seen.add(n);
+    records.push({ n, ...record });
+  }
+
+  records.sort((a, b) => a.n - b.n);
+  return { ok: true, records, dropped, clipped };
 }
 
 function textOf(item) {
-    return typeof item === 'string' ? item : item?.text ?? '';
+  return typeof item === "string" ? item : (item?.text ?? "");
 }

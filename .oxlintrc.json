@@ -1,73 +1,73 @@
 {
-    "$schema": "./node_modules/oxlint/configuration_schema.json",
-    "categories": {
-        "correctness": "error"
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "globals": {
+    "SillyTavern": "readonly",
+    "toastr": "readonly"
+  },
+  "ignorePatterns": ["coverage/**", ".claude/**"],
+  "rules": {
+    "no-undef": "error",
+    "no-empty": ["error", { "allowEmptyCatch": true }],
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-console": "error"
+  },
+  "overrides": [
+    {
+      "files": ["src/**/*.js", "index.js"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "structuredClone",
+            "message": "Never clone chat data (DESIGN.md §9). Mutate in place."
+          }
+        ]
+      }
     },
-    "env": {
-        "browser": true,
-        "es2024": true
+    {
+      "files": ["src/store/**/*.js"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "../memory/*",
+                  "../pipeline/*",
+                  "../prompt/*",
+                  "../ui/*",
+                  "../interop/*",
+                  "../settings.js"
+                ],
+                "message": "store/ imports only store/, util/ and constants (docs/decisions.md D-0079)."
+              }
+            ]
+          }
+        ]
+      }
     },
-    "globals": {
-        "SillyTavern": "readonly",
-        "toastr": "readonly"
+    {
+      "files": ["src/util/log.js"],
+      "rules": {
+        "no-console": "off"
+      }
     },
-    "ignorePatterns": ["coverage/**", ".claude/**"],
-    "rules": {
-        "no-undef": "error",
-        "no-empty": ["error", { "allowEmptyCatch": true }],
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
-        "no-console": "error"
-    },
-    "overrides": [
-        {
-            "files": ["src/**/*.js", "index.js"],
-            "rules": {
-                "no-restricted-globals": [
-                    "error",
-                    {
-                        "name": "structuredClone",
-                        "message": "Never clone chat data (DESIGN.md §9). Mutate in place."
-                    }
-                ]
-            }
-        },
-        {
-            "files": ["src/store/**/*.js"],
-            "rules": {
-                "no-restricted-imports": [
-                    "error",
-                    {
-                        "patterns": [
-                            {
-                                "group": [
-                                    "../memory/*",
-                                    "../pipeline/*",
-                                    "../prompt/*",
-                                    "../ui/*",
-                                    "../interop/*",
-                                    "../settings.js"
-                                ],
-                                "message": "store/ imports only store/, util/ and constants (docs/decisions.md D-0079)."
-                            }
-                        ]
-                    }
-                ]
-            }
-        },
-        {
-            "files": ["src/util/log.js"],
-            "rules": {
-                "no-console": "off"
-            }
-        },
-        {
-            "files": ["test/**/*.js", "scripts/**/*.mjs", "scripts/**/*.js", "*.config.js"],
-            "env": {
-                "node": true
-            },
-            "rules": {
-                "no-console": "off"
-            }
-        }
-    ]
+    {
+      "files": ["test/**/*.js", "scripts/**/*.mjs", "scripts/**/*.js", "*.config.js"],
+      "env": {
+        "node": true
+      },
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
 }

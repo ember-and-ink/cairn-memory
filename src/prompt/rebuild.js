@@ -17,7 +17,7 @@
  *
  * Pure: plain values in, a boolean out.
  */
-import { FIRST_TURN, STEP_TURN } from '../pipeline/scheduler.js';
+import { FIRST_TURN, STEP_TURN } from "../pipeline/scheduler.js";
 
 /**
  * Whether this turn rewrites the block's head.
@@ -49,11 +49,17 @@ import { FIRST_TURN, STEP_TURN } from '../pipeline/scheduler.js';
  * @returns {boolean}
  */
 export function isRebuild({
-    evicted = 0, demoted = 0, stepReason = '', canonMoved = false, forced = false,
+  evicted = 0,
+  demoted = 0,
+  stepReason = "",
+  canonMoved = false,
+  forced = false,
 } = {}) {
-    const moved = (Number.isFinite(evicted) ? evicted : 0) + (Number.isFinite(demoted) ? demoted : 0);
-    return moved > 0
-        || stepReason === FIRST_TURN
-        || (stepReason === STEP_TURN && canonMoved === true)
-        || forced === true;
+  const moved = (Number.isFinite(evicted) ? evicted : 0) + (Number.isFinite(demoted) ? demoted : 0);
+  return (
+    moved > 0 ||
+    stepReason === FIRST_TURN ||
+    (stepReason === STEP_TURN && canonMoved === true) ||
+    forced === true
+  );
 }

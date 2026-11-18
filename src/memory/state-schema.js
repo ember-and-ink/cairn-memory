@@ -18,7 +18,7 @@
  *
  * Pure: plain data in, new plain data out. Inputs are never mutated.
  */
-import { isObject } from '../util/values.js';
+import { isObject } from "../util/values.js";
 
 /** Top-level text fields, in render order, with their caps in characters. */
 export const TEXT_FIELDS = Object.freeze({ location: 120, weather: 80 });
@@ -31,37 +31,40 @@ export const MAX_NAME_CHARS = 40;
 
 /** What `changed` can hold, in the order it is reported. Kinds, never content. */
 export const CHANGE_KINDS = Object.freeze([
-    ...Object.keys(TEXT_FIELDS),
-    'characters.arrived',
-    'characters.left',
-    ...Object.keys(CHARACTER_FIELDS).map((field) => `characters.${field}`),
+  ...Object.keys(TEXT_FIELDS),
+  "characters.arrived",
+  "characters.left",
+  ...Object.keys(CHARACTER_FIELDS).map((field) => `characters.${field}`),
 ]);
 
-export const STATE_HEADER = '[Current scene]';
+export const STATE_HEADER = "[Current scene]";
 
 /** What renders for a field nothing has established yet: one wording, whatever the model wrote (D-0096). */
-export const UNSET_TEXT = 'Not described';
+export const UNSET_TEXT = "Not described";
 
 /**
  * A value that only says the value is unknown — "Unspecified", "Not explicitly described",
  * "N/A". Models write a different one each run, so they are recognised, never stored.
  * "None" and "Nothing" are left alone: as an outfit they are a fact.
  */
-const PLACEHOLDER = new RegExp('^(?:'
-    + 'not\\s+(?:yet\\s+|explicitly\\s+|clearly\\s+)?'
-    + '(?:described|mentioned|specified|stated|established|given|known|noted|shown|visible|provided)'
-    + '(?:\\s+yet)?(?:\\s+(?:in|by)\\s+the\\s+(?:messages?|scene|story|text))?'
-    + '|unspecified|unknown|unclear|undescribed|unmentioned|unstated|n\\s*/\\s*a|tbd'
-    + '|[-–—?]+'
-    + ')\\.?$', 'i');
+const PLACEHOLDER = new RegExp(
+  "^(?:" +
+    "not\\s+(?:yet\\s+|explicitly\\s+|clearly\\s+)?" +
+    "(?:described|mentioned|specified|stated|established|given|known|noted|shown|visible|provided)" +
+    "(?:\\s+yet)?(?:\\s+(?:in|by)\\s+the\\s+(?:messages?|scene|story|text))?" +
+    "|unspecified|unknown|unclear|undescribed|unmentioned|unstated|n\\s*/\\s*a|tbd" +
+    "|[-–—?]+" +
+    ")\\.?$",
+  "i",
+);
 
 /** @param {string} text */
 export function isPlaceholder(text) {
-    return PLACEHOLDER.test(text.trim());
+  return PLACEHOLDER.test(text.trim());
 }
 
-const LABELS = Object.freeze({ location: 'Location', weather: 'Weather' });
-const STATE_KEYS = [...Object.keys(TEXT_FIELDS), 'characters'];
+const LABELS = Object.freeze({ location: "Location", weather: "Weather" });
+const STATE_KEYS = [...Object.keys(TEXT_FIELDS), "characters"];
 
 /**
  * Merge the model's record into the stored one. A field the reply names takes the
@@ -79,26 +82,26 @@ const STATE_KEYS = [...Object.keys(TEXT_FIELDS), 'characters'];
  * nothing: the record only holds who is present, so a character who leaves and
  * returns would otherwise lose a hair colour or an outfit no later message restates.
  *
- * @param {object} current A state `validState` accepts; `{}` on a cold start.
+ * @param {WorldState} current A state `validState` accepts; `{}` on a cold start.
  * @param {object} reply The parsed reply: the whole record, as the prompt asks.
  * @param {{known?: Record<string, object>}} [options] `known` is the last-seen fields
  *        of characters not in `current` (`lastSeen` in memory/state.js), by name.
  * @returns {{value: object, changed: string[], dropped: Array<{field: string, reason: string}>}}
  */
 export function mergeReply(current, reply, { known = {} } = {}) {
-    if (!validState(current)) throw new TypeError('mergeReply needs a valid current state');
-    if (!isObject(reply)) throw new TypeError('A state reply must be an object');
+  if (!validState(current)) throw new TypeError("mergeReply needs a valid current state");
+  if (!isObject(reply)) throw new TypeError("A state reply must be an object");
 
-    const dropped = [];
-    const keys = foldKeys(reply, STATE_KEYS, '', dropped);
-    const value = mergeTexts(current, keys, TEXT_FIELDS, '', dropped);
+  const dropped = [];
+  const keys = foldKeys(reply, STATE_KEYS, "", dropped);
+  const value = mergeTexts(current, keys, TEXT_FIELDS, "", dropped);
 
-    const characters = keys.has('characters')
-        ? mergeCharacters(current.characters, keys.get('characters'), dropped, known)
-        : copyCharacters(current.characters);
-    if (characters) value.characters = characters;
+  const characters = keys.has("characters")
+    ? mergeCharacters(current.characters, keys.get("characters"), dropped, known)
+    : copyCharacters(current.characters);
+  if (characters) value.characters = characters;
 
-    return { value, changed: changedKinds(current, value), dropped };
+  return { value, changed: changedKinds(current, value), dropped };
 }
 
 /**
@@ -108,12 +111,12 @@ export function mergeReply(current, reply, { known = {} } = {}) {
  * @param {unknown} value
  */
 export function validState(value) {
-    if (!isObject(value)) return false;
-    return Object.entries(value).every(([field, entry]) => {
-        if (Object.hasOwn(TEXT_FIELDS, field)) return validText(entry, TEXT_FIELDS[field]);
-        if (field === 'characters') return validCharacters(entry);
-        return false;
-    });
+  if (!isObject(value)) return false;
+  return Object.entries(value).every(([field, entry]) => {
+    if (Object.hasOwn(TEXT_FIELDS, field)) return validText(entry, TEXT_FIELDS[field]);
+    if (field === "characters") return validCharacters(entry);
+    return false;
+  });
 }
 
 /**
@@ -127,7 +130,9 @@ export function validState(value) {
  * @returns {string} `''` when there is nothing to say.
  */
 export function renderState(value) {
-    return stateLines(value).map((line) => line.text).join('\n');
+  return stateLines(value)
+    .map((line) => line.text)
+    .join("\n");
 }
 
 /**
@@ -135,38 +140,42 @@ export function renderState(value) {
  * chat can put an edit pencil after it (D-0100). Who is present is the `Present:`
  * heading and one line each, so a name is written once.
  *
- * @param {object} value
+ * @param {WorldState} value
  * @returns {Array<{text: string, character?: string}>} Empty when there is nothing to say.
  */
 export function stateLines(value) {
-    if (!validState(value) || !Object.keys(value).length) return [];
+  if (!validState(value) || !Object.keys(value).length) return [];
 
-    const lines = Object.keys(TEXT_FIELDS).map((field) => ({ text: `${LABELS[field]}: ${shown(value[field])}` }));
-    const characters = Object.entries(value.characters ?? {});
-    if (characters.length) lines.push({ text: 'Present:' });
-    for (const [name, fields] of characters) {
-        const parts = Object.keys(CHARACTER_FIELDS).map((field) => `${field}: ${shown(fields[field])}`);
-        lines.push({ text: `${oneLine(name)} — ${parts.join('; ')}`, character: name });
-    }
+  /** @type {Array<{text: string, character?: string}>} */
+  const lines = Object.keys(TEXT_FIELDS).map((field) => ({
+    text: `${LABELS[field]}: ${shown(value[field])}`,
+  }));
+  const characters = Object.entries(value.characters ?? {});
+  if (characters.length) lines.push({ text: "Present:" });
+  for (const [name, fields] of characters) {
+    const parts = Object.keys(CHARACTER_FIELDS).map((field) => `${field}: ${shown(fields[field])}`);
+    lines.push({ text: `${oneLine(name)} — ${parts.join("; ")}`, character: name });
+  }
 
-    return [{ text: STATE_HEADER }, ...lines];
+  return [{ text: STATE_HEADER }, ...lines];
 }
 
 /** A state stored before D-0096 can still hold a placeholder, so it renders as one too. */
 function shown(text) {
-    return text === undefined || isPlaceholder(text) ? UNSET_TEXT : oneLine(text);
+  return text === undefined || isPlaceholder(text) ? UNSET_TEXT : oneLine(text);
 }
 
 /** The rendered length of a state with every field full, so the ceiling is derived, not typed in. */
 export const MAX_STATE_CHARS = renderState(widestState()).length;
 
 function widestState() {
-    const fill = (caps) => Object.fromEntries(Object.entries(caps).map(([field, cap]) => [field, 'x'.repeat(cap)]));
-    const characters = {};
-    for (let i = 0; i < MAX_CHARACTERS; i++) {
-        characters[String.fromCharCode(65 + i).repeat(MAX_NAME_CHARS)] = fill(CHARACTER_FIELDS);
-    }
-    return { ...fill(TEXT_FIELDS), characters };
+  const fill = (caps) =>
+    Object.fromEntries(Object.entries(caps).map(([field, cap]) => [field, "x".repeat(cap)]));
+  const characters = {};
+  for (let i = 0; i < MAX_CHARACTERS; i++) {
+    characters[String.fromCharCode(65 + i).repeat(MAX_NAME_CHARS)] = fill(CHARACTER_FIELDS);
+  }
+  return { ...fill(TEXT_FIELDS), characters };
 }
 
 /**
@@ -174,28 +183,29 @@ function widestState() {
  * second spelling of one already seen is dropped; the first spelling wins.
  */
 function foldKeys(object, known, prefix, dropped) {
-    const found = new Map();
-    for (const [key, entry] of Object.entries(object)) {
-        const field = known.find((name) => name === key.toLowerCase());
-        if (!field) dropped.push({ field: `${prefix}unknown`, reason: 'unknown-key' });
-        else if (found.has(field)) dropped.push({ field: `${prefix}${field}`, reason: 'duplicate-key' });
-        else found.set(field, entry);
-    }
-    return found;
+  const found = new Map();
+  for (const [key, entry] of Object.entries(object)) {
+    const field = known.find((name) => name === key.toLowerCase());
+    if (!field) dropped.push({ field: `${prefix}unknown`, reason: "unknown-key" });
+    else if (found.has(field))
+      dropped.push({ field: `${prefix}${field}`, reason: "duplicate-key" });
+    else found.set(field, entry);
+  }
+  return found;
 }
 
 function mergeTexts(before, keys, caps, prefix, dropped) {
-    const merged = {};
-    for (const [field, cap] of Object.entries(caps)) {
-        let text = before[field];
-        if (keys.has(field)) {
-            const read = readText(keys.get(field), cap);
-            if (read.ok) text = read.text;
-            else dropped.push({ field: `${prefix}${field}`, reason: read.reason });
-        }
-        if (text !== undefined) merged[field] = text;
+  const merged = {};
+  for (const [field, cap] of Object.entries(caps)) {
+    let text = before[field];
+    if (keys.has(field)) {
+      const read = readText(keys.get(field), cap);
+      if (read.ok) text = read.text;
+      else dropped.push({ field: `${prefix}${field}`, reason: read.reason });
     }
-    return merged;
+    if (text !== undefined) merged[field] = text;
+  }
+  return merged;
 }
 
 /**
@@ -208,67 +218,88 @@ function mergeTexts(before, keys, caps, prefix, dropped) {
  * `Present:` line nudges nothing, and the next reply puts the cast back.
  */
 function mergeCharacters(before, reply, dropped, known = {}) {
-    const stored = new Map(Object.entries(copyCharacters(before) ?? {}));
-    const seen = new Map(Object.entries(isObject(known) ? known : {}).map(([name, fields]) => [fold(name), { name, fields }]));
-    if (!isObject(reply)) {
-        dropped.push({ field: 'characters', reason: 'wrong-type' });
-        return copyCharacters(before);
+  const stored = new Map(Object.entries(copyCharacters(before) ?? {}));
+  const seen = new Map(
+    Object.entries(isObject(known) ? known : {}).map(([name, fields]) => [
+      fold(name),
+      { name, fields },
+    ]),
+  );
+  if (!isObject(reply)) {
+    dropped.push({ field: "characters", reason: "wrong-type" });
+    return copyCharacters(before);
+  }
+
+  const cast = new Map();
+  const listed = new Set();
+  for (const [written, entry] of Object.entries(reply)) {
+    const returning = stored.has(written) ? null : seen.get(fold(written));
+    const name =
+      [...stored.keys()].find((present) => fold(present) === fold(written)) ??
+      returning?.name ??
+      written;
+    if (listed.has(fold(name))) {
+      dropped.push({ field: "characters", reason: "duplicate-key" });
+      continue;
     }
+    listed.add(fold(name));
 
-    const cast = new Map();
-    const listed = new Set();
-    for (const [written, entry] of Object.entries(reply)) {
-        const returning = stored.has(written) ? null : seen.get(fold(written));
-        const name = [...stored.keys()].find((present) => fold(present) === fold(written))
-            ?? returning?.name ?? written;
-        if (listed.has(fold(name))) {
-            dropped.push({ field: 'characters', reason: 'duplicate-key' });
-            continue;
-        }
-        listed.add(fold(name));
-
-        // `null` used to mean "remove"; leaving them out now says the same thing.
-        if (entry === null) continue;
-        if (!stored.has(name) && !validName(name)) {
-            dropped.push({ field: 'characters', reason: 'bad-name' });
-            continue;
-        }
-        // Every path below adds to the cast, so the cap is checked once, before them all.
-        if (cast.size >= MAX_CHARACTERS) {
-            dropped.push({ field: 'characters', reason: 'too-many' });
-            continue;
-        }
-        if (!isObject(entry)) {
-            dropped.push({ field: 'characters', reason: 'wrong-type' });
-            if (stored.has(name)) cast.set(name, { ...stored.get(name) });
-            continue;
-        }
-        const keys = foldKeys(entry, Object.keys(CHARACTER_FIELDS), 'characters.', dropped);
-        cast.set(name, mergeTexts(stored.get(name) ?? lastFields(returning), keys, CHARACTER_FIELDS, 'characters.', dropped));
+    // `null` used to mean "remove"; leaving them out now says the same thing.
+    if (entry === null) continue;
+    if (!stored.has(name) && !validName(name)) {
+      dropped.push({ field: "characters", reason: "bad-name" });
+      continue;
     }
-
-    if (!cast.size) {
-        if (stored.size) dropped.push({ field: 'characters', reason: 'empty' });
-        return copyCharacters(before);
+    // Every path below adds to the cast, so the cap is checked once, before them all.
+    if (cast.size >= MAX_CHARACTERS) {
+      dropped.push({ field: "characters", reason: "too-many" });
+      continue;
     }
+    if (!isObject(entry)) {
+      dropped.push({ field: "characters", reason: "wrong-type" });
+      if (stored.has(name)) cast.set(name, { ...stored.get(name) });
+      continue;
+    }
+    const keys = foldKeys(entry, Object.keys(CHARACTER_FIELDS), "characters.", dropped);
+    cast.set(
+      name,
+      mergeTexts(
+        stored.get(name) ?? lastFields(returning),
+        keys,
+        CHARACTER_FIELDS,
+        "characters.",
+        dropped,
+      ),
+    );
+  }
 
-    // Everyone still here keeps their place, so an unchanged cast renders the same bytes.
-    const order = [...stored.keys()].filter((name) => cast.has(name))
-        .concat([...cast.keys()].filter((name) => !stored.has(name)));
-    return Object.fromEntries(order.map((name) => [name, cast.get(name)]));
+  if (!cast.size) {
+    if (stored.size) dropped.push({ field: "characters", reason: "empty" });
+    return copyCharacters(before);
+  }
+
+  // Everyone still here keeps their place, so an unchanged cast renders the same bytes.
+  const order = [...stored.keys()]
+    .filter((name) => cast.has(name))
+    .concat([...cast.keys()].filter((name) => !stored.has(name)));
+  return Object.fromEntries(order.map((name) => [name, cast.get(name)]));
 }
 
 /** A returning character's last-seen fields, kept only where they are still valid values. */
 function lastFields(returning) {
-    if (!returning || !isObject(returning.fields)) return {};
-    return Object.fromEntries(Object.entries(CHARACTER_FIELDS)
-        .filter(([field, cap]) => validText(returning.fields[field], cap))
-        .map(([field]) => [field, returning.fields[field]]));
+  if (!returning || !isObject(returning.fields)) return {};
+  return Object.fromEntries(
+    Object.entries(CHARACTER_FIELDS)
+      .filter(([field, cap]) => validText(returning.fields[field], cap))
+      .map(([field]) => [field, returning.fields[field]]),
+  );
 }
 
 function copyCharacters(characters) {
-    const entries = Object.entries(characters ?? {});
-    return entries.length ? Object.fromEntries(entries.map(([name, fields]) => [name, { ...fields }])) : undefined;
+  const entries = Object.entries(characters ?? {});
+  return entries.length
+    ? Object.fromEntries(entries.map(([name, fields]) => [name, { ...fields }]))
+    : undefined;
 }
 
 /**
@@ -276,36 +307,37 @@ function copyCharacters(characters) {
  * A placeholder says no more than a blank, so it must not overwrite a value either (D-0096).
  */
 function readText(entry, cap) {
-    if (entry === null || (typeof entry === 'string' && entry.trim() === '')) return { ok: false, reason: 'blank' };
-    if (typeof entry !== 'string') return { ok: false, reason: 'wrong-type' };
-    if (isPlaceholder(entry)) return { ok: false, reason: 'placeholder' };
-    if (entry.length > cap) return { ok: false, reason: 'too-long' };
-    return { ok: true, text: entry };
+  if (entry === null || (typeof entry === "string" && entry.trim() === ""))
+    return { ok: false, reason: "blank" };
+  if (typeof entry !== "string") return { ok: false, reason: "wrong-type" };
+  if (isPlaceholder(entry)) return { ok: false, reason: "placeholder" };
+  if (entry.length > cap) return { ok: false, reason: "too-long" };
+  return { ok: true, text: entry };
 }
 
 /**
  * What changed between two valid states, as `changed` records it: kinds, never content.
  *
- * @param {object} before
- * @param {object} after
+ * @param {WorldState} before
+ * @param {WorldState} after
  * @returns {string[]} In CHANGE_KINDS order.
  */
 export function changedKinds(before, after) {
-    const kinds = new Set(Object.keys(TEXT_FIELDS).filter((field) => before[field] !== after[field]));
+  const kinds = new Set(Object.keys(TEXT_FIELDS).filter((field) => before[field] !== after[field]));
 
-    const was = before.characters ?? {};
-    const now = after.characters ?? {};
-    for (const [name, fields] of Object.entries(now)) {
-        if (!Object.hasOwn(was, name)) {
-            kinds.add('characters.arrived');
-            continue;
-        }
-        for (const field of Object.keys(CHARACTER_FIELDS)) {
-            if (was[name][field] !== fields[field]) kinds.add(`characters.${field}`);
-        }
+  const was = before.characters ?? {};
+  const now = after.characters ?? {};
+  for (const [name, fields] of Object.entries(now)) {
+    if (!Object.hasOwn(was, name)) {
+      kinds.add("characters.arrived");
+      continue;
     }
-    if (Object.keys(was).some((name) => !Object.hasOwn(now, name))) kinds.add('characters.left');
-    return CHANGE_KINDS.filter((kind) => kinds.has(kind));
+    for (const field of Object.keys(CHARACTER_FIELDS)) {
+      if (was[name][field] !== fields[field]) kinds.add(`characters.${field}`);
+    }
+  }
+  if (Object.keys(was).some((name) => !Object.hasOwn(now, name))) kinds.add("characters.left");
+  return CHANGE_KINDS.filter((kind) => kinds.has(kind));
 }
 
 /**
@@ -314,71 +346,90 @@ export function changedKinds(before, after) {
  * (ignoring case) keeps their fields and takes the spelling typed; any other name joins
  * with none; anyone in no box has left. A repeated name counts once.
  *
- * @param {object} current The valid state the editor opened on.
+ * @param {WorldState} current The valid state the editor opened on.
  * @param {{location?: string, weather?: string, people?: string[]}} form
- * @returns {{ok: true, value: object} | {ok: false, reason: 'too-long'|'bad-name'|'too-many', name?: string}}
+ * @returns {{ok: true, value: WorldState} | {ok: false, reason: 'too-long'|'bad-name'|'too-many', name?: string}}
  */
 export function applySceneEdit(current, { location, weather, people = [] }) {
-    const value = {};
-    const texts = { location, weather };
-    for (const [field, cap] of Object.entries(TEXT_FIELDS)) {
-        const read = editedText(texts[field], cap);
-        if (!read.ok) return read;
-        if (read.text !== undefined) value[field] = read.text;
-    }
+  const value = {};
+  const texts = { location, weather };
+  for (const [field, cap] of Object.entries(TEXT_FIELDS)) {
+    const read = editedText(texts[field], cap);
+    if (!read.ok) return read;
+    if (read.text !== undefined) value[field] = read.text;
+  }
 
-    const stored = Object.entries(current.characters ?? {});
-    const cast = new Map();
-    for (const box of people) {
-        const name = oneLine(typeof box === 'string' ? box : '');
-        if (name === '' || [...cast.keys()].some((known) => fold(known) === fold(name))) continue;
-        if (!validName(name)) return { ok: false, reason: 'bad-name', name };
-        if (cast.size >= MAX_CHARACTERS) return { ok: false, reason: 'too-many' };
-        const kept = stored.find(([known]) => fold(known) === fold(name));
-        cast.set(name, kept ? { ...kept[1] } : {});
-    }
-    if (cast.size) value.characters = Object.fromEntries(cast);
-    return { ok: true, value };
+  const stored = Object.entries(current.characters ?? {});
+  const cast = new Map();
+  for (const box of people) {
+    const name = oneLine(typeof box === "string" ? box : "");
+    if (name === "" || [...cast.keys()].some((known) => fold(known) === fold(name))) continue;
+    if (!validName(name)) return { ok: false, reason: "bad-name", name };
+    if (cast.size >= MAX_CHARACTERS) return { ok: false, reason: "too-many" };
+    const kept = stored.find(([known]) => fold(known) === fold(name));
+    cast.set(name, kept ? { ...kept[1] } : {});
+  }
+  if (cast.size) value.characters = Object.fromEntries(cast);
+  return { ok: true, value };
 }
 
 /**
  * The state with one character's hair and outfit replaced by the editor's (D-0100).
  * A blank or a placeholder unsets the field.
  *
- * @param {object} current The valid state the editor opened on.
+ * @param {WorldState} current The valid state the editor opened on.
  * @param {string} name Exactly as stored.
  * @param {{hair?: string, outfit?: string}} form
- * @returns {{ok: true, value: object} | {ok: false, reason: 'gone'|'too-long'}}
+ * @returns {{ok: true, value: WorldState} | {ok: false, reason: 'gone'|'too-long'}}
  */
 export function applyCharacterEdit(current, name, form) {
-    if (!isObject(current.characters) || !Object.hasOwn(current.characters, name)) return { ok: false, reason: 'gone' };
-    const fields = {};
-    for (const [field, cap] of Object.entries(CHARACTER_FIELDS)) {
-        const read = editedText(form[field], cap);
-        if (!read.ok) return read;
-        if (read.text !== undefined) fields[field] = read.text;
-    }
-    // Replacing the key in place keeps everyone's order, so the rest renders the same bytes.
-    const characters = Object.fromEntries(Object.entries(current.characters)
-        .map(([known, entry]) => [known, known === name ? fields : { ...entry }]));
-    return { ok: true, value: { ...current, characters } };
+  if (!isObject(current.characters) || !Object.hasOwn(current.characters, name))
+    return { ok: false, reason: "gone" };
+  const fields = {};
+  for (const [field, cap] of Object.entries(CHARACTER_FIELDS)) {
+    const read = editedText(form[field], cap);
+    if (!read.ok) return read;
+    if (read.text !== undefined) fields[field] = read.text;
+  }
+  // Replacing the key in place keeps everyone's order, so the rest renders the same bytes.
+  const characters = Object.fromEntries(
+    Object.entries(current.characters).map(([known, entry]) => [
+      known,
+      known === name ? fields : { ...entry },
+    ]),
+  );
+  return { ok: true, value: { ...current, characters } };
 }
 
 /** A hand-typed value: whitespace collapsed, and blank or a placeholder meaning unset. */
+/**
+ * @param {unknown} entry
+ * @param {number} cap
+ * @returns {{ok: true, text: string|undefined} | {ok: false, reason: 'too-long'}}
+ */
 function editedText(entry, cap) {
-    const text = oneLine(typeof entry === 'string' ? entry : '');
-    if (text === '' || isPlaceholder(text)) return { ok: true, text: undefined };
-    if (text.length > cap) return { ok: false, reason: 'too-long' };
-    return { ok: true, text };
+  const text = oneLine(typeof entry === "string" ? entry : "");
+  if (text === "" || isPlaceholder(text)) return { ok: true, text: undefined };
+  if (text.length > cap) return { ok: false, reason: "too-long" };
+  return { ok: true, text };
 }
 
 function validCharacters(characters) {
-    if (!isObject(characters)) return false;
-    const entries = Object.entries(characters);
-    return entries.length > 0 && entries.length <= MAX_CHARACTERS
-        && entries.every(([name, fields]) => validName(name) && isObject(fields)
-            && Object.entries(fields).every(([field, text]) => Object.hasOwn(CHARACTER_FIELDS, field)
-                && validText(text, CHARACTER_FIELDS[field])));
+  if (!isObject(characters)) return false;
+  const entries = Object.entries(characters);
+  return (
+    entries.length > 0 &&
+    entries.length <= MAX_CHARACTERS &&
+    entries.every(
+      ([name, fields]) =>
+        validName(name) &&
+        isObject(fields) &&
+        Object.entries(fields).every(
+          ([field, text]) =>
+            Object.hasOwn(CHARACTER_FIELDS, field) && validText(text, CHARACTER_FIELDS[field]),
+        ),
+    )
+  );
 }
 
 /**
@@ -386,23 +437,28 @@ function validCharacters(characters) {
  * order, and `__proto__` is not a key to hand to later code as a property name.
  */
 function validName(name) {
-    return typeof name === 'string' && name.trim() !== '' && name.length <= MAX_NAME_CHARS
-        && !/^\d+$/.test(name.trim()) && name !== '__proto__';
+  return (
+    typeof name === "string" &&
+    name.trim() !== "" &&
+    name.length <= MAX_NAME_CHARS &&
+    !/^\d+$/.test(name.trim()) &&
+    name !== "__proto__"
+  );
 }
 
 function validText(text, cap) {
-    return typeof text === 'string' && text.trim() !== '' && text.length <= cap;
+  return typeof text === "string" && text.trim() !== "" && text.length <= cap;
 }
 
 /** How character names are compared: trimmed, case-insensitive. */
 export function foldName(name) {
-    return fold(name);
+  return fold(name);
 }
 
 function fold(name) {
-    return name.trim().toLowerCase();
+  return name.trim().toLowerCase();
 }
 
 function oneLine(text) {
-    return text.replace(/\s+/g, ' ').trim();
+  return text.replace(/\s+/g, " ").trim();
 }

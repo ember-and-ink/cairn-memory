@@ -17,128 +17,138 @@
  *
  * Local only, like `task verify-st`: CI has no corpus.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import path from 'node:path';
-import { corpusDir } from './tier-client.mjs';
-import { canonPick, parseCanonReply } from '../src/memory/canon-strategy.js';
-import { applyPick } from '../src/pipeline/canon-pick.js';
-import { DEFAULT_SLOTS } from '../src/memory/canon.js';
-import { renderBlock, CANON_RENDERING } from '../src/prompt/assembler.js';
-import { estimateTokens } from '../src/util/tokens.js';
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import path from "node:path";
+import { corpusDir } from "./tier-client.mjs";
+import { canonPick, parseCanonReply } from "../src/memory/canon-strategy.js";
+import { applyPick } from "../src/pipeline/canon-pick.js";
+import { DEFAULT_SLOTS } from "../src/memory/canon.js";
+import { renderBlock, CANON_RENDERING } from "../src/prompt/assembler.js";
+import { estimateTokens } from "../src/util/tokens.js";
 
-
-
-const stemOf = (name) => name.replace(/\.json$/, '').replace(/^records-?/, '') || 'reference';
+const stemOf = (name) => name.replace(/\.json$/, "").replace(/^records-?/, "") || "reference";
 
 function load(dir, name) {
-    const file = path.join(dir, name);
-    if (!existsSync(file)) throw new Error(`no ${name} in ${dir}`);
-    return JSON.parse(readFileSync(file, 'utf8'));
+  const file = path.join(dir, name);
+  if (!existsSync(file)) throw new Error(`no ${name} in ${dir}`);
+  return JSON.parse(readFileSync(file, "utf8"));
 }
 
-function prompt(given, name = 'records.json', slots = DEFAULT_SLOTS) {
-    const dir = corpusDir(given);
-    const records = load(dir, name);
-    const request = canonPick.build({
-        records: records.map((entry) => entry.record),
-        slots: Number(slots),
-    });
-    const content = request.messages[0].content;
-    const file = path.join(dir, `pick-prompt-${stemOf(name)}.md`);
-    writeFileSync(file, content + '\n');
+function prompt(given, name = "records.json", slots = DEFAULT_SLOTS) {
+  const dir = corpusDir(given);
+  const records = load(dir, name);
+  const request = canonPick.build({
+    records: records.map((entry) => entry.record),
+    slots: Number(slots),
+  });
+  const content = request.messages[0].content;
+  const file = path.join(dir, `pick-prompt-${stemOf(name)}.md`);
+  writeFileSync(file, content + "\n");
 
-    console.log(`${records.length} records, ${slots} slots`);
-    console.log(`  prompt      ${estimateTokens(content)} tokens, ${content.length} chars`);
-    console.log(`  written to  ${file}`);
+  console.log(`${records.length} records, ${slots} slots`);
+  console.log(`  prompt      ${estimateTokens(content)} tokens, ${content.length} chars`);
+  console.log(`  written to  ${file}`);
 }
 
-function score(given, reply = 'pick-reply.json', name = 'records.json', slots = DEFAULT_SLOTS) {
-    const dir = corpusDir(given);
-    const records = load(dir, name);
-    const raw = readFileSync(path.join(dir, reply), 'utf8');
-    const summaries = load(dir, 'summaries.json');
+function score(given, reply = "pick-reply.json", name = "records.json", slots = DEFAULT_SLOTS) {
+  const dir = corpusDir(given);
+  const records = load(dir, name);
+  const raw = readFileSync(path.join(dir, reply), "utf8");
+  const summaries = load(dir, "summaries.json");
 
-    const parsed = parseCanonReply(raw, { slots: Number(slots), records: records.length });
-    if (!parsed.ok) throw new Error(`the shipped parser rejected the reply: ${parsed.reason}`);
+  const parsed = parseCanonReply(raw, { slots: Number(slots), records: records.length });
+  if (!parsed.ok) throw new Error(`the shipped parser rejected the reply: ${parsed.reason}`);
 
-    // The rows map to chat indexes exactly as the job maps them, so what is scored is
-    // what would have been stored.
-    const applied = applyPick({
-        picked: parsed.picked,
-        dropped: parsed.dropped,
-        records: records.map((entry) => ({ index: entry.n })),
-        covers: [records[0].n, records[records.length - 1].n],
-        slots: Number(slots),
-        prompt: 'h:offline',
-        at: new Date(0).toISOString(),
-    });
+  // The rows map to chat indexes exactly as the job maps them, so what is scored is
+  // what would have been stored.
+  const applied = applyPick({
+    picked: parsed.picked,
+    dropped: parsed.dropped,
+    records: records.map((entry) => ({ index: entry.n })),
+    covers: [records[0].n, records[records.length - 1].n],
+    slots: Number(slots),
+    prompt: "h:offline",
+    at: new Date(0).toISOString(),
+  });
 
-    const text = renderBlock(applied.batch.facts, CANON_RENDERING);
-    const kinds = {};
-    for (const fact of applied.batch.facts) {
-        for (const row of fact.from) {
-            const kind = records.find((entry) => entry.n === row)?.record.kind ?? '?';
-            kinds[kind] = (kinds[kind] ?? 0) + 1;
-        }
+  const text = renderBlock(applied.batch.facts, CANON_RENDERING);
+  const kinds = {};
+  for (const fact of applied.batch.facts) {
+    for (const row of fact.from) {
+      const kind = records.find((entry) => entry.n === row)?.record.kind ?? "?";
+      kinds[kind] = (kinds[kind] ?? 0) + 1;
     }
+  }
 
-    const lines = [
-        `# Stage 3 — the pick, scored mechanically`,
-        ``,
-        `\`scripts/pick-gate.mjs score\` over \`${name}\`. The verdict against the frozen`,
-        `\`yardstick.md\` is a judgment made by reading the canon below, not by this script.`,
-        ``,
-        `| | |`,
-        `|---|---|`,
-        `| records in the index | ${records.length} |`,
-        `| facts picked | ${applied.picked} |`,
-        `| slots unfilled | ${parsed.short} |`,
-        `| refused by the parser | ${applied.dropped} |`,
-        `| uncitable, so dropped | ${applied.uncited} |`,
-        `| repeated inside the pick | ${applied.duplicates} |`,
-        `| canon rendered | ${estimateTokens(text)} tokens, ${text.length} chars |`,
-        `| rows cited, by kind | ${Object.entries(kinds).map(([k, v]) => `${k} ${v}`).join(', ')} |`,
-        ``,
-        `## The canon, as the block would carry it`,
-        ``,
-        '```',
-        text.trimEnd(),
-        '```',
-        ``,
-        `## Each fact against the rows it cites`,
-        ``,
-        ...applied.batch.facts.flatMap((fact) => [
-            `**${fact.text}**`,
-            ``,
-            ...fact.from.map((row) => {
-                const record = records.find((entry) => entry.n === row)?.record;
-                const summary = summaries.find((entry) => entry.n === row);
-                return `- row ${row} (${record?.kind}) — ${record?.what}`
-                    + (record?.background ? ` · background: ${record.background}` : '')
-                    + (summary ? `\n  <br>*summary ${row}: ${summary.text.slice(0, 200)}…*` : '');
-            }),
-            ``,
-        ]),
-    ].join('\n');
+  const lines = [
+    `# Stage 3 — the pick, scored mechanically`,
+    ``,
+    `\`scripts/pick-gate.mjs score\` over \`${name}\`. The verdict against the frozen`,
+    `\`yardstick.md\` is a judgment made by reading the canon below, not by this script.`,
+    ``,
+    `| | |`,
+    `|---|---|`,
+    `| records in the index | ${records.length} |`,
+    `| facts picked | ${applied.picked} |`,
+    `| slots unfilled | ${parsed.short} |`,
+    `| refused by the parser | ${applied.dropped} |`,
+    `| uncitable, so dropped | ${applied.uncited} |`,
+    `| repeated inside the pick | ${applied.duplicates} |`,
+    `| canon rendered | ${estimateTokens(text)} tokens, ${text.length} chars |`,
+    `| rows cited, by kind | ${Object.entries(kinds)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(", ")} |`,
+    ``,
+    `## The canon, as the block would carry it`,
+    ``,
+    "```",
+    text.trimEnd(),
+    "```",
+    ``,
+    `## Each fact against the rows it cites`,
+    ``,
+    ...applied.batch.facts.flatMap((fact) => [
+      `**${fact.text}**`,
+      ``,
+      ...fact.from.map((row) => {
+        const record = records.find((entry) => entry.n === row)?.record;
+        const summary = summaries.find((entry) => entry.n === row);
+        return (
+          `- row ${row} (${record?.kind}) — ${record?.what}` +
+          (record?.background ? ` · background: ${record.background}` : "") +
+          (summary ? `\n  <br>*summary ${row}: ${summary.text.slice(0, 200)}…*` : "")
+        );
+      }),
+      ``,
+    ]),
+  ].join("\n");
 
-    const file = path.join(dir, `pick-score-${stemOf(name)}.md`);
-    writeFileSync(file, lines + '\n');
+  const file = path.join(dir, `pick-score-${stemOf(name)}.md`);
+  writeFileSync(file, lines + "\n");
 
-    console.log(`${applied.picked} facts picked, ${parsed.short} slots unfilled, `
-        + `${applied.dropped + applied.uncited} refused, ${estimateTokens(text)} tokens rendered`);
-    console.log(`  rows by kind  ${Object.entries(kinds).map(([k, v]) => `${k} ${v}`).join(', ')}`);
-    console.log(`  written to    ${file}`);
+  console.log(
+    `${applied.picked} facts picked, ${parsed.short} slots unfilled, ` +
+      `${applied.dropped + applied.uncited} refused, ${estimateTokens(text)} tokens rendered`,
+  );
+  console.log(
+    `  rows by kind  ${Object.entries(kinds)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(", ")}`,
+  );
+  console.log(`  written to    ${file}`);
 }
 
 const [command, ...rest] = process.argv.slice(2);
 try {
-    if (command === 'prompt') prompt(rest[0], rest[1], rest[2]);
-    else if (command === 'score') score(rest[0], rest[1], rest[2], rest[3]);
-    else {
-        console.error('usage: pick-gate.mjs prompt [dir] [records.json] [slots] | score [dir] [reply.json] [records.json] [slots]');
-        process.exit(2);
-    }
+  if (command === "prompt") prompt(rest[0], rest[1], rest[2]);
+  else if (command === "score") score(rest[0], rest[1], rest[2], rest[3]);
+  else {
+    console.error(
+      "usage: pick-gate.mjs prompt [dir] [records.json] [slots] | score [dir] [reply.json] [records.json] [slots]",
+    );
+    process.exit(2);
+  }
 } catch (err) {
-    console.error(`pick-gate: ${err.message}`);
-    process.exit(1);
+  console.error(`pick-gate: ${err.message}`);
+  process.exit(1);
 }

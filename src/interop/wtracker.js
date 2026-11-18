@@ -12,16 +12,16 @@
  * WTrackerLite's manifest.json, and WTracker's at github.com/bmen25124/SillyTavern-WTracker.
  */
 export const WTRACKERS = Object.freeze([
-    Object.freeze({
-        name: 'WTrackerLite',
-        extension: 'third-party/SillyTavern-WTrackerLite',
-        interceptor: 'wtrackerliteGenerateInterceptor',
-    }),
-    Object.freeze({
-        name: 'WTracker',
-        extension: 'third-party/SillyTavern-WTracker',
-        interceptor: 'wtrackerGenerateInterceptor',
-    }),
+  Object.freeze({
+    name: "WTrackerLite",
+    extension: "third-party/SillyTavern-WTrackerLite",
+    interceptor: "wtrackerliteGenerateInterceptor",
+  }),
+  Object.freeze({
+    name: "WTracker",
+    extension: "third-party/SillyTavern-WTracker",
+    interceptor: "wtrackerGenerateInterceptor",
+  }),
 ]);
 
 /**
@@ -31,14 +31,17 @@ export const WTRACKERS = Object.freeze([
  * or its manifest is installed and not disabled (:524, :626). Its settings are
  * never read: they outlive it (docs/decisions.md D-0040).
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  * @param {{scope?: object}} [options] Where interceptors are defined; `globalThis` in ST.
  * @returns {string|null} Its display name.
  */
 export function wtrackerLoaded(context, { scope = globalThis } = {}) {
-    const { extensionSettings, getExtensionManifest } = context ?? {};
-    const disabled = extensionSettings?.disabledExtensions ?? [];
-    const loaded = WTRACKERS.find((tracker) => typeof scope?.[tracker.interceptor] === 'function'
-        || (Boolean(getExtensionManifest?.(tracker.extension)) && !disabled.includes(tracker.extension)));
-    return loaded?.name ?? null;
+  const { extensionSettings, getExtensionManifest } = context ?? {};
+  const disabled = extensionSettings?.disabledExtensions ?? [];
+  const loaded = WTRACKERS.find(
+    (tracker) =>
+      typeof scope?.[tracker.interceptor] === "function" ||
+      (Boolean(getExtensionManifest?.(tracker.extension)) && !disabled.includes(tracker.extension)),
+  );
+  return loaded?.name ?? null;
 }

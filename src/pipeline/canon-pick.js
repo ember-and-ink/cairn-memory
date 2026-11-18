@@ -17,7 +17,7 @@
  *
  * Pure: plain data in, plain data out. No ST, no DOM, no network.
  */
-import { newFacts } from '../memory/canon.js';
+import { newFacts } from "../memory/canon.js";
 
 /**
  * Fewer records than this and there is no story to rank. Three is the same floor the
@@ -44,25 +44,33 @@ export const MIN_INDEX_RECORDS = 3;
  * the batch records how many slots were asked for, so a story with four durable facts
  * and ten slots is not re-derived every turn forever.
  *
- * @param {{records: Array<{index: number}>, canon?: {coveredThrough: number|null,
- *          slots: number|null, dropped: number}, slots: number, growth?: number}} input
+ * @param {{records?: IndexedRecord[], canon?: {coveredThrough: number|null,
+ *          slots: number|null, dropped: number}|null, slots?: number, growth?: number}} [input]
  *        `records` is every valid index record in the chat, oldest first;
  *        `canon` is the fold in force (`canonFor`); `growth` the see-saw step, where
  *        0 or less asks again on any new record.
- * @returns {{due: boolean, reason: string, records: Array<object>, covers: number[]|null,
+ * @returns {CanonPickWork | {due: false, reason: string, records: IndexedRecord[], covers: null,
  *            slots: number}} `reason` is a stable string the log and the inspector record.
  */
 export function pendingPick({ records = [], canon = null, slots = 0, growth = 0 } = {}) {
-    const refuse = (reason) => ({ due: false, reason, records: [], covers: null, slots });
+  /** @param {string} reason */
+  const refuse = (reason) => ({
+    due: /** @type {const} */ (false),
+    reason,
+    records: /** @type {IndexedRecord[]} */ ([]),
+    covers: null,
+    slots,
+  });
 
-    if (!(slots >= 1)) return refuse('no-slots');
-    if (records.length < MIN_INDEX_RECORDS) return refuse('too-few');
+  if (!(slots >= 1)) return refuse("no-slots");
+  if (records.length < MIN_INDEX_RECORDS) return refuse("too-few");
 
-    const covers = [records[0].index, records[records.length - 1].index];
-    const reason = pickReason(canon, covers[1], slots, growth);
-    if (reason === 'growing' || !reason) return refuse(reason ?? 'covered');
+  /** @type {[number, number]} */
+  const covers = [records[0].index, records[records.length - 1].index];
+  const reason = pickReason(canon, covers[1], slots, growth);
+  if (reason === "growing" || !reason) return refuse(reason ?? "covered");
 
-    return { due: true, reason, records, covers, slots };
+  return { due: /** @type {const} */ (true), reason, records, covers, slots };
 }
 
 /**
@@ -72,13 +80,13 @@ export function pendingPick({ records = [], canon = null, slots = 0, growth = 0 
  * reply into the next (D-0105).
  */
 function pickReason(canon, newest, slots, growth) {
-    if (!canon || canon.coveredThrough === null) return 'no-canon';
-    if (canon.dropped > 0) return 'lost-facts';
-    if (canon.slots !== null && canon.slots !== slots) return 'slots-changed';
-    if (newest > canon.coveredThrough) {
-        return newest - canon.coveredThrough >= growth ? 'new-records' : 'growing';
-    }
-    return null;
+  if (!canon || canon.coveredThrough === null) return "no-canon";
+  if (canon.dropped > 0) return "lost-facts";
+  if (canon.slots !== null && canon.slots !== slots) return "slots-changed";
+  if (newest > canon.coveredThrough) {
+    return newest - canon.coveredThrough >= growth ? "new-records" : "growing";
+  }
+  return null;
 }
 
 /**
@@ -92,11 +100,11 @@ function pickReason(canon, newest, slots, growth) {
  * @returns {Array<{text: string, rows: number[]}>}
  */
 export function carriedCanon(facts = [], records = []) {
-    const rowOf = new Map(records.map((entry, at) => [entry.index, at + 1]));
-    return facts.map((fact) => ({
-        text: fact.text,
-        rows: (fact.from ?? []).map((index) => rowOf.get(index)).filter(Boolean),
-    }));
+  const rowOf = new Map(records.map((entry, at) => [entry.index, at + 1]));
+  return facts.map((fact) => ({
+    text: fact.text,
+    rows: (fact.from ?? []).map((index) => rowOf.get(index)).filter((row) => row !== undefined),
+  }));
 }
 
 /**
@@ -111,33 +119,33 @@ export function carriedCanon(facts = [], records = []) {
  * outside that list loses its grounding, so it is dropped rather than stored uncited:
  * an uncitable fact is a permanent one, which is what a pick exists not to be.
  *
- * @param {{picked: Array<object>, dropped?: Array<object>, records: Array<{index: number}>,
- *          covers: number[], slots: number, prompt: string, at: string}} input
- * @returns {{batch: {facts: Array<object>, covers: number[], slots: number,
+ * @param {{picked: CanonFact[], dropped?: Array<object>, records: Array<{index: number}>,
+ *          covers: [number, number], slots: number, prompt: string, at: string}} input
+ * @returns {{batch: {facts: CanonFact[], covers: [number, number], slots: number,
  *            prompt: string, at: string}, picked: number, duplicates: number,
  *            dropped: number, uncited: number}}
  */
 export function applyPick({ picked, dropped = [], records = [], covers, slots, prompt, at }) {
-    const { facts, duplicates } = newFacts(picked);
-    const kept = [];
-    let uncited = 0;
+  const { facts, duplicates } = newFacts(picked);
+  const kept = [];
+  let uncited = 0;
 
-    for (const fact of facts) {
-        const from = fact.from
-            .map((row) => records[row - 1]?.index)
-            .filter((index) => Number.isInteger(index));
-        if (!from.length) {
-            uncited++;
-            continue;
-        }
-        kept.push({ ...fact, from });
+  for (const fact of facts) {
+    const from = fact.from
+      .map((row) => records[row - 1]?.index)
+      .filter((index) => Number.isInteger(index));
+    if (!from.length) {
+      uncited++;
+      continue;
     }
+    kept.push({ ...fact, from });
+  }
 
-    return {
-        batch: { facts: kept, covers: [...covers], slots, prompt, at },
-        picked: kept.length,
-        duplicates,
-        dropped: dropped.length,
-        uncited,
-    };
+  return {
+    batch: { facts: kept, covers: [...covers], slots, prompt, at },
+    picked: kept.length,
+    duplicates,
+    dropped: dropped.length,
+    uncited,
+  };
 }

@@ -20,10 +20,10 @@
 
 /** Why Cairn is or is not writing. Stable strings — the disk log records them. */
 export const HANDOVER = Object.freeze({
-    OFF: 'off',
-    QVINK_INJECTING: 'qvink-injecting',
-    QVINK_EXCLUDING: 'qvink-excluding',
-    WRITING: 'writing',
+  OFF: "off",
+  QVINK_INJECTING: "qvink-injecting",
+  QVINK_EXCLUDING: "qvink-excluding",
+  WRITING: "writing",
 });
 
 /**
@@ -34,24 +34,34 @@ export const HANDOVER = Object.freeze({
  * @returns {{writing: boolean, reason: string, detail: string}}
  */
 export function assessHandover({ own = false, injecting = [], excluding = false } = {}) {
-    if (!own) {
-        return verdict(false, HANDOVER.OFF, 'Cairn is planning the memory block but not writing it.');
-    }
+  if (!own) {
+    return verdict(false, HANDOVER.OFF, "Cairn is planning the memory block but not writing it.");
+  }
 
-    // The order the user flips the switches in (D-0020): the injection first.
-    if (injecting.length) {
-        return verdict(false, HANDOVER.QVINK_INJECTING,
-            `qvink is still injecting (${injecting.join(', ')}). Set its memory position to "Macro Only" to hand over.`);
-    }
+  // The order the user flips the switches in (D-0020): the injection first.
+  if (injecting.length) {
+    return verdict(
+      false,
+      HANDOVER.QVINK_INJECTING,
+      `qvink is still injecting (${injecting.join(", ")}). Set its memory position to "Macro Only" to hand over.`,
+    );
+  }
 
-    if (excluding) {
-        return verdict(false, HANDOVER.QVINK_EXCLUDING,
-            'qvink is still removing summarised messages. Turn off "Exclude messages after threshold" to hand over.');
-    }
+  if (excluding) {
+    return verdict(
+      false,
+      HANDOVER.QVINK_EXCLUDING,
+      'qvink is still removing summarised messages. Turn off "Exclude messages after threshold" to hand over.',
+    );
+  }
 
-    return verdict(true, HANDOVER.WRITING, 'Cairn writes the memory block and holds back the messages it covers.');
+  return verdict(
+    true,
+    HANDOVER.WRITING,
+    "Cairn writes the memory block and holds back the messages it covers.",
+  );
 }
 
 function verdict(writing, reason, detail) {
-    return { writing, reason, detail };
+  return { writing, reason, detail };
 }

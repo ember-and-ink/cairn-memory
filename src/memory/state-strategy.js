@@ -8,17 +8,17 @@
  *
  * Pure: no ST, no network. ST's macro expansion comes in as `expand`.
  */
-import { readJsonReply, reject } from './model-reply.js';
+import { readJsonReply, reject } from "./model-reply.js";
 import {
-    CHARACTER_FIELDS,
-    MAX_CHARACTERS,
-    MAX_NAME_CHARS,
-    TEXT_FIELDS,
-    validState,
-} from './state-schema.js';
-import { hashString } from '../util/hash.js';
-import { renderTemplate, resolvePrompt } from '../util/template.js';
-import { isObject } from '../util/values.js';
+  CHARACTER_FIELDS,
+  MAX_CHARACTERS,
+  MAX_NAME_CHARS,
+  TEXT_FIELDS,
+  validState,
+} from "./state-schema.js";
+import { hashString } from "../util/hash.js";
+import { renderTemplate, resolvePrompt } from "../util/template.js";
+import { isObject } from "../util/values.js";
 
 /** As for summaries: room for a reasoning model's thinking before a short record. */
 export const STATE_MAX_TOKENS = 2048;
@@ -77,50 +77,58 @@ Now reply with the complete record as JSON, and nothing else.`;
 
 /** The template to send for a `statePrompt` setting (`resolvePrompt`). */
 export function resolveStatePrompt(setting) {
-    return resolvePrompt(setting, STATE_PROMPT, ['state', 'messages']);
+  return resolvePrompt(setting, STATE_PROMPT, ["state", "messages"]);
 }
 
 export const stateRecord = {
-    id: 'state-record-v1',
+  id: "state-record-v1",
 
-    /**
-     * @param {object} request
-     * @param {object} [request.state] The current state's value; `{}` on a cold start.
-     * @param {Array<object>} request.messages The visible messages to read, oldest first,
-     *        at most STATE_MAX_MESSAGES.
-     * @param {Array<string|{text: string}>} [request.earlier] Scenes before those messages,
-     *        oldest first, at most STATE_MAX_EARLIER.
-     * @param {string} [request.template] The `statePrompt` setting, raw.
-     * @param {(text: string) => string} [request.expand] ST's `substituteParams`
-     *        (public/scripts/st-context.js:163), applied to the template only.
-     * @returns {{messages: Array<{role: string, content: string}>, maxTokens: number, prompt: string,
-     *            fallback: boolean}} `prompt` is stored as `state.prompt`.
-     */
-    build({ state = {}, messages, earlier = [], template, expand }) {
-        if (!validState(state)) throw new TypeError('A state request needs a valid current state');
-        if (!Array.isArray(messages) || messages.length < 1 || messages.length > STATE_MAX_MESSAGES) {
-            throw new RangeError(`A state request reads 1 to ${STATE_MAX_MESSAGES} messages`);
-        }
-        if (!Array.isArray(earlier) || earlier.length > STATE_MAX_EARLIER) {
-            throw new RangeError(`A state request takes at most ${STATE_MAX_EARLIER} earlier scenes`);
-        }
+  /**
+   * @param {object} request
+   * @param {object} [request.state] The current state's value; `{}` on a cold start.
+   * @param {StMessage[]} request.messages The visible messages to read, oldest first,
+   *        at most STATE_MAX_MESSAGES.
+   * @param {Array<string|{text: string}>} [request.earlier] Scenes before those messages,
+   *        oldest first, at most STATE_MAX_EARLIER.
+   * @param {string} [request.template] The `statePrompt` setting, raw.
+   * @param {(text: string) => string} [request.expand] ST's `substituteParams`
+   *        (public/scripts/st-context.js:163), applied to the template only.
+   * @returns {{messages: Array<{role: string, content: string}>, maxTokens: number, prompt: string,
+   *            fallback: boolean}} `prompt` is stored as `state.prompt`.
+   */
+  build({ state = {}, messages, earlier = [], template, expand }) {
+    if (!validState(state)) throw new TypeError("A state request needs a valid current state");
+    if (!Array.isArray(messages) || messages.length < 1 || messages.length > STATE_MAX_MESSAGES) {
+      throw new RangeError(`A state request reads 1 to ${STATE_MAX_MESSAGES} messages`);
+    }
+    if (!Array.isArray(earlier) || earlier.length > STATE_MAX_EARLIER) {
+      throw new RangeError(`A state request takes at most ${STATE_MAX_EARLIER} earlier scenes`);
+    }
 
-        const resolved = resolveStatePrompt(template);
-        const content = renderTemplate(resolved.template, {
-            state: JSON.stringify(state),
-            earlier: earlier.map((scene) => (typeof scene === 'string' ? scene : scene?.text ?? '')).join('\n'),
-            messages: messages.map((message) => `${message?.name ?? ''}: ${message?.mes ?? ''}`).join('\n\n'),
-        }, { expand });
+    const resolved = resolveStatePrompt(template);
+    const content = renderTemplate(
+      resolved.template,
+      {
+        state: JSON.stringify(state),
+        earlier: earlier
+          .map((scene) => (typeof scene === "string" ? scene : (scene?.text ?? "")))
+          .join("\n"),
+        messages: messages
+          .map((message) => `${message?.name ?? ""}: ${message?.mes ?? ""}`)
+          .join("\n\n"),
+      },
+      { expand },
+    );
 
-        return {
-            messages: [{ role: 'user', content }],
-            maxTokens: STATE_MAX_TOKENS,
-            prompt: hashString(resolved.template),
-            fallback: resolved.fallback,
-        };
-    },
+    return {
+      messages: [{ role: "user", content }],
+      maxTokens: STATE_MAX_TOKENS,
+      prompt: hashString(resolved.template),
+      fallback: resolved.fallback,
+    };
+  },
 
-    parse: parseStateReply,
+  parse: parseStateReply,
 };
 
 /**
@@ -130,11 +138,11 @@ export const stateRecord = {
  * reply ends is a cut-off reply: ST returns no finish reason
  * (public/scripts/custom-request.js:60).
  *
- * @param {string} content
- * @returns {{ok: true, record: object} | {ok: false, reason: 'empty'|'refusal'|'format'|'truncated'}}
+ * @param {unknown} content The reply's `content`, as the model sent it.
+ * @returns {{ok: true, record: Record<string, any>} | {ok: false, reason: 'empty'|'refusal'|'format'|'truncated'}}
  */
 export function parseStateReply(content) {
-    const found = readJsonReply(content);
-    if (!found.ok) return found;
-    return isObject(found.value) ? { ok: true, record: found.value } : reject('format');
+  const found = readJsonReply(content);
+  if (!found.ok) return found;
+  return isObject(found.value) ? { ok: true, record: found.value } : reject("format");
 }

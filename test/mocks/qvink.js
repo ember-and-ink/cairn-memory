@@ -31,35 +31,35 @@
  */
 
 /** qvink's index.js:45 */
-export const QVINK_KEY = 'qvink_memory';
+export const QVINK_KEY = "qvink_memory";
 
 /**
  * One message's worth. Every key the real data has, so a reader that depends on
  * one we did not model fails here rather than in play.
  */
 export function makeQvinkData({
-    index = 0,
-    chars = 353,
-    include = 'short',
-    lagging = false,
-    remember = false,
-    exclude = false,
-    edited = false,
-    memory = null,
+  index = 0,
+  chars = 353,
+  include = "short",
+  lagging = false,
+  remember = false,
+  exclude = false,
+  edited = false,
+  memory = null,
 } = {}) {
-    return {
-        memory: memory ?? makeSummary(index, chars),
-        prefill: 'Summary: ',
-        hash: 1_000_000_000_000 + index,
-        edited,
-        error: null,
-        reasoning: '',
-        exclude,
-        remember,
-        remember_auto: true,
-        include,
-        lagging,
-    };
+  return {
+    memory: memory ?? makeSummary(index, chars),
+    prefill: "Summary: ",
+    hash: 1_000_000_000_000 + index,
+    edited,
+    error: null,
+    reasoning: "",
+    exclude,
+    remember,
+    remember_auto: true,
+    include,
+    lagging,
+  };
 }
 
 /**
@@ -68,11 +68,11 @@ export function makeQvinkData({
  * cheaper than its summary.
  */
 export function makeProse(index, chars) {
-    const head = `Aster speaks at turn ${index}. `;
-    const filler = `The room settles, a small thing is noticed, and turn ${index} carries on. `;
-    let text = head;
-    while (text.length < chars) text += filler;
-    return text.slice(0, Math.max(head.length, chars));
+  const head = `Aster speaks at turn ${index}. `;
+  const filler = `The room settles, a small thing is noticed, and turn ${index} carries on. `;
+  let text = head;
+  while (text.length < chars) text += filler;
+  return text.slice(0, Math.max(head.length, chars));
 }
 
 /**
@@ -80,11 +80,11 @@ export function makeProse(index, chars) {
  * identical summaries would make a prefix comparison agree by accident.
  */
 export function makeSummary(index, chars = 353) {
-    const head = `Scene ${index}: `;
-    const filler = `the pair talk, something shifts, and detail ${index} lands. `;
-    let text = head;
-    while (text.length < chars) text += filler;
-    return text.slice(0, Math.max(head.length, chars));
+  const head = `Scene ${index}: `;
+  const filler = `the pair talk, something shifts, and detail ${index} lands. `;
+  let text = head;
+  while (text.length < chars) text += filler;
+  return text.slice(0, Math.max(head.length, chars));
 }
 
 /**
@@ -98,48 +98,48 @@ export function makeSummary(index, chars = 353) {
  *          exclude?: number[], remember?: number[]}} [options]
  */
 export function makeQvinkChat({
-    length = 40,
-    summarisedThrough = length - 11,
-    chars = 353,
-    mesChars = 1_650,
-    userMesChars = 1_100,
-    exclude = [],
-    remember = [],
+  length = 40,
+  summarisedThrough = length - 11,
+  chars = 353,
+  mesChars = 1_650,
+  userMesChars = 1_100,
+  exclude = [],
+  remember = [],
 } = {}) {
-    const chat = [];
+  const chat = [];
 
-    for (let index = 0; index < length; index++) {
-        const isUser = index % 2 === 0;
-        const mes = makeProse(index, isUser ? userMesChars : mesChars);
-        chat.push({
-            name: isUser ? 'Wren' : 'Aster',
-            is_user: isUser,
-            ...(isUser ? { is_system: false } : swipeFields(mes)),
-            send_date: '2026-01-01T00:00:00.000Z',
-            mes,
-            extra: {
-                [QVINK_KEY]: makeQvinkData({
-                    index,
-                    chars,
-                    lagging: index > summarisedThrough,
-                    exclude: exclude.includes(index),
-                    remember: remember.includes(index),
-                }),
-            },
-        });
-    }
+  for (let index = 0; index < length; index++) {
+    const isUser = index % 2 === 0;
+    const mes = makeProse(index, isUser ? userMesChars : mesChars);
+    chat.push({
+      name: isUser ? "Wren" : "Aster",
+      is_user: isUser,
+      ...(isUser ? { is_system: false } : swipeFields(mes)),
+      send_date: "2026-01-01T00:00:00.000Z",
+      mes,
+      extra: {
+        [QVINK_KEY]: makeQvinkData({
+          index,
+          chars,
+          lagging: index > summarisedThrough,
+          exclude: exclude.includes(index),
+          remember: remember.includes(index),
+        }),
+      },
+    });
+  }
 
-    return chat;
+  return chat;
 }
 
 /** What a character reply carries beside `extra`, as the corpus stores it. */
 function swipeFields(mes) {
-    const at = '2026-01-01T00:00:00.000Z';
-    return {
-        swipe_id: 0,
-        swipes: [mes],
-        swipe_info: [{ send_date: at, gen_started: at, gen_finished: at, extra: {} }],
-    };
+  const at = "2026-01-01T00:00:00.000Z";
+  return {
+    swipe_id: 0,
+    swipes: [mes],
+    swipe_info: [{ send_date: at, gen_started: at, gen_finished: at, extra: {} }],
+  };
 }
 
 /**
@@ -147,13 +147,13 @@ function swipeFields(mes) {
  * (its index.js:655). Defaults are its own (its index.js:93, :113, :133).
  */
 export function makeQvinkSettings(overrides = {}) {
-    return {
-        short_template: '[Following is a list of recent events]:\n{{memories}}\n',
-        summary_injection_separator: '\n* ',
-        show_prefill: false,
-        // The shape of a live install set to a fixed budget (its index.js:151-152).
-        short_term_context_limit: 7500,
-        short_term_context_type: 'tokens',
-        ...overrides,
-    };
+  return {
+    short_template: "[Following is a list of recent events]:\n{{memories}}\n",
+    summary_injection_separator: "\n* ",
+    show_prefill: false,
+    // The shape of a live install set to a fixed budget (its index.js:151-152).
+    short_term_context_limit: 7500,
+    short_term_context_type: "tokens",
+    ...overrides,
+  };
 }

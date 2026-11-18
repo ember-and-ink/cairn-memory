@@ -6,12 +6,18 @@
  * Pure: text in, text out.
  */
 
-/** A parser's refusal of a reply: why it could not be read. */
+/**
+ * A parser's refusal of a reply: why it could not be read.
+ * @template {string} R
+ * @param {R} reason
+ * @returns {{ok: false, reason: R}}
+ */
 export function reject(reason) {
-    return { ok: false, reason };
+  return { ok: false, reason };
 }
 
-const REFUSAL = /^(?:I'?m sorry|I am sorry|sorry\b|I apologi[sz]e|I can(?:not|'t)\b|I won't\b|I will not\b|I'?m (?:not able|unable)|I am (?:not able|unable)|as an AI\b|I must decline|I'?m afraid)/i;
+const REFUSAL =
+  /^(?:I'?m sorry|I am sorry|sorry\b|I apologi[sz]e|I can(?:not|'t)\b|I won't\b|I will not\b|I'?m (?:not able|unable)|I am (?:not able|unable)|as an AI\b|I must decline|I'?m afraid)/i;
 
 /**
  * Remove `<think>` blocks from a reply.
@@ -20,29 +26,29 @@ const REFUSAL = /^(?:I'?m sorry|I am sorry|sorry\b|I apologi[sz]e|I can(?:not|'t
  * @returns {{truncated: boolean, text: string}} `truncated` when the tokens ran out mid-thought.
  */
 export function stripThinking(content) {
-    let text = typeof content === 'string' ? content : '';
+  let text = typeof content === "string" ? content : "";
 
-    if (/^\s*<think>/i.test(text) && !/<\/think>/i.test(text)) return { truncated: true, text: '' };
-    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
-    // The chat template opened the block in the prompt, so only its close arrived.
-    const close = text.search(/<\/think>/i);
-    if (close >= 0) text = text.slice(close + '</think>'.length);
-    return { truncated: false, text };
+  if (/^\s*<think>/i.test(text) && !/<\/think>/i.test(text)) return { truncated: true, text: "" };
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  // The chat template opened the block in the prompt, so only its close arrived.
+  const close = text.search(/<\/think>/i);
+  if (close >= 0) text = text.slice(close + "</think>".length);
+  return { truncated: false, text };
 }
 
 /** The first closed code fence's body, or the text as it is. */
 export function unfence(text) {
-    const fence = text.match(/```[^\n]*\n([\s\S]*?)\n?```/);
-    return fence ? fence[1] : text;
+  const fence = text.match(/```[^\n]*\n([\s\S]*?)\n?```/);
+  return fence ? fence[1] : text;
 }
 
 /** Whether text opens like a refusal, however its apostrophes are typed. */
 export function looksLikeRefusal(text) {
-    return REFUSAL.test(straightQuotes(text.trim()));
+  return REFUSAL.test(straightQuotes(text.trim()));
 }
 
 export function straightQuotes(text) {
-    return text.replace(/[‘’]/g, '\'');
+  return text.replace(/[‘’]/g, "'");
 }
 
 /**
@@ -60,33 +66,37 @@ export function straightQuotes(text) {
  * @returns {{parsed: true, value: unknown} | {parsed: false, unclosed: boolean}}
  */
 export function firstJson(text) {
-    for (let start = text.search(/[{[]/); start >= 0;) {
-        const end = closingIndex(text, start);
-        const span = end < 0 ? text.slice(start) : text.slice(start, end + 1);
-        const value = parseOrRepair(span);
-        if (value.parsed) return value;
-        if (end === UNCLOSED) return { parsed: false, unclosed: true };
-        if (end === MISMATCHED) return { parsed: false, unclosed: false };
-        const next = text.slice(end + 1).search(/[{[]/);
-        start = next < 0 ? -1 : end + 1 + next;
-    }
-    return { parsed: false, unclosed: false };
+  for (let start = text.search(/[{[]/); start >= 0;) {
+    const end = closingIndex(text, start);
+    const span = end < 0 ? text.slice(start) : text.slice(start, end + 1);
+    const value = parseOrRepair(span);
+    if (value.parsed) return value;
+    if (end === UNCLOSED) return { parsed: false, unclosed: true };
+    if (end === MISMATCHED) return { parsed: false, unclosed: false };
+    const next = text.slice(end + 1).search(/[{[]/);
+    start = next < 0 ? -1 : end + 1 + next;
+  }
+  return { parsed: false, unclosed: false };
 }
 
+/**
+ * @param {string} span
+ * @returns {{parsed: true, value: unknown} | {parsed: false}}
+ */
 function parseOrRepair(span) {
-    for (const candidate of [span, repairJson(span)]) {
-        if (candidate === null) continue;
-        try {
-            return { parsed: true, value: JSON.parse(candidate) };
-        } catch {
-            // Try the next candidate.
-        }
+  for (const candidate of [span, repairJson(span)]) {
+    if (candidate === null) continue;
+    try {
+      return { parsed: /** @type {const} */ (true), value: JSON.parse(candidate) };
+    } catch {
+      // Try the next candidate.
     }
-    return { parsed: false };
+  }
+  return { parsed: /** @type {const} */ (false) };
 }
 
 /** Full-width punctuation a model writes in place of JSON's own, outside a string. */
-const FULLWIDTH = Object.freeze({ '，': ',', '：': ':' });
+const FULLWIDTH = Object.freeze({ "，": ",", "：": ":" });
 
 /**
  * A finished reply's JSON with the slips a lighter model makes put right (docs/decisions.md
@@ -98,47 +108,47 @@ const FULLWIDTH = Object.freeze({ '，': ',', '：': ':' });
  * @returns {string|null} The repaired JSON, or null when there was nothing this can mend.
  */
 export function repairJson(text) {
-    const out = [];
-    const open = [];
-    let inString = false;
-    let mended = false;
-    let added = 0;
-    let last = '';
-    for (let i = 0; i < text.length; i++) {
-        let ch = text[i];
-        if (inString) {
-            if (ch === '\\') out.push(ch, text[++i] ?? '');
-            else out.push(ch);
-            if (ch === '"') inString = false;
-            continue;
-        }
-        if (FULLWIDTH[ch]) {
-            ch = FULLWIDTH[ch];
-            mended = true;
-        }
-        if (ch === '"') {
-            inString = true;
-        } else if (ch === '{' || ch === '[') {
-            open.push(ch === '{' ? '}' : ']');
-        } else if (ch === '}' || ch === ']') {
-            if (!open.includes(ch)) return null;
-            // A closer for a bracket further out: the model skipped the inner one's.
-            while (open.at(-1) !== ch) {
-                out.push(open.pop());
-                added++;
-            }
-            open.pop();
-        }
-        out.push(ch);
-        if (!/\s/.test(ch)) last = ch;
-        if (!open.length) break;
+  const out = [];
+  const open = [];
+  let inString = false;
+  let mended = false;
+  let added = 0;
+  let last = "";
+  for (let i = 0; i < text.length; i++) {
+    let ch = text[i];
+    if (inString) {
+      if (ch === "\\") out.push(ch, text[++i] ?? "");
+      else out.push(ch);
+      if (ch === '"') inString = false;
+      continue;
     }
-    if (open.length) {
-        if (inString || (last !== '}' && last !== ']')) return null;
-        added += open.length;
-        out.push(...open.reverse());
+    if (FULLWIDTH[ch]) {
+      ch = FULLWIDTH[ch];
+      mended = true;
     }
-    return (mended || added) && added <= 1 ? out.join('') : null;
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{" || ch === "[") {
+      open.push(ch === "{" ? "}" : "]");
+    } else if (ch === "}" || ch === "]") {
+      if (!open.includes(ch)) return null;
+      // A closer for a bracket further out: the model skipped the inner one's.
+      while (open.at(-1) !== ch) {
+        out.push(open.pop());
+        added++;
+      }
+      open.pop();
+    }
+    out.push(ch);
+    if (!/\s/.test(ch)) last = ch;
+    if (!open.length) break;
+  }
+  if (open.length) {
+    if (inString || (last !== "}" && last !== "]")) return null;
+    added += open.length;
+    out.push(...open.reverse());
+  }
+  return (mended || added) && added <= 1 ? out.join("") : null;
 }
 
 /**
@@ -149,15 +159,15 @@ export function repairJson(text) {
  * @returns {{ok: true, value: unknown} | {ok: false, reason: 'empty'|'refusal'|'format'|'truncated'}}
  */
 export function readJsonReply(content) {
-    const thought = stripThinking(content);
-    if (thought.truncated) return reject('truncated');
-    const text = unfence(thought.text).trim();
-    if (!text) return reject('empty');
+  const thought = stripThinking(content);
+  if (thought.truncated) return reject("truncated");
+  const text = unfence(thought.text).trim();
+  if (!text) return reject("empty");
 
-    const found = firstJson(text);
-    if (found.parsed) return { ok: true, value: found.value };
-    if (looksLikeRefusal(text)) return reject('refusal');
-    return reject(found.unclosed ? 'truncated' : 'format');
+  const found = firstJson(text);
+  if (found.parsed) return { ok: true, value: found.value };
+  if (looksLikeRefusal(text)) return reject("refusal");
+  return reject(found.unclosed ? "truncated" : "format");
 }
 
 const UNCLOSED = -1;
@@ -170,23 +180,23 @@ const MISMATCHED = -2;
  * it never does, MISMATCHED at a `}` that meets an open `[` or the other way round.
  */
 function closingIndex(text, start) {
-    const open = [];
-    let inString = false;
-    for (let i = start; i < text.length; i++) {
-        const ch = text[i];
-        if (inString) {
-            if (ch === '\\') i++;
-            else if (ch === '"') inString = false;
-        } else if (ch === '"') {
-            inString = true;
-        } else if (ch === '{' || ch === '[') {
-            open.push(ch === '{' ? '}' : ']');
-        } else if (ch === '}' || ch === ']') {
-            if (open.pop() !== ch) return MISMATCHED;
-            if (!open.length) return i;
-        }
+  const open = [];
+  let inString = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === "\\") i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === "{" || ch === "[") {
+      open.push(ch === "{" ? "}" : "]");
+    } else if (ch === "}" || ch === "]") {
+      if (open.pop() !== ch) return MISMATCHED;
+      if (!open.length) return i;
     }
-    return UNCLOSED;
+  }
+  return UNCLOSED;
 }
 // jscpd:ignore-end
 
@@ -201,33 +211,36 @@ function closingIndex(text, start) {
  *          `error` is null when a JSON span parsed and only its shape was wrong.
  */
 export function describeReply(content, span = 80) {
-    const raw = typeof content === 'string' ? content : '';
-    const thought = stripThinking(raw);
-    const text = thought.truncated ? raw : unfence(thought.text);
-    const tail = text.slice(-span);
-    const start = text.search(/[{[]/);
-    if (start < 0) return { error: 'no JSON', at: null, near: text.slice(0, 2 * span), tail };
-    if (firstJson(text).parsed) return { error: null, at: null, near: text.slice(start, start + 2 * span), tail };
+  const raw = typeof content === "string" ? content : "";
+  const thought = stripThinking(raw);
+  const text = thought.truncated ? raw : unfence(thought.text);
+  const tail = text.slice(-span);
+  const start = text.search(/[{[]/);
+  if (start < 0) return { error: "no JSON", at: null, near: text.slice(0, 2 * span), tail };
+  if (firstJson(text).parsed)
+    return { error: null, at: null, near: text.slice(start, start + 2 * span), tail };
 
-    const body = text.slice(start);
-    let error = null;
-    try {
-        JSON.parse(body);
-    } catch (err) {
-        error = String(err?.message ?? err).slice(0, 200);
-    }
-    const offset = errorOffset(error, body);
-    const at = offset === null ? null : start + offset;
-    const near = at === null ? body.slice(0, 2 * span) : text.slice(Math.max(0, at - span), at + span);
-    return { error, at, near, tail };
+  const body = text.slice(start);
+  /** @type {string|null} */
+  let error = null;
+  try {
+    JSON.parse(body);
+  } catch (err) {
+    error = String(err?.message ?? err).slice(0, 200);
+  }
+  const offset = errorOffset(error, body);
+  const at = offset === null ? null : start + offset;
+  const near =
+    at === null ? body.slice(0, 2 * span) : text.slice(Math.max(0, at - span), at + span);
+  return { error, at, near, tail };
 }
 
 /** The offset a JSON.parse message names, as V8 ("position N") or Firefox ("line L column C") word it. */
 function errorOffset(message, body) {
-    const position = /position (\d+)/.exec(message ?? '');
-    if (position) return Number(position[1]);
-    const lineColumn = /line (\d+) column (\d+)/.exec(message ?? '');
-    if (!lineColumn) return null;
-    const lines = body.split('\n').slice(0, Number(lineColumn[1]) - 1);
-    return lines.reduce((sum, line) => sum + line.length + 1, 0) + Number(lineColumn[2]) - 1;
+  const position = /position (\d+)/.exec(message ?? "");
+  if (position) return Number(position[1]);
+  const lineColumn = /line (\d+) column (\d+)/.exec(message ?? "");
+  if (!lineColumn) return null;
+  const lines = body.split("\n").slice(0, Number(lineColumn[1]) - 1);
+  return lines.reduce((sum, line) => sum + line.length + 1, 0) + Number(lineColumn[2]) - 1;
 }

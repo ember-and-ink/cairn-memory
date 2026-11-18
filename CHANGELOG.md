@@ -97,10 +97,10 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
   profile, reasoning), then **What Cairn keeps** (the feature switches), with the
   budget, prompts, adopt and diagnostics folded under **Advanced settings** and
   the inspector folded under **Last generation**. The lorebook cap moved into the
-  memory budget. Renamed: *Write the memory block* is **Replace old messages with
-  summaries**, *Keep the world state* is **Track the world state**, *Canon lines*
-  is **Canon entries**, *Hold World Info entries* is **Hold lorebook entries**,
-  *Show inspector* is **Show last generation**. Nothing stored changed.
+  memory budget. Renamed: _Write the memory block_ is **Replace old messages with
+  summaries**, _Keep the world state_ is **Track the world state**, _Canon lines_
+  is **Canon entries**, _Hold World Info entries_ is **Hold lorebook entries**,
+  _Show inspector_ is **Show last generation**. Nothing stored changed.
 - The world state in the inspector is in the chat's font, not monospace.
 - **The index, canon and world state prompts are laid out for lighter models**: the
   task, the fields one by one, one complete example reply, then your chat, then a
@@ -188,7 +188,7 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
   forgotten.** Cairn used to ask, just before old summaries were dropped, whether
   any of them said something permanent — which meant it only ever saw the handful
   of scenes on their way out, and most of those are scenery. It now reads the
-  compact record of *every* summary in the chat at once and asks for exactly N
+  compact record of _every_ summary in the chat at once and asks for exactly N
   facts: the few the rest of the story cannot be understood without. Choosing a
   fixed number is what stops a smaller model calling everything important.
 - **A canon fact is no longer permanent.** Each fact records which summaries it
@@ -253,7 +253,7 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
   tied to the summary it was read from, so re-summarising a message or editing it
   clears the record too, and it is written again from the new summary.
 - **Example dialogue is dropped once summaries stand in for messages.** A card's
-  example messages say how a character *would* speak in a situation that never
+  example messages say how a character _would_ speak in a situation that never
   happened, and they do not move as the character develops — thirty turns of
   someone growing into confidence are contradicted by examples that still show
   them meek. Once any message behind the raw window carries a summary, the real
@@ -497,7 +497,7 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 - **The block's two cadences are separated.** Summaries enter the block in steps,
   and old ones are dropped only when the prompt genuinely cannot hold them —
   where today both happen at once. The point is where the prompt breaks: a step
-  now adds to the *end* of the block, leaving the beginning where the model
+  now adds to the _end_ of the block, leaving the beginning where the model
   already has it cached, instead of rewriting the block from its first character
   and everything below it with it. Simulated over 170 turns, that is 2 full
   rebuilds instead of 90.
@@ -550,7 +550,7 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
   thing you can act on, and it is the measurement P1 is steered by.
 - The inspector log carries each injection's `offset`, `offset_percent`, `chars`
   and `match`, plus `divergence_in*` for the attributed break. A run can now be
-  read for *where* the prefix failed, not only that it did.
+  read for _where_ the prefix failed, not only that it did.
 
 ### Changed
 

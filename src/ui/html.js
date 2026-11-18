@@ -2,33 +2,34 @@
  * The inspector's shared pieces: a labelled row, a number, escaped text, and the
  * words for a closed memory-call gate (src/pipeline/gates.js). Pure strings.
  */
-import { SLUG } from '../constants.js';
+import { SLUG } from "../constants.js";
 
 /** Why memory calls are idle, in the words of the switch that would change it. */
 export const GATES = Object.freeze({
-    'no-profile': 'off — no memory connection chosen',
-    'group-chat': 'off — group chats are not supported',
-    'no-chat': 'no chat open',
-    'no-connection-manager': 'waiting — the Connection Manager extension is disabled',
-    'profile-missing': 'waiting — the memory connection profile no longer exists',
-    'qvink-summarising': 'waiting — Qvink\'s Auto Summarize is on',
+  "no-profile": "off — no memory connection chosen",
+  "group-chat": "off — group chats are not supported",
+  "no-chat": "no chat open",
+  "no-connection-manager": "waiting — the Connection Manager extension is disabled",
+  "profile-missing": "waiting — the memory connection profile no longer exists",
+  "qvink-summarising": "waiting — Qvink's Auto Summarize is on",
 });
 
 /** A closed gate's reason on its own, without the panel's "off —" or "waiting —" lead, for a sentence of its own. */
 export function gateReason(reason) {
-    return GATES[reason]?.replace(/^\w+ — /, '');
+  return GATES[reason]?.replace(/^\w+ — /, "");
 }
 
 export function row(label, value) {
-    return `<div class="${SLUG}-row"><span>${label}</span><b>${value}</b></div>`;
+  return `<div class="${SLUG}-row"><span>${label}</span><b>${value}</b></div>`;
 }
 
 export function fmt(n) {
-    return Number(n ?? 0).toLocaleString();
+  return Number(n ?? 0).toLocaleString();
 }
 
 export function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, (c) => (
-        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]
-    ));
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+  );
 }

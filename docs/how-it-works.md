@@ -33,8 +33,8 @@ watches the finished prompt on its way out and reports:
 ### What it cannot see
 
 Attribution comes from ST's `extension_prompts`, so P0 can only name writers that
-went through `setExtensionPrompt`. An extension that injects from its *generate
-interceptor* — by splicing messages straight into the chat array, as WTrackerLite
+went through `setExtensionPrompt`. An extension that injects from its _generate
+interceptor_ — by splicing messages straight into the chat array, as WTrackerLite
 does — contributes tokens that the inventory cannot attribute to anyone.
 
 The stability meter is unaffected: it measures the finished prompt, so interceptor
@@ -51,7 +51,7 @@ couple of messages for keywords, every turn, from scratch. With recursion on, a
 small seed cascades into a much larger set — and the set it reaches is stable,
 because it is a fixed point of the lorebook's own cross-references.
 
-The *path* to it is not stable. When the scan window happens to contain none of
+The _path_ to it is not stable. When the scan window happens to contain none of
 the seed keywords, nothing activates, and the entire lore block disappears from
 the prompt. The next turn it comes back. Measured on a real chat that is two
 full prompt rebuilds in a row — worse than the summary see-saw it was hiding
@@ -81,7 +81,7 @@ binds, entries leave together rather than one keyword at a time.
 
 The summary block is the largest thing in the prompt — around 80% of what is sent
 on a long chat — and it sits above the history, which is where it belongs. What
-breaks the prompt is what happens *inside* it.
+breaks the prompt is what happens _inside_ it.
 
 Today's memory extension moves both ends of the block on the same trigger. Every
 tenth message the window slides: new summaries join the end and old ones fall off
@@ -136,13 +136,13 @@ settings (D-0085), and Qvink's short-term limit no longer counts.
 
 What is left over is what the rest of the prompt does not need:
 
-| Reserved for | Worked out from |
-|---|---|
-| The character card | The card fields that reach the prompt, and the system prompt SillyTavern would use |
-| The lorebook | SillyTavern's own World Info budget, or every enabled entry if they come to less |
-| The raw history | The heaviest run of messages your chat has had at the widest the raw window ever gets — **Recent messages kept in full** plus one **Summary step**, less one: fifteen by default |
-| The world state | Its largest possible size, or nothing while it is switched off |
-| Everything else | 5% of the prompt, for instruct wrappers, other extensions and the tokenizer's own error |
+| Reserved for       | Worked out from                                                                                                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The character card | The card fields that reach the prompt, and the system prompt SillyTavern would use                                                                                               |
+| The lorebook       | SillyTavern's own World Info budget, or every enabled entry if they come to less                                                                                                 |
+| The raw history    | The heaviest run of messages your chat has had at the widest the raw window ever gets — **Recent messages kept in full** plus one **Summary step**, less one: fifteen by default |
+| The world state    | Its largest possible size, or nothing while it is switched off                                                                                                                   |
+| Everything else    | 5% of the prompt, for instruct wrappers, other extensions and the tokenizer's own error                                                                                          |
 
 **None of it is measured from a prompt that went out.** Every number above comes
 from the chat and your settings, so the same chat always gets the same block,
@@ -386,7 +386,7 @@ so it is still one request.
 and so does one the model sends blank or too long. A filled field is the whole
 point of the tier — an empty one lets the character card's original wording win
 again — and nothing here can stop being true: a character always has hair, and is
-either wearing something or isn't. What the reply *does* decide is who is in the
+either wearing something or isn't. What the reply _does_ decide is who is in the
 scene: the characters it lists are the characters present, so leaving someone out
 is how they leave. A reply that lists nobody at all is ignored. Someone who comes back
 starts from how they were last seen, so a hair colour or an outfit the returning
@@ -439,7 +439,7 @@ prefix should break inside `cairn_state`.
 
 ## Taking over the injection
 
-Cairn writes that block itself — but only once it is the *only* thing writing it.
+Cairn writes that block itself — but only once it is the _only_ thing writing it.
 Until then it plans, measures, and leaves the prompt alone.
 
 Two things have to move together. If Cairn injects while your existing memory
@@ -470,32 +470,32 @@ and on disk is untouched.
 
 ## The shape of the problem
 
-Memory extensions store a *compressed transcript*: messages become summaries,
+Memory extensions store a _compressed transcript_: messages become summaries,
 summaries get re-summarised. Each pass averages load-bearing detail together
 with texture, so the result degrades uniformly — and because summaries are
 evicted under a token budget, it develops holes at the same time.
 
 At generation time the model does not need a compressed transcript. It needs to
-know what is true *now*, plus the occasional specific memory. Those are
+know what is true _now_, plus the occasional specific memory. Those are
 different storage problems and Cairn treats them separately.
 
 ## The five tiers
 
-| Tier | What | Update rule | Cost |
-|---|---|---|---|
-| 0 | Raw recent messages | ST's own — not ours | — |
-| 1 | World state | Overwritten as a diff, never summarised | ~55 tokens typical, ~330 at most |
-| 2 | Scene summaries | Rolling, delta-written | Budgeted, compacted under pressure |
-| 3 | Canon | Append-only one-liners, entity-tagged | Negligible per item |
-| 4 | Episodes | Archived, entity-keyed | Off-prompt; retrieved on demand |
+| Tier | What                | Update rule                             | Cost                               |
+| ---- | ------------------- | --------------------------------------- | ---------------------------------- |
+| 0    | Raw recent messages | ST's own — not ours                     | —                                  |
+| 1    | World state         | Overwritten as a diff, never summarised | ~55 tokens typical, ~330 at most   |
+| 2    | Scene summaries     | Rolling, delta-written                  | Budgeted, compacted under pressure |
+| 3    | Canon               | Append-only one-liners, entity-tagged   | Negligible per item                |
+| 4    | Episodes            | Archived, entity-keyed                  | Off-prompt; retrieved on demand    |
 
 Tier 1 is the piece nothing else has in combination with the rest. State is
-*overwritten* rather than summarised, so it always has a current value — it
+_overwritten_ rather than summarised, so it always has a current value — it
 cannot have gaps.
 
 ## One writer, ordered by volatility
 
-Everything volatile sits *below* everything stable in the prompt, so a turn
+Everything volatile sits _below_ everything stable in the prompt, so a turn
 rarely invalidates the cached prefix:
 
 ```
@@ -531,7 +531,7 @@ the story cannot be understood without.
 It is a **pick over the index**, not a promotion out of what is about to be evicted.
 Once every summary in the chat carries a compact record, Cairn sends the whole index
 — the story at about a fifth of the tokens, with its structure made explicit — and
-asks for *exactly* N facts. A fixed budget is the calibration: asked whether a thing
+asks for _exactly_ N facts. A fixed budget is the calibration: asked whether a thing
 is permanent, a small model says yes to everything; asked to choose ten rows out of
 a hundred and fifty, it has to rank them.
 
@@ -557,7 +557,7 @@ earlier design did exactly that, and the canon it produced read like a different
 lighter story than the one being played. Reading the index end to end is what fixed it.
 
 **A wrong fact is no longer permanent.** Each fact cites the records it was picked
-from, so canon is *derived* rather than remembered: fix a summary, edit a message or
+from, so canon is _derived_ rather than remembered: fix a summary, edit a message or
 branch away from a scene and the facts resting on it go with it, and the next pick
 fills the slots again over the index as it now stands. Nothing has to be rolled back,
 because nothing was ever stored except the answer.
@@ -611,9 +611,8 @@ Each record carries a four-way kind — someone arriving or leaving, something l
 happening, description, filler — which the inspector and the log count. A local label is
 not stable under hindsight: a purchase is filler until it turns out to be where they
 settled. Told the kind was only a hint, lower-tier models obeyed it anyway: the promise
-the measured story rests on was labelled *filler* in twelve runs of fifteen and never
+the measured story rests on was labelled _filler_ in twelve runs of fifteen and never
 picked. So the index the pick reads has no kind column at all (`docs/decisions.md` D-0084).
-
 
 **What the parser guarantees, and what it cannot.** The prompt states a length; a fact
 that runs past it by half again is cut at a word rather than thrown away, a repeat is
@@ -621,7 +620,7 @@ refused, a fact citing no row at all is refused —
 an uncitable fact would be a permanent one again — and every pick is shown in the chat
 under the message it was written on. What the panel reports is what was actually
 written, never what the model claimed. What no parser can check is whether the chosen
-facts are the *right* ones; that is read against the story itself.
+facts are the _right_ ones; that is read against the story itself.
 
 Two of the three operations `DESIGN.md` §8 declares are built: **pick**, which replaced
 promotion, and **drop**, which the budgeter already did. **Merge** is moot for a fixed
