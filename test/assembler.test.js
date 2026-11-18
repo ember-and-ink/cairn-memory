@@ -1754,6 +1754,7 @@ describe("canon as the inspector shows it", () => {
 
     expect(run.assembler.canonView).toEqual({
       inPrompt: ["Her brother is dead.", "Aster owns a boat."],
+      pinned: [],
       spilled: [],
       waiting: [],
       slots: 10,
@@ -1784,5 +1785,54 @@ describe("canon as the inspector shows it", () => {
     expect(report.rebuilt).toBe(false);
     expect(run.assembler.canonView.inPrompt).toEqual(["Her brother is dead."]);
     expect(run.assembler.canonView.waiting).toEqual(["Her brother is dead.", "Aster owns a boat."]);
+  });
+});
+
+/** The user's pins at the head of canon (docs/decisions.md D-0110). */
+describe("pinned canon", () => {
+  const pinned = (run, texts) => {
+    run.context.chatMetadata.cairn = { pins: texts.map((text) => ({ text, from: [] })) };
+  };
+
+  it("puts the pins first in the block, and reports how many there are", async () => {
+    const run = harness({ cap: 6_000 });
+    run.context.chat = makeQvinkChat({ length: 40, summarisedThrough: 29 });
+    run.context.chat[5].extra.cairn = cairnCanonStore(["Aster owns a boat."], [0, 5]);
+    pinned(run, ["The collar was destroyed."]);
+    const { report, text } = await run.write();
+
+    expect(text.indexOf("The collar was destroyed.")).toBeLessThan(
+      text.indexOf("Aster owns a boat."),
+    );
+    expect(report).toMatchObject({ canonAdmitted: 2, canonPicked: 1, canonPinned: 1 });
+    expect(run.assembler.canonView.pinned).toEqual(["The collar was destroyed."]);
+  });
+
+  it("asks the next pick only for the slots the pins leave", async () => {
+    const run = harness({ cap: 6_000, cairnSettings: { canonSlots: 4 } });
+    const chat = makeQvinkChat({ length: 60, summarisedThrough: 49 });
+    for (const index of [2, 4, 6]) {
+      chat[index].extra.cairn = cairnIndexStore(chat[index], readScenes(chat)[index].text);
+    }
+    run.context.chat = chat;
+    pinned(run, ["One.", "Two."]);
+    await run.plan();
+
+    expect(run.assembler.pendingPass).toMatchObject({ due: true, slots: 2 });
+  });
+
+  it("brings a pin in on the turn the editor forces, as a rebuild", async () => {
+    const run = harness({ cap: 6_000 });
+    run.context.chat = makeQvinkChat({ length: 40, summarisedThrough: 29 });
+    run.context.chat[5].extra.cairn = cairnCanonStore(["Aster owns a boat."], [0, 5]);
+    await run.plan();
+
+    run.context.chat = makeQvinkChat({ length: 41, summarisedThrough: 30 });
+    run.context.chat[5].extra.cairn = cairnCanonStore(["Aster owns a boat."], [0, 5]);
+    pinned(run, ["The collar was destroyed."]);
+    run.assembler.forceRebuild();
+    const forced = await run.write();
+    expect(forced.report.rebuilt).toBe(true);
+    expect(forced.text).toContain("The collar was destroyed.");
   });
 });

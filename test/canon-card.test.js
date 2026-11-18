@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { canonFor } from "../src/memory/canon.js";
-import { readCanon, readIndex } from "../src/store/chat-store.js";
+import { readCanon, readIndex, readPins } from "../src/store/chat-store.js";
 import { canonCardHtml, canonCardView, rebuildText } from "../src/ui/canon-card.js";
+import { canonEditText, canonEditorHtml } from "../src/ui/canon-editor.js";
 import { deferred } from "./mocks/llm.js";
 import { cairnCanonStore, cairnIndexStore } from "./mocks/cairn.js";
 import { makeChat as rawChat } from "./mocks/sillytavern.js";
@@ -143,7 +144,7 @@ describe("what the card shows", () => {
     const view = canonCardView(PLANNED, context([]), {});
     expect(view).toMatchObject({ kind: "planned", facts: ["Her brother is dead."], slots: 10 });
     expect(canonCardHtml(view)).toContain("In the prompt now: 1 of 10 entries.");
-    expect(canonCardHtml(view)).toContain("<li>Her brother is dead.</li>");
+    expect(canonCardHtml(view)).toContain("<li><span>Her brother is dead.</span></li>");
   });
 
   it("shows the newest pick before the first turn, and after a rebuild by hand, since the next turn admits it", () => {
@@ -195,6 +196,170 @@ describe("what the card shows", () => {
     );
     expect(rebuildText({ ok: false, reason: "no-profile" })).toBe(
       "Canon was not rebuilt: no memory connection chosen.",
+    );
+  });
+});
+
+/** Pins and edits by hand (docs/decisions.md D-0110), through the summarizer as the editor saves them. */
+describe("pinning and editing canon by hand", () => {
+  const withPick = (facts, options = {}) => {
+    const live = makeChat(12);
+    live[11].extra.cairn = {
+      ...live[11].extra.cairn,
+      ...cairnCanonStore(facts, [0, 11], { slots: SLOTS, ...options }),
+    };
+    return live;
+  };
+
+  it("rebuilds around the pins, asking only for the slots they leave", async () => {
+    const chatMetadata = { cairn: { pins: [{ text: "The collar was destroyed.", from: [] }] } };
+    const { service, summarizer } = harness({
+      chat: withPick(["Old."]),
+      context: { chatMetadata },
+      responses: [pick("Fresh")],
+    });
+    await summarizer.idle();
+
+    expect(await summarizer.rebuildCanon()).toEqual({ ok: true });
+    const content = service.calls.filter(isPick)[0].prompt[0].content;
+    expect(content).toContain("exactly 2 facts");
+    expect(content).toContain("- The collar was destroyed.");
+  });
+
+  it("refuses to rebuild once the pins fill every slot", async () => {
+    const pins = ["One.", "Two.", "Three."].map((text) => ({ text, from: [] }));
+    const { service, summarizer } = harness({ context: { chatMetadata: { cairn: { pins } } } });
+    expect(await summarizer.rebuildCanon()).toEqual({ ok: false, reason: "all-pinned" });
+    expect(service.calls).toHaveLength(0);
+  });
+
+  it("saves a visit: the pin on the chat, the edit in the pick, and counts in the log", async () => {
+    const live = withPick([
+      { text: "She wears the collar.", from: [3] },
+      { text: "They left the castle.", from: [5] },
+    ]);
+    const chatMetadata = {};
+    const lines = [];
+    const { context, summarizer } = harness({
+      chat: live,
+      context: { chatMetadata },
+      onCall: (entry) => lines.push(entry),
+    });
+    const editable = summarizer.canonEditable();
+    expect(editable.ok).toBe(true);
+
+    const result = await summarizer.editCanon(
+      editable.model,
+      new Map([
+        ["fact:0", { text: "The collar was destroyed.", pinned: false }],
+        ["fact:1", { text: "They left the castle.", pinned: true }],
+      ]),
+    );
+
+    expect(result).toEqual({ written: true });
+    expect(readPins(chatMetadata)).toEqual([{ text: "They left the castle.", from: [5] }]);
+    expect(readCanon(live[11]).canon.facts).toEqual([
+      { text: "The collar was destroyed.", entities: [], from: [3], edited: true },
+    ]);
+    const fold = canonFor(live, READERS, { pins: readPins(chatMetadata), slots: SLOTS });
+    expect(fold.facts.map((fact) => fact.text)).toEqual([
+      "They left the castle.",
+      "The collar was destroyed.",
+    ]);
+    expect(lines).toEqual([
+      expect.objectContaining({ kind: "edit", job: "canon", pinned: 1, edited: 1, unpinned: 0 }),
+    ]);
+    expect(JSON.stringify(lines)).not.toContain("collar");
+    expect(context.saved.chat).toBeGreaterThan(0);
+  });
+
+  it("refuses a visit whose pick was replaced while the editor was open", async () => {
+    const live = withPick(["Old."]);
+    const { summarizer } = harness({ chat: live });
+    const { model } = /** @type {any} */ (summarizer.canonEditable());
+
+    live[11].extra.cairn = {
+      ...live[11].extra.cairn,
+      ...cairnCanonStore(["Newer."], [0, 11], { slots: SLOTS, at: "2026-11-18T10:00:00.000Z" }),
+    };
+    const result = await summarizer.editCanon(
+      model,
+      new Map([["fact:0", { text: "Old.", pinned: true }]]),
+    );
+    expect(result).toEqual({ written: false, reason: "changed" });
+  });
+
+  it("does not open while a pick is out, nor with no canon to edit", async () => {
+    const gate = deferred();
+    const busy = harness({ chat: withPick(["Old."]), responses: [gate.promise] });
+    await busy.summarizer.idle();
+    const rebuilding = busy.summarizer.rebuildCanon();
+    await Promise.resolve();
+    expect(busy.summarizer.canonEditable()).toEqual({ ok: false, reason: "picking" });
+    gate.resolve(pick("Fresh"));
+    await rebuilding;
+
+    expect(harness().summarizer.canonEditable()).toEqual({ ok: false, reason: "empty" });
+  });
+});
+
+describe("the canon editor's page", () => {
+  const model = (rows, slots = 3) => ({
+    batch: null,
+    slots,
+    pins: [],
+    facts: [],
+    runnersUp: [],
+    rows: rows.map(([kind, text, pinned], at) => ({
+      key: `${kind}:${at}`,
+      kind,
+      text,
+      pinned,
+      at,
+    })),
+  });
+
+  it("escapes the words, and locks a runner-up's box until it is pinned", () => {
+    const html = canonEditorHtml(
+      model([
+        ["fact", "<b>bold</b>", false],
+        ["runner", "Near.", false],
+      ]),
+    );
+    expect(html).not.toContain("<b>bold");
+    expect(html).toMatch(/data-kind="runner">[\s\S]*readonly/);
+    expect(html).toContain("0 of 3 entries pinned; the pick fills the other 3.");
+  });
+
+  it("disables the unpinned toggles once the pins fill every entry", () => {
+    const html = canonEditorHtml(
+      model(
+        [
+          ["pin", "One.", true],
+          ["fact", "Two.", false],
+        ],
+        1,
+      ),
+    );
+    expect(html.match(/ disabled/g)).toHaveLength(1);
+    expect(html).toContain("1 of 1 entries pinned");
+  });
+
+  it("marks the pins on the card", () => {
+    const view = canonCardView(
+      { inPrompt: ["Pinned.", "Picked."], pinned: ["Pinned."], spilled: [], waiting: [], slots: 4 },
+      { chatId: "c1", chat: [] },
+      {},
+    );
+    const html = canonCardHtml(view);
+    expect(html.indexOf("fa-thumbtack")).toBeLessThan(html.indexOf("Pinned."));
+    expect(html.match(/fa-thumbtack/g)).toHaveLength(1);
+  });
+
+  it("says why the editor did not save, and nothing when nothing changed", () => {
+    expect(canonEditText("unchanged")).toBeNull();
+    expect(canonEditText("changed")).toBe(
+      "Canon was not changed: a new pick landed while the editor was open.",
     );
   });
 });

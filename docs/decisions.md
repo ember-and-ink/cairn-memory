@@ -8,6 +8,71 @@ what we believed and why it changed.
 
 ---
 
+## D-0110 — Pins and edits are the user's, and different; the pick returns runners-up
+
+**2026-11-18.** Canon is a pick, so a wrong fact is never permanent, and neither is a right one.
+In the Xerana test chat the collar was destroyed, the pair were far from the castle, and canon kept
+saying she wore it: the index rows that led the pick there were garbled, and nothing the user could
+do short of Rebuild canon (D-0104) reached it. This is the change D-0104 left for later, settled
+with Matt in the same planning session.
+
+**Decided.**
+
+1. **A pin is the user's word and lives on the chat** (`chatMetadata.cairn.pins`, `{text, from,
+   edited?}`). No fold drops it: its records going away does not end it, and a branch or rollback
+   does not take it back. Only unpinning does.
+2. **Pins take entries, first, in pin order.** The pick is shown them as already canon and asked
+   for what they leave (`pendingPick` subtracts them; `all-pinned` asks nothing). A pin that changes
+   that count makes the next pick due at once (`slots-changed`), and a pick holding more facts than
+   it may now fill — a pin swapped for an unpin — is due too. Until it lands the fold reads the
+   pick whole, one fact over for a turn, unless the pins fill every entry, when none of it is read.
+3. **An edit is not a pin** (Matt: "Editing and pinning should be separate… editing != pin"). An
+   edit rewrites the fact in the newest stored pick, marked `edited`. The next pick is shown it as
+   "(corrected by the user)" and asked to keep the words unless a newer row changes them, and a
+   fact it keeps in those words stays marked. So an edit makes a fact likelier to stay, never
+   certain — it cannot be stuck forever, which is what made "edit implies pin" wrong.
+4. **Pinning moves a fact out of the pick; unpinning moves it back in**, at the end, with its rows,
+   where the next pick finds it in the canon it carries forward. Nothing is deleted by hand.
+5. **The pick returns up to ten runners-up** (`canon-pick-v4`; `runnersUp`, closest first), stored on the batch and
+   read only by the editor. The model's own comparative ranking, already written as facts, for a
+   few hundred tokens of reply: the index has no importance score to take a "top twenty" from, and
+   68 of Xerana's 88 rows are `major`. A runner-up can be pinned, or pinned and edited, but not
+   edited alone: unpinned, it has nowhere to live, because the next pick replaces the runners-up.
+   An edited canon prompt that never asks for them still gives a pick. `CANON_MAX_TOKENS` goes to
+   6,144 so the longer reply is not cut, and the runners-up come last so a cut or a broken one
+   loses only them (below).
+6. **One visit, one break.** Everything the editor changes is saved together, refused whole if a
+   pick landed while it was open, and the card forces the next turn to be a rebuild (D-0104). Pins
+   and edits are read live by the assembler for that reason: nothing else writes them, so no
+   ordinary turn sees them move.
+7. **The log carries counts** — pinned, unpinned, edited, pins in force — never the words (D-0093).
+
+**Measured.** Three replays of the Xerana test chat on qwen3.8-27b, over the same fixed
+index as D-0106 (every 8 summaries, 15 slots), with the runners-up prompt:
+
+|                                               | v3 (D-0106) | v4 (runners-up)               |
+| --------------------------------------------- | ----------- | ----------------------------- |
+| Xerana checks passed (D-0106's four × 3 runs) | 11/12       | 11/12                         |
+| Runs passing all four                         | 2/3         | 2/3                           |
+| Picks lost, of 33                             | 1           | 3, then 2 after the fix below |
+| Longest pick reply, tokens                    | 1,196       | 1,893 (one runaway hit 6,144) |
+
+Every readable reply carried runners-up, 3 to 10 of them. In the run whose canon left out "the only
+person who saw her true nature without exploiting it", that fact was a runner-up, which is the case
+the editor exists for. One runner-up per pick or so restates a canon fact in other words.
+
+One lost pick was the runners-up's fault: a missing quote in a runner-up's tags made the whole reply
+unreadable and lost fifteen good facts. **A reply that fails to parse is read again without its
+runners-up**, so a broken or cut-off tail costs only the tail; that pick now reads whole. The other
+two were the model writing `canonical` for `canon` and reasoning in place of JSON, slips v2 and v3
+make at about the same rate. About $0.10 for the three runs.
+
+**Would reopen it:** pins becoming the usual way canon is kept, which would mean the pick is
+failing rather than that the editor is useful; or runners-up that are mostly restatements of the
+canon, which would make them noise in the editor and cost in the reply.
+
+---
+
 ## D-0109 — TypeScript checks the JSDoc, with strictNullChecks and nothing emitted
 
 **2026-11-18.** The shipped code already carried a few hundred JSDoc annotations that nothing

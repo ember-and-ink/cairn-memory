@@ -29,23 +29,26 @@ export function cairnStore(
 export function cairnCanonStore(
   facts,
   covers,
-  { prompt = "h:00000000000003", at = "2026-09-17T09:00:00.000Z", slots } = {},
+  { prompt = "h:00000000000003", at = "2026-09-17T09:00:00.000Z", slots, runnersUp } = {},
 ) {
+  // A bare string is a fact with no citation — the shape written before canon
+  // became a pick, which still reads (test/fixtures/store-v4-uncited.js). Pass
+  // `from` to exercise the invalidation the pick added (docs/decisions.md D-0071),
+  // and `edited` for a fact the user corrected (D-0110).
+  const shape = (fact) =>
+    typeof fact === "string"
+      ? { text: fact, entities: [] }
+      : {
+          text: fact.text,
+          entities: [...(fact.entities ?? [])],
+          ...(fact.from ? { from: [...fact.from] } : {}),
+          ...(fact.edited ? { edited: true } : {}),
+        };
   return {
     v: 3,
     canon: {
-      // A bare string is a fact with no citation — the shape written before canon
-      // became a pick, which still reads (test/fixtures/store-v4-uncited.js). Pass
-      // `from` to exercise the invalidation the pick added (docs/decisions.md D-0071).
-      facts: facts.map((fact) =>
-        typeof fact === "string"
-          ? { text: fact, entities: [] }
-          : {
-              text: fact.text,
-              entities: [...(fact.entities ?? [])],
-              ...(fact.from ? { from: [...fact.from] } : {}),
-            },
-      ),
+      facts: facts.map(shape),
+      ...(runnersUp ? { runnersUp: runnersUp.map(shape) } : {}),
       covers: [...covers],
       ...(Number.isInteger(slots) ? { slots } : {}),
       prompt,

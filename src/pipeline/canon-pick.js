@@ -17,7 +17,7 @@
  *
  * Pure: plain data in, plain data out. No ST, no DOM, no network.
  */
-import { newFacts } from "../memory/canon.js";
+import { freeSlots, newFacts, normaliseFact } from "../memory/canon.js";
 
 /**
  * Fewer records than this and there is no story to rank. Three is the same floor the
@@ -38,39 +38,54 @@ export const MIN_INDEX_RECORDS = 3;
  *                  step admits it (D-0105). Less than that is `growing`, not due.
  *   `lost-facts`   a fact's records are gone — edited, resummarised or branched away
  *                  (memory/canon.js) — so the pick in force is missing a slot.
- *   `slots-changed` the user moved the slot count, so the question itself changed.
+ *   `slots-changed` the slots left to pick changed — the user moved the count, or pinned
+ *                  or unpinned a fact (D-0110) — so the question itself changed.
+ *
+ * Pins take slots, so what is asked is what they leave. With every slot pinned nothing is
+ * asked at all: `all-pinned`.
  *
  * All four terminate. A pick that comes back short is *answered*, not under-filled:
  * the batch records how many slots were asked for, so a story with four durable facts
  * and ten slots is not re-derived every turn forever.
  *
  * @param {{records?: IndexedRecord[], canon?: {coveredThrough: number|null,
- *          slots: number|null, dropped: number}|null, slots?: number, growth?: number}} [input]
+ *          slots: number|null, dropped: number, picked?: number}|null, slots?: number,
+ *          pinned?: number, growth?: number}} [input]
  *        `records` is every valid index record in the chat, oldest first;
- *        `canon` is the fold in force (`canonFor`); `growth` the see-saw step, where
- *        0 or less asks again on any new record.
+ *        `canon` is the fold in force (`canonFor`); `slots` the setting and `pinned` how
+ *        many of them the user's pins hold; `growth` the see-saw step, where 0 or less
+ *        asks again on any new record.
  * @returns {CanonPickWork | {due: false, reason: string, records: IndexedRecord[], covers: null,
  *            slots: number}} `reason` is a stable string the log and the inspector record.
+ *          `slots` is what a pick is asked for: the setting less the pins.
  */
-export function pendingPick({ records = [], canon = null, slots = 0, growth = 0 } = {}) {
+export function pendingPick({
+  records = [],
+  canon = null,
+  slots = 0,
+  pinned = 0,
+  growth = 0,
+} = {}) {
+  const free = freeSlots(slots, pinned);
   /** @param {string} reason */
   const refuse = (reason) => ({
     due: /** @type {const} */ (false),
     reason,
     records: /** @type {IndexedRecord[]} */ ([]),
     covers: null,
-    slots,
+    slots: free,
   });
 
   if (!(slots >= 1)) return refuse("no-slots");
+  if (free < 1) return refuse("all-pinned");
   if (records.length < MIN_INDEX_RECORDS) return refuse("too-few");
 
   /** @type {[number, number]} */
   const covers = [records[0].index, records[records.length - 1].index];
-  const reason = pickReason(canon, covers[1], slots, growth);
+  const reason = pickReason(canon, covers[1], free, growth);
   if (reason === "growing" || !reason) return refuse(reason ?? "covered");
 
-  return { due: /** @type {const} */ (true), reason, records, covers, slots };
+  return { due: /** @type {const} */ (true), reason, records, covers, slots: free };
 }
 
 /**
@@ -82,7 +97,10 @@ export function pendingPick({ records = [], canon = null, slots = 0, growth = 0 
 function pickReason(canon, newest, slots, growth) {
   if (!canon || canon.coveredThrough === null) return "no-canon";
   if (canon.dropped > 0) return "lost-facts";
-  if (canon.slots !== null && canon.slots !== slots) return "slots-changed";
+  // A pick that has not yet made room for a new pin holds more than it may (D-0110).
+  if ((canon.slots !== null && canon.slots !== slots) || (canon.picked ?? 0) > slots) {
+    return "slots-changed";
+  }
   if (newest > canon.coveredThrough) {
     return newest - canon.coveredThrough >= growth ? "new-records" : "growing";
   }
@@ -92,19 +110,24 @@ function pickReason(canon, newest, slots, growth) {
 /**
  * The canon in force, cited by row in the index a pick is about to read (D-0090, D-0101).
  * A pick starts from this rather than from nothing, so a fact an earlier pick corrected
- * stays corrected unless a row changes it again.
+ * stays corrected unless a row changes it again. Pins are left out: the pick is shown them
+ * apart, as facts it does not fill (D-0110). A fact the user edited says so.
  *
- * @param {Array<{text: string, from: number[]}>} facts The fold's facts (`canonFor`).
+ * @param {Array<{text: string, from: number[], pinned?: boolean, edited?: boolean}>} facts
+ *        The fold's facts (`canonFor`).
  * @param {Array<{index: number}>} records The records the pick reads, oldest first;
  *        row N is `records[N - 1]`.
- * @returns {Array<{text: string, rows: number[]}>}
+ * @returns {CarriedFact[]}
  */
 export function carriedCanon(facts = [], records = []) {
   const rowOf = new Map(records.map((entry, at) => [entry.index, at + 1]));
-  return facts.map((fact) => ({
-    text: fact.text,
-    rows: (fact.from ?? []).map((index) => rowOf.get(index)).filter((row) => row !== undefined),
-  }));
+  return facts
+    .filter((fact) => !fact.pinned)
+    .map((fact) => ({
+      text: fact.text,
+      rows: (fact.from ?? []).map((index) => rowOf.get(index)).filter((row) => row !== undefined),
+      ...(fact.edited ? { edited: /** @type {const} */ (true) } : {}),
+    }));
 }
 
 /**
@@ -119,30 +142,58 @@ export function carriedCanon(facts = [], records = []) {
  * outside that list loses its grounding, so it is dropped rather than stored uncited:
  * an uncitable fact is a permanent one, which is what a pick exists not to be.
  *
- * @param {{picked: CanonFact[], dropped?: Array<object>, records: Array<{index: number}>,
+ * A fact the pick kept in the words the user gave it stays marked `edited`, so the next
+ * pick is told it is the user's correction too (D-0110). Runners-up are mapped the same way
+ * and dropped quietly when uncited, since nothing reads them but the user.
+ *
+ * @param {{picked: CanonFact[], runnersUp?: CanonFact[], dropped?: Array<object>,
+ *          records: Array<{index: number}>, previous?: CarriedFact[],
  *          covers: [number, number], slots: number, prompt: string, at: string}} input
- * @returns {{batch: {facts: CanonFact[], covers: [number, number], slots: number,
- *            prompt: string, at: string}, picked: number, duplicates: number,
+ * @returns {{batch: {facts: CanonFact[], runnersUp: CanonFact[], covers: [number, number],
+ *            slots: number, prompt: string, at: string}, picked: number, duplicates: number,
  *            dropped: number, uncited: number}}
  */
-export function applyPick({ picked, dropped = [], records = [], covers, slots, prompt, at }) {
+export function applyPick({
+  picked,
+  runnersUp = [],
+  dropped = [],
+  records = [],
+  previous = [],
+  covers,
+  slots,
+  prompt,
+  at,
+}) {
   const { facts, duplicates } = newFacts(picked);
+  const corrected = new Set(
+    previous.filter((fact) => fact.edited).map((fact) => normaliseFact(fact.text)),
+  );
+  /** @param {{from: number[]}} fact */
+  const cite = (fact) =>
+    fact.from.map((row) => records[row - 1]?.index).filter((index) => Number.isInteger(index));
+  /** @type {CanonFact[]} */
   const kept = [];
   let uncited = 0;
 
   for (const fact of facts) {
-    const from = fact.from
-      .map((row) => records[row - 1]?.index)
-      .filter((index) => Number.isInteger(index));
+    const from = cite(fact);
     if (!from.length) {
       uncited++;
       continue;
     }
-    kept.push({ ...fact, from });
+    kept.push({
+      ...fact,
+      from,
+      ...(corrected.has(normaliseFact(fact.text)) ? { edited: true } : {}),
+    });
   }
 
+  const nearly = newFacts(runnersUp, kept)
+    .facts.map((fact) => ({ ...fact, from: cite(fact) }))
+    .filter((fact) => fact.from.length);
+
   return {
-    batch: { facts: kept, covers: [...covers], slots, prompt, at },
+    batch: { facts: kept, runnersUp: nearly, covers: [...covers], slots, prompt, at },
     picked: kept.length,
     duplicates,
     dropped: dropped.length,

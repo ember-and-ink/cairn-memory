@@ -11,7 +11,9 @@ import {
   readScene,
   readState,
   summarisable,
+  readPins,
   writeCanon,
+  writePins,
   writeIndex,
   writeScene,
   writeState,
@@ -1016,5 +1018,63 @@ describe("which messages are summarisable", () => {
   it("skips anything that is not a message", () => {
     expect(summarisable(null)).toBe(false);
     expect(summarisable({ is_user: true })).toBe(false);
+  });
+});
+
+describe("runners-up and corrections on a canon batch (D-0110)", () => {
+  it("writes and reads back runners-up and the edited mark, and leaves both off when absent", () => {
+    const chat = makeQvinkChat({ length: 4 });
+    writeCanon(chat, 3, {
+      facts: [
+        { text: "Corrected.", entities: [], from: [1], edited: true },
+        { text: "Plain.", entities: [], from: [2] },
+      ],
+      runnersUp: [{ text: "Close.", entities: ["Wren"], from: [2] }],
+      covers: [0, 3],
+      prompt: "h:1",
+      at: "T",
+    });
+    const { canon } = readCanon(chat[3]);
+    expect(canon.facts[0].edited).toBe(true);
+    expect("edited" in canon.facts[1]).toBe(false);
+    expect(canon.runnersUp).toEqual([{ text: "Close.", entities: ["Wren"], from: [2] }]);
+
+    writeCanon(chat, 2, { facts: [], covers: [0, 2], prompt: "h:1", at: "T" });
+    expect("runnersUp" in readCanon(chat[2]).canon).toBe(false);
+  });
+
+  it("reads a batch with a malformed runner-up as invalid", () => {
+    const chat = makeQvinkChat({ length: 2 });
+    writeCanon(chat, 1, { facts: [], covers: [0, 1], prompt: "h:1", at: "T" });
+    chat[1].extra.cairn.canon.runnersUp = [{ text: "" }];
+    expect(readCanon(chat[1]).status).toBe("invalid");
+  });
+});
+
+describe("pins on the chat (D-0110)", () => {
+  it("writes the pins beside whatever else the chat's metadata holds", () => {
+    const metadata = { note_prompt: "kept", cairn: { other: 1 } };
+    expect(
+      writePins(metadata, [{ text: "The collar was destroyed.", from: [4], edited: true }]),
+    ).toBe(true);
+    expect(metadata.note_prompt).toBe("kept");
+    expect(metadata.cairn.other).toBe(1);
+    expect(readPins(metadata)).toEqual([
+      { text: "The collar was destroyed.", from: [4], edited: true },
+    ]);
+  });
+
+  it("reads no pins from a chat that has none, and skips a malformed one", () => {
+    expect(readPins(undefined)).toEqual([]);
+    expect(readPins({})).toEqual([]);
+    expect(
+      readPins({ cairn: { pins: [{ text: "Fine.", from: [] }, { text: "", from: [] }, "x"] } }),
+    ).toEqual([{ text: "Fine.", from: [] }]);
+  });
+
+  it("refuses a malformed pin rather than storing it", () => {
+    const metadata = {};
+    expect(writePins(metadata, [{ text: "No rows." }])).toBe(false);
+    expect(metadata).toEqual({});
   });
 });

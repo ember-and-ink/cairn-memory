@@ -142,12 +142,15 @@ describe("building a canon pick", () => {
     const parsed = parseCanonReply(example, { slots: 4, records: 6 });
 
     expect(parsed).toMatchObject({ ok: true, dropped: [], short: 0 });
-    for (const fact of JSON.parse(example).canon)
+    // The runners-up as well, closest first, so the example shows both keys (D-0110).
+    expect(parsed.runnersUp.map((fact) => fact.from)).toEqual([[3], [5]]);
+    const { canon, runnersUp } = JSON.parse(example);
+    for (const fact of [...canon, ...runnersUp])
       expect(Object.keys(fact)).toEqual(["fact", "entities", "from"]);
     expect(CANON_PROMPT).toContain("write speech with single quotes, never double quotes");
     expect(
       CANON_PROMPT.trimEnd().endsWith(
-        "{{index}}\n\nNow reply with the JSON object: exactly {{slots}} facts from the index above.",
+        "{{index}}\n\nNow reply with the JSON object: exactly {{slots}} facts from the index above, then the runners-up.",
       ),
     ).toBe(true);
   });
@@ -211,6 +214,7 @@ describe("reading a clean reply", () => {
         { text: MEANT[1].fact, entities: ["Aster", "Wren"], from: [2] },
         { text: MEANT[2].fact, entities: ["Aster", "Wren"], from: [4] },
       ],
+      runnersUp: [],
       dropped: [],
       short: 0,
     });
@@ -403,5 +407,79 @@ describe("reading the replies a model actually sends", () => {
     const parsed = parseCanonReply(badCanonOutputs.mood(MEANT), limits);
 
     expect(picked(parsed)).toContain("Aster was shaken by the question.");
+  });
+});
+
+/** Pins, corrections and runners-up (docs/decisions.md D-0110). */
+describe("a pick that knows what the user did", () => {
+  it("shows the pins after the index and before the canon it carries", () => {
+    const { content } = canonPick.build({
+      records: RECORDS,
+      slots: 2,
+      pinned: ["The collar was destroyed."],
+      previous: [{ text: "Aster owns a boat.", rows: [2] }],
+    }).messages[0];
+
+    const pins = content.indexOf("The user has pinned these facts");
+    const carried = content.indexOf("The canon as it stood");
+    expect(pins).toBeGreaterThan(content.indexOf(INDEX_HEADER));
+    expect(carried).toBeGreaterThan(pins);
+    expect(content).toContain("- The collar was destroyed.\n");
+  });
+
+  it("says nothing of pins or corrections when there are none", () => {
+    const { content } = canonPick.build({
+      records: RECORDS,
+      slots: 2,
+      previous: [{ text: "Aster owns a boat.", rows: [2] }],
+    }).messages[0];
+    expect(content).not.toContain("pinned these facts");
+    expect(content).not.toContain("corrected by the user");
+  });
+
+  it("marks a fact the user corrected, and asks for the user's words to be kept", () => {
+    const { content } = canonPick.build({
+      records: RECORDS,
+      slots: 2,
+      previous: [{ text: "The collar was destroyed.", rows: [3], edited: true }],
+    }).messages[0];
+    expect(content).toContain("- The collar was destroyed. (rows 3) (corrected by the user)");
+    expect(content).toContain("keep those words unless a newer row changes it");
+  });
+
+  it("reads up to ten runners-up, skipping a bad one without counting it as refused", () => {
+    const near = (i) => ({ fact: `Near miss ${i}.`, entities: [], from: [1] });
+    const parsed = parseCanonReply(
+      JSON.stringify({
+        canon: MEANT,
+        runnersUp: [{ fact: "No rows." }, ...Array.from({ length: 12 }, (_, i) => near(i))],
+      }),
+      { slots: 3, records: 6 },
+    );
+    expect(parsed.ok && parsed.runnersUp.map((fact) => fact.text)).toEqual(
+      Array.from({ length: 10 }, (_, i) => `Near miss ${i}.`),
+    );
+    expect(parsed.ok && parsed.dropped).toEqual([]);
+  });
+
+  /**
+   * The shape of a real qwen3.8-27b reply from the Xerana replay (D-0110): a fenced object,
+   * a whole canon, then a runner-up whose tags lost a closing quote. Synthetic words.
+   */
+  it("keeps the canon when the runners-up are broken or cut short", () => {
+    const canon = JSON.stringify(MEANT, null, 2);
+    const broken = `\`\`\`json\n{\n  "canon": ${canon},\n  "runnersUp": [\n    {\n      "fact": "Wren sold the boat.",\n      "entities": ["Wren", "boat],\n      "from": [3]\n    }\n  ]\n}\n\`\`\``;
+    const cut = `{"canon": ${canon},\n"runnersUp": [\n{"fact": "Wren sold the bo`;
+
+    for (const content of [broken, cut]) {
+      const parsed = parseCanonReply(content, { slots: 3, records: 6 });
+      expect(parsed).toMatchObject({ ok: true, runnersUp: [], short: 0 });
+      expect(parsed.ok && parsed.picked).toHaveLength(3);
+    }
+  });
+
+  it("gives a pick with no runners-up when an edited prompt never asked for them", () => {
+    const parsed = parseCanonReply(JSON.stringify({ canon: MEANT }), { slots: 3, records: 6 });
+    expect(parsed).toMatchObject({ ok: true, runnersUp: [] });
   });
 });

@@ -51,6 +51,12 @@ export const MAX_FACT_CHARS = 160;
  */
 export const MAX_SOURCES = 3;
 
+/**
+ * The most runners-up a pick is asked for (D-0110): the facts that came closest to a slot,
+ * offered to the user to pin. About 400 tokens of reply, and never read into the prompt.
+ */
+export const MAX_RUNNERS_UP = 10;
+
 /** Tags on a fact, stored and unread (store/chat-store.js). */
 export const MAX_ENTITIES = 4;
 export const MAX_ENTITY_CHARS = 32;
@@ -62,18 +68,28 @@ export const MAX_ENTITY_CHARS = 32;
  * @param {{readCanon: typeof import("../store/chat-store.js").readCanon,
  *          readIndex: typeof import("../store/chat-store.js").readIndex}} readers
  *        The store's readers (store/chat-store.js).
- * @param {{through?: number}} [options] The newest message whose batch may be read.
- *        The assembler passes the mark it last admitted at, so a pick written between
- *        rebuilds does not change the block until one (docs/decisions.md D-0059, D-0067).
- * @returns {{facts: Array<{text: string, entities: string[], from: number[], index: number}>,
- *            index: number|null, at: string|null, slots: number|null, covers: number[]|null,
- *            coveredThrough: number|null, batches: number, dropped: number}}
+ * @param {{through?: number, pins?: CanonPin[], slots?: number}} [options]
+ *        `through` is the newest message whose batch may be read. The assembler passes the
+ *        mark it last admitted at, so a pick written between rebuilds does not change the
+ *        block until one (docs/decisions.md D-0059, D-0067).
+ *        `pins` are the user's (store/chat-store.js `readPins`) and come first, in pin
+ *        order, whatever the pick says (D-0110). `slots` is the setting: once the pins fill
+ *        it the pick has no room left, and none of it is read.
+ * @returns {{facts: Array<{text: string, entities: string[], from: number[], index: number|null,
+ *            pinned?: true, edited?: true}>, runnersUp: Array<{text: string, from: number[]}>,
+ *            picked: number, index: number|null, at: string|null, slots: number|null,
+ *            covers: number[]|null, coveredThrough: number|null, batches: number, dropped: number}}
  *          `index` is the message the batch lives on and `at` when it was written, which
  *          together say which pick this is: a pick asked again over the same records lands
- *          on the same message (D-0104). `dropped` counts facts whose every cited record is
- *          gone, which is what makes a re-derivation due.
+ *          on the same message (D-0104). `picked` counts the pick's own facts in `facts`.
+ *          `dropped` counts facts whose every cited record is gone, which is what makes a
+ *          re-derivation due.
  */
-export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } = {}) {
+export function canonFor(
+  chat,
+  { readCanon, readIndex },
+  { through = Infinity, pins = [], slots = Infinity } = {},
+) {
   const list = chat ?? [];
   let batches = 0;
   /** @type {CairnCanon|null} */
@@ -91,9 +107,26 @@ export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } 
     }
   }
 
+  const seen = new Set();
+  const pinned = [];
+  for (const pin of pins) {
+    const key = normaliseFact(pin.text);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    pinned.push({
+      text: pin.text,
+      entities: [],
+      from: [...pin.from],
+      index: null,
+      pinned: /** @type {const} */ (true),
+    });
+  }
+
   if (!newest) {
     return {
-      facts: [],
+      facts: pinned,
+      runnersUp: [],
+      picked: 0,
       index: null,
       at: null,
       slots: null,
@@ -105,26 +138,41 @@ export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } 
   }
 
   const facts = [];
-  const seen = new Set();
   let dropped = 0;
+  const live = (fact) => liveFact(fact, list, readIndex);
 
   for (const fact of newest.facts) {
-    const from = (fact.from ?? []).filter((source) => Number.isInteger(source));
-    // No citation is an older batch, from before a fact cited anything. There is
-    // nothing to check it against, so it is kept: degrading to a guess would be
-    // worse than degrading to what is written (D-0074).
-    if (from.length && !from.some((source) => readIndex(list[source]).status === "valid")) {
+    if (!live(fact)) {
       dropped++;
       continue;
     }
     const key = normaliseFact(fact.text);
     if (seen.has(key)) continue;
     seen.add(key);
-    facts.push({ text: fact.text, entities: [...fact.entities], from, index: at });
+    facts.push({
+      text: fact.text,
+      entities: [...fact.entities],
+      from: citations(fact),
+      index: at,
+      ...(fact.edited === true ? { edited: /** @type {const} */ (true) } : {}),
+    });
+  }
+  // Pins take slots (D-0110). Short of filling them the pick is read whole: one it has not
+  // yet re-picked around a new pin runs over by that pin until it does, which is due at once.
+  const room = pinned.length >= slots ? [] : facts;
+
+  const runnersUp = [];
+  for (const fact of newest.runnersUp ?? []) {
+    const key = normaliseFact(fact.text);
+    if (!key || seen.has(key) || !live(fact)) continue;
+    seen.add(key);
+    runnersUp.push({ text: fact.text, from: citations(fact) });
   }
 
   return {
-    facts,
+    facts: [...pinned, ...room],
+    runnersUp,
+    picked: room.length,
     index: at,
     at: typeof newest.at === "string" ? newest.at : null,
     slots: Number.isInteger(newest.slots) ? newest.slots : null,
@@ -133,6 +181,31 @@ export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } 
     batches,
     dropped,
   };
+}
+
+/** A fact's citations, integers only. */
+function citations(fact) {
+  return (fact.from ?? []).filter((source) => Number.isInteger(source));
+}
+
+/**
+ * Whether a stored fact still stands: one of the records it cites is valid. No citation is
+ * an older batch, from before a fact cited anything. There is nothing to check it against,
+ * so it is kept: degrading to a guess would be worse than degrading to what is written
+ * (D-0074).
+ *
+ * @param {{from?: number[]}} fact
+ * @param {StMessage[]} chat
+ * @param {typeof import("../store/chat-store.js").readIndex} readIndex
+ */
+export function liveFact(fact, chat, readIndex) {
+  const from = citations(fact);
+  return !from.length || from.some((source) => readIndex(chat[source]).status === "valid");
+}
+
+/** How many slots a pick may fill once the pins have taken theirs (D-0110). */
+export function freeSlots(slots, pins = 0) {
+  return Math.max(0, slots - pins);
 }
 
 /**

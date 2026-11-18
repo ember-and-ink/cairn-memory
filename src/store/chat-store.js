@@ -250,7 +250,9 @@ export function readCanon(message) {
     canon.covers.every(Number.isInteger) &&
     canon.covers[0] <= canon.covers[1] &&
     typeof canon.prompt === "string" &&
-    typeof canon.at === "string";
+    typeof canon.at === "string" &&
+    (canon.runnersUp === undefined ||
+      (Array.isArray(canon.runnersUp) && canon.runnersUp.every(wellFormedFact)));
   return wellFormed ? { status: "valid", canon } : { status: "invalid", canon: null };
 }
 
@@ -266,19 +268,24 @@ export function readCanon(message) {
  * four-fact reply to a ten-slot pick is a spine, not work still to do
  * (pipeline/canon-pick.js `pendingPick`).
  *
+ * `runnersUp` are the facts that came closest to a slot (D-0110): shown to the user, who
+ * may pin one, and never read into the prompt.
+ *
  * @param {StMessage[]} chat The live chat.
  * @param {number} index The newest message the pick read.
- * @param {{facts: Array<{text: string, entities: string[], from: number[]}>,
+ * @param {{facts: Array<{text: string, entities: string[], from: number[], edited?: boolean}>,
+ *          runnersUp?: Array<{text: string, entities: string[], from: number[]}>,
  *          covers: number[], slots?: number, prompt: string, at?: string}} canon
  * @returns {boolean} Whether anything was written.
  */
 export function writeCanon(
   chat,
   index,
-  { facts, covers, slots, prompt, at = new Date().toISOString() },
+  { facts, runnersUp = [], covers, slots, prompt, at = new Date().toISOString() },
 ) {
   if (!Array.isArray(facts) || !facts.every(wellFormedFact) || typeof prompt !== "string")
     return false;
+  if (!Array.isArray(runnersUp) || !runnersUp.every(wellFormedFact)) return false;
   if (
     !Array.isArray(covers) ||
     covers.length !== 2 ||
@@ -288,12 +295,16 @@ export function writeCanon(
     return false;
   if (typeof chat?.[index]?.mes !== "string") return false;
 
+  const copy = (fact) => ({
+    text: fact.text,
+    entities: [...fact.entities],
+    from: [...(fact.from ?? [])],
+    // Marked only when true, so an ordinary fact keeps the shape it always had.
+    ...(fact.edited === true ? { edited: true } : {}),
+  });
   return writeKey(chat[index], "canon", {
-    facts: facts.map((fact) => ({
-      text: fact.text,
-      entities: [...fact.entities],
-      from: [...(fact.from ?? [])],
-    })),
+    facts: facts.map(copy),
+    ...(runnersUp.length ? { runnersUp: runnersUp.map(copy) } : {}),
     covers: [...covers],
     ...(Number.isInteger(slots) ? { slots } : {}),
     prompt,
@@ -319,8 +330,56 @@ function wellFormedFact(fact) {
     fact.text !== "" &&
     Array.isArray(fact.entities) &&
     fact.entities.every((entity) => typeof entity === "string" && entity !== "") &&
-    (fact.from === undefined || (Array.isArray(fact.from) && fact.from.every(Number.isInteger)))
+    (fact.from === undefined || (Array.isArray(fact.from) && fact.from.every(Number.isInteger))) &&
+    (fact.edited === undefined || typeof fact.edited === "boolean")
   );
+}
+
+/**
+ * The facts the user pinned in this chat (D-0110). They live on the chat rather than on a
+ * message because they are the user's word, not a pick's: no fold drops them, no branch
+ * or rollback takes them back, and only unpinning ends one.
+ *
+ * `from` is the messages the fact was cited from when it was pinned, kept so an unpinned
+ * fact goes back to the picker with its rows. `edited` says the words are the user's.
+ * A malformed entry is skipped rather than failing the list.
+ *
+ * @param {Record<string, any>|undefined} metadata ST's `chatMetadata` (public/scripts/st-context.js:135).
+ * @returns {CanonPin[]}
+ */
+export function readPins(metadata) {
+  const pins = metadata?.[SLUG]?.pins;
+  if (!Array.isArray(pins)) return [];
+  return pins
+    .filter(
+      (pin) =>
+        isObject(pin) &&
+        typeof pin.text === "string" &&
+        pin.text !== "" &&
+        Array.isArray(pin.from) &&
+        pin.from.every(Number.isInteger),
+    )
+    .map((pin) => ({
+      text: pin.text,
+      from: [...pin.from],
+      ...(pin.edited === true ? { edited: true } : {}),
+    }));
+}
+
+/**
+ * Replace the chat's pins. The caller saves the chat, which writes the metadata with it
+ * (public/script.js:7406).
+ *
+ * @param {Record<string, any>|undefined} metadata The live `chatMetadata`, never a copy.
+ * @param {CanonPin[]} pins
+ * @returns {boolean} Whether anything was written.
+ */
+export function writePins(metadata, pins) {
+  if (!isObject(metadata) || !Array.isArray(pins)) return false;
+  const clean = readPins({ [SLUG]: { pins } });
+  if (clean.length !== pins.length) return false;
+  metadata[SLUG] = { ...(isObject(metadata[SLUG]) ? metadata[SLUG] : {}), pins: clean };
+  return true;
 }
 
 /**

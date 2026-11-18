@@ -582,6 +582,26 @@ index records the pick reads.
 **Rebuild canon**, on the Canon card in the settings, makes one fresh pick over the
 whole index with nothing carried forward and puts it in on your next message (D-0104).
 
+**Pins and edits are yours, and they are different things** (D-0110). **Edit & pin…**
+on the same card opens the pinned facts, the newest pick and its runners-up — the up to
+ten facts that came closest to a slot, which the pick returns alongside its answer.
+
+- **A pin** is kept in canon whatever the pick says. Pins live on the chat rather than
+  on a message, so no fold drops them and no branch takes them back. They head the
+  canon in the order you pinned them and take its entries first: with ten entries and
+  three pins, the pick is shown the pins and asked for seven more. Once pins fill every
+  entry no pick is made. Unpinning hands the fact back to the pick, which keeps it or
+  lets it go; nothing in canon is deleted by hand.
+- **An edit** corrects a fact the pick chose, in place. The next pick is shown it as
+  "corrected by the user" and asked to keep your words unless a newer row changes them,
+  so it is likely to stay, not certain to: an edit that stops earning its slot can still
+  be dropped. Pin it as well when it must stay. A runner-up can be pinned, and edited
+  once pinned, but not edited on its own, since the next pick replaces the runners-up.
+
+Everything one visit to the editor changes goes in on your next message, as one rebuild.
+A pin changes how many entries the pick may fill, so the next pick runs straight after
+that message rather than waiting for a step.
+
 **How many lines is the one knob, and it is a count rather than a budget.** The spine
 of a story does not grow as the story does — someone arriving or leaving, something
 permanently won or lost, are necessarily rare — so a three-hundred-message chat wants

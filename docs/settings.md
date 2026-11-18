@@ -33,9 +33,17 @@ Every setting has a default that works, and the only one you have to set is
 | Keep canon    | On      | Picks the few facts the whole story depends on (a death, a promise, a debt) and keeps them at the top of memory. The pick is redone as the story grows, starting from the canon so far, and reaches the prompt at the next step. |
 | Canon entries | 10      | How many canon facts to pick, from 1 to 16.                                                                                                                                                                                      |
 
-The card shows the open chat's canon: what the prompt carries now, and a newer pick
-when one is waiting for the next step. **Rebuild canon** picks it fresh from the whole
-story in one memory call and puts it in on your next message.
+The card shows the open chat's canon: what the prompt carries now, with pinned facts
+marked, and a newer pick when one is waiting for the next step. **Rebuild canon** picks
+it fresh from the whole story in one memory call and puts it in on your next message,
+keeping your pins.
+
+**Edit & pin…** opens the open chat's pinned facts, its current canon and the pick's
+runners-up, each in a box with a pin. A pinned fact stays in canon whatever the pick
+says, and takes one of the Canon entries first. An edit corrects a fact; the next pick
+keeps your words unless the story changes them, but may still drop it. A runner-up can
+be pinned, and edited once pinned. Unpinning hands a fact back to the pick. Your changes
+go in on your next message.
 
 ## Advanced settings
 

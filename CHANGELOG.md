@@ -11,6 +11,14 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Added
 
+- **Pin and edit canon.** **Edit & pin…** on the Canon card lists the chat's pinned
+  facts, its current canon and the pick's runners-up, the facts that came closest to an
+  entry. Pin a fact to keep it whatever the pick says; pins take entries first. Edit a
+  fact to correct it: the next pick keeps your words unless the story changes them.
+  Pin a runner-up to bring it in. Unpinning hands a fact back to the pick, and your
+  changes go in on your next message. The canon prompt now also asks for the
+  runners-up; an edited canon prompt is kept, and Reset to default picks up the new one.
+
 - **Summaries fold**, like the World state: each one sits under a **Cairn summary**
   line that opens and closes it. **Collapse Cairn summaries automatically**, at the
   top of the settings, starts them folded; off by default.
