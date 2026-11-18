@@ -28,19 +28,20 @@ run `task check`, you know what CI will say. On each commit, prek runs the
 whitespace and JSON/YAML checks, gitleaks over what is staged, and whichever of
 the tasks below the staged files touch.
 
-| Task | |
-|---|---|
-| `task lint` | oxlint with `--fix`, then jscpd |
-| `task test-lint` | The same, check-only — what CI runs |
-| `task lint-dupes` | jscpd over `src/`, `scripts/` and `index.js` (`.jscpd.json`); a deliberate twin is fenced with `jscpd:ignore-start` / `-end` and a reason |
-| `task test` | Vitest, once; `task test -- <file> -t <name>` narrows it |
-| `task test-watch` | Vitest, watching |
-| `task version-check` | `manifest.json` and `package.json` versions agree |
-| `task bump` | Minor bump in `manifest.json` and `package.json`; `PART=patch` or `PART=major` to override |
-| `task verify-st` | Re-check `docs/st-api-surface.md` against a local ST |
-| `task verify-rules` | Every `CLAUDE.md §N.M`, `docs/<page>.md`, `D-NNNN` and cited source path (`pipeline/budgeter.js`) still resolves |
-| `task pre-commit` | Every prek hook over the whole tree |
-| `task update` / `task audit` | `npm update` within the declared ranges, then `npm audit` |
+| Task                         |                                                                                                                                           |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `task lint`                  | oxlint with `--fix`, then oxfmt, then jscpd                                                                                               |
+| `task test-lint`             | The same, check-only — what CI runs                                                                                                       |
+| `task lint-format`           | oxfmt over the whole repo: code, docs, JSON, YAML, HTML and CSS, at its defaults                                                          |
+| `task lint-dupes`            | jscpd over `src/`, `scripts/` and `index.js` (`.jscpd.json`); a deliberate twin is fenced with `jscpd:ignore-start` / `-end` and a reason |
+| `task test`                  | Vitest, once; `task test -- <file> -t <name>` narrows it                                                                                  |
+| `task test-watch`            | Vitest, watching                                                                                                                          |
+| `task version-check`         | `manifest.json` and `package.json` versions agree                                                                                         |
+| `task bump`                  | Minor bump in `manifest.json` and `package.json`; `PART=patch` or `PART=major` to override                                                |
+| `task verify-st`             | Re-check `docs/st-api-surface.md` against a local ST                                                                                      |
+| `task verify-rules`          | Every `CLAUDE.md §N.M`, `docs/<page>.md`, `D-NNNN` and cited source path (`pipeline/budgeter.js`) still resolves                          |
+| `task pre-commit`            | Every prek hook over the whole tree                                                                                                       |
+| `task update` / `task audit` | `npm update` within the declared ranges, then `npm audit`                                                                                 |
 
 The lint rules that guard a `DESIGN.md` invariant (no `structuredClone` in shipped code, the
 store layer importing only downward, console only through `util/log.js`) are tested as rules in
@@ -66,7 +67,7 @@ since the previous one. If it already exists, it does nothing.
 
 Dependabot merges never trigger it (they don't bump the version, and a
 `GITHUB_TOKEN` merge doesn't fire `push`). Their PRs show up in the next
-release's notes instead. To retry a failed run, use *Run workflow* on the
+release's notes instead. To retry a failed run, use _Run workflow_ on the
 Actions tab.
 
 ## Working against a local SillyTavern
@@ -90,7 +91,7 @@ Everything under `src/` that we test is pure logic — no DOM, no ST, no network
 If a module cannot be tested that way, the ST coupling is in the wrong place.
 
 - `test/mocks/sillytavern.js` — the ST surface, mirroring the real shapes. Every
-  field cites the `file:line` it was taken from. It is a deliberate *subset*: an
+  field cites the `file:line` it was taken from. It is a deliberate _subset_: an
   unlisted field means we have not declared that dependency yet.
 - `test/mocks/llm.js` — the memory model, including `badOutputs`: fenced JSON,
   preamble chatter, truncation, refusals, schema violations, leaked reasoning.
@@ -232,7 +233,7 @@ then from ST clearing `document.body.dataset.generating`
 Two things to hold in mind when reading the log afterwards:
 
 - **A turn is two generations.** Cairn's interceptor skips only quiet prompts
-  (`src/prompt/injector.js:106`), so the impersonation gets the memory block too
+  (`src/prompt/injector.js:123`), so the impersonation gets the memory block too
   and is logged alongside the story generation. Size a run by its events, not by
   the turn counter.
 - **The settle delay does not know about Cairn.** It is a fixed sleep, not a wait

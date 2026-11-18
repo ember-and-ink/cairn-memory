@@ -29,15 +29,20 @@
  *
  * Pure: no ST, no network. ST's macro expansion comes in as `expand`.
  */
-import { readJsonReply, reject } from './model-reply.js';
+import { readJsonReply, reject } from "./model-reply.js";
 import {
-    MAX_ENTITIES, MAX_ENTITY_CHARS, MAX_FACT_CHARS, MAX_SLOTS, MAX_SOURCES, MIN_SLOTS,
-} from './canon.js';
-import { INDEX_HEADER, renderIndex } from './index-record.js';
-import { clip, hardCap } from '../util/clip.js';
-import { hashString } from '../util/hash.js';
-import { renderTemplate, resolvePrompt } from '../util/template.js';
-import { isObject } from '../util/values.js';
+  MAX_ENTITIES,
+  MAX_ENTITY_CHARS,
+  MAX_FACT_CHARS,
+  MAX_SLOTS,
+  MAX_SOURCES,
+  MIN_SLOTS,
+} from "./canon.js";
+import { INDEX_HEADER, renderIndex } from "./index-record.js";
+import { clip, hardCap } from "../util/clip.js";
+import { hashString } from "../util/hash.js";
+import { renderTemplate, resolvePrompt } from "../util/template.js";
+import { isObject } from "../util/values.js";
 
 /**
  * Room for a reasoning model's thinking over a long index before a short list. The
@@ -114,64 +119,72 @@ Now reply with the JSON object: exactly {{slots}} facts from the index above.`;
  * @returns {string}
  */
 export function renderCarriedCanon(previous) {
-    const lines = previous.map((fact) => `- ${fact.text}${fact.rows.length ? ` (rows ${fact.rows.join(', ')})` : ''}`);
-    return [
-        'The canon as it stood before the newest rows were added:',
-        ...lines,
-        '',
-        'Start from it. Keep a fact that still holds and still earns its slot, citing its rows again; correct one a later row changes; replace one when a newer fact matters more, since the slots are fixed. Reply with the whole canon, not the changes.',
-    ].join('\n');
+  const lines = previous.map(
+    (fact) => `- ${fact.text}${fact.rows.length ? ` (rows ${fact.rows.join(", ")})` : ""}`,
+  );
+  return [
+    "The canon as it stood before the newest rows were added:",
+    ...lines,
+    "",
+    "Start from it. Keep a fact that still holds and still earns its slot, citing its rows again; correct one a later row changes; replace one when a newer fact matters more, since the slots are fixed. Reply with the whole canon, not the changes.",
+  ].join("\n");
 }
 
 /** The template to send for a `canonPrompt` setting (`resolvePrompt`). */
 export function resolveCanonPrompt(setting) {
-    return resolvePrompt(setting, CANON_PROMPT, ['index']);
+  return resolvePrompt(setting, CANON_PROMPT, ["index"]);
 }
 
 export const canonPick = {
-    id: 'canon-pick-v3',
+  id: "canon-pick-v3",
 
-    /**
-     * @param {object} request
-     * @param {Array<object>} request.records Every valid index record in the chat,
-     *        oldest first. Numbered from 1 in the prompt; mapping those positions back
-     *        to chat indexes is the caller's, as it is for a batch (index-strategy.js).
-     * @param {number} request.slots How many facts to ask for, MIN_SLOTS to MAX_SLOTS.
-     * @param {string} [request.template] The `canonPrompt` setting, raw.
-     * @param {(text: string) => string} [request.expand] ST's `substituteParams`
-     *        (public/scripts/st-context.js:163), applied to the template only.
-     * @param {Array<{text: string, rows: number[]}>} [request.previous] The canon to carry
-     *        forward, cited by row in this index (D-0090). Empty or absent asks from scratch,
-     *        which is what the queue does.
-     * @returns {{messages: Array<{role: string, content: string}>, maxTokens: number,
-     *            prompt: string, slots: number, records: number, fallback: boolean}}
-     *          `prompt` is stored as `canon.prompt`.
-     */
-    build({ records, slots, template, expand, previous = [] }) {
-        if (!Array.isArray(records) || records.length < 1) {
-            throw new RangeError('A canon pick reads at least one index record');
-        }
-        if (!Number.isInteger(slots) || slots < MIN_SLOTS || slots > MAX_SLOTS) {
-            throw new RangeError(`A canon pick fills ${MIN_SLOTS} to ${MAX_SLOTS} slots`);
-        }
+  /**
+   * @param {object} request
+   * @param {Array<object>} request.records Every valid index record in the chat,
+   *        oldest first. Numbered from 1 in the prompt; mapping those positions back
+   *        to chat indexes is the caller's, as it is for a batch (index-strategy.js).
+   * @param {number} request.slots How many facts to ask for, MIN_SLOTS to MAX_SLOTS.
+   * @param {string} [request.template] The `canonPrompt` setting, raw.
+   * @param {(text: string) => string} [request.expand] ST's `substituteParams`
+   *        (public/scripts/st-context.js:163), applied to the template only.
+   * @param {Array<{text: string, rows: number[]}>} [request.previous] The canon to carry
+   *        forward, cited by row in this index (D-0090). Empty or absent asks from scratch,
+   *        which is what the queue does.
+   * @returns {{messages: Array<{role: string, content: string}>, maxTokens: number,
+   *            prompt: string, slots: number, records: number, fallback: boolean}}
+   *          `prompt` is stored as `canon.prompt`.
+   */
+  build({ records, slots, template, expand, previous = [] }) {
+    if (!Array.isArray(records) || records.length < 1) {
+      throw new RangeError("A canon pick reads at least one index record");
+    }
+    if (!Number.isInteger(slots) || slots < MIN_SLOTS || slots > MAX_SLOTS) {
+      throw new RangeError(`A canon pick fills ${MIN_SLOTS} to ${MAX_SLOTS} slots`);
+    }
 
-        const resolved = resolveCanonPrompt(template);
-        const content = renderTemplate(resolved.template, {
-            slots: String(slots),
-            index: previous.length ? `${renderIndex(records)}\n\n${renderCarriedCanon(previous)}` : renderIndex(records),
-        }, { expand });
+    const resolved = resolveCanonPrompt(template);
+    const content = renderTemplate(
+      resolved.template,
+      {
+        slots: String(slots),
+        index: previous.length
+          ? `${renderIndex(records)}\n\n${renderCarriedCanon(previous)}`
+          : renderIndex(records),
+      },
+      { expand },
+    );
 
-        return {
-            messages: [{ role: 'user', content }],
-            maxTokens: CANON_MAX_TOKENS,
-            prompt: hashString(resolved.template),
-            slots,
-            records: records.length,
-            fallback: resolved.fallback,
-        };
-    },
+    return {
+      messages: [{ role: "user", content }],
+      maxTokens: CANON_MAX_TOKENS,
+      prompt: hashString(resolved.template),
+      slots,
+      records: records.length,
+      fallback: resolved.fallback,
+    };
+  },
 
-    parse: parseCanonReply,
+  parse: parseCanonReply,
 };
 
 /**
@@ -196,66 +209,66 @@ export const canonPick = {
  *          | {ok: false, reason: 'empty'|'refusal'|'format'|'truncated'|'no-facts'}}
  */
 export function parseCanonReply(content, { slots = MAX_SLOTS, records = Infinity } = {}) {
-    const found = readJsonReply(content);
-    if (!found.ok) return found;
-    // A bare array is a model dropping the envelope, which is a shape we can still read.
-    const value = Array.isArray(found.value) ? { canon: found.value } : found.value;
-    if (!isObject(value) || !Array.isArray(value.canon)) return reject('format');
+  const found = readJsonReply(content);
+  if (!found.ok) return found;
+  // A bare array is a model dropping the envelope, which is a shape we can still read.
+  const value = Array.isArray(found.value) ? { canon: found.value } : found.value;
+  if (!isObject(value) || !Array.isArray(value.canon)) return reject("format");
 
-    const allowed = Math.max(0, Math.min(slots, MAX_SLOTS));
-    const picked = [];
-    const dropped = [];
+  const allowed = Math.max(0, Math.min(slots, MAX_SLOTS));
+  const picked = [];
+  const dropped = [];
 
-    for (const entry of value.canon) {
-        if (picked.length >= allowed) {
-            dropped.push({ reason: 'over-slots' });
-            continue;
-        }
-        const fact = readFact(entry, dropped, records);
-        if (fact) picked.push(fact);
+  for (const entry of value.canon) {
+    if (picked.length >= allowed) {
+      dropped.push({ reason: "over-slots" });
+      continue;
     }
+    const fact = readFact(entry, dropped, records);
+    if (fact) picked.push(fact);
+  }
 
-    if (!picked.length) return reject('no-facts');
-    return { ok: true, picked, dropped, short: Math.max(0, allowed - picked.length) };
+  if (!picked.length) return reject("no-facts");
+  return { ok: true, picked, dropped, short: Math.max(0, allowed - picked.length) };
 }
 
 /** One entry of `canon`, or null with the reason recorded. */
 function readFact(entry, dropped, records) {
-    if (!isObject(entry)) return drop(dropped, 'not-a-fact');
-    const raw = typeof entry.fact === 'string' ? entry.fact.trim() : '';
-    if (!raw) return drop(dropped, 'no-text');
-    const { text, clipped } = clip(raw, HARD_FACT_CHARS);
+  if (!isObject(entry)) return drop(dropped, "not-a-fact");
+  const raw = typeof entry.fact === "string" ? entry.fact.trim() : "";
+  if (!raw) return drop(dropped, "no-text");
+  const { text, clipped } = clip(raw, HARD_FACT_CHARS);
 
-    const from = [];
-    for (const row of Array.isArray(entry.from) ? entry.from : []) {
-        const n = Number(row);
-        if (!Number.isInteger(n) || n < 1 || n > records) dropped.push({ reason: 'bad-row' });
-        else if (from.length >= MAX_SOURCES) dropped.push({ reason: 'too-many-rows' });
-        else if (!from.includes(n)) from.push(n);
+  const from = [];
+  for (const row of Array.isArray(entry.from) ? entry.from : []) {
+    const n = Number(row);
+    if (!Number.isInteger(n) || n < 1 || n > records) dropped.push({ reason: "bad-row" });
+    else if (from.length >= MAX_SOURCES) dropped.push({ reason: "too-many-rows" });
+    else if (!from.includes(n)) from.push(n);
+  }
+  // A fact with no readable citation cannot be re-derived or invalidated, which is the
+  // property the pick exists to have (memory/canon.js). Keeping it would put a
+  // permanent fact back in the store, which is what D-0071 undid.
+  if (!from.length) return drop(dropped, "no-source");
+
+  const entities = [];
+  for (const entity of Array.isArray(entry.entities) ? entry.entities : []) {
+    if (typeof entity !== "string" || entity.trim() === "") {
+      dropped.push({ reason: "bad-entity" });
+    } else if (entity.trim().length > MAX_ENTITY_CHARS) {
+      dropped.push({ reason: "entity-too-long" });
+    } else if (entities.length >= MAX_ENTITIES) {
+      dropped.push({ reason: "too-many-entities" });
+    } else {
+      entities.push(entity.trim());
     }
-    // A fact with no readable citation cannot be re-derived or invalidated, which is the
-    // property the pick exists to have (memory/canon.js). Keeping it would put a
-    // permanent fact back in the store, which is what D-0071 undid.
-    if (!from.length) return drop(dropped, 'no-source');
+  }
 
-    const entities = [];
-    for (const entity of Array.isArray(entry.entities) ? entry.entities : []) {
-        if (typeof entity !== 'string' || entity.trim() === '') {
-            dropped.push({ reason: 'bad-entity' });
-        } else if (entity.trim().length > MAX_ENTITY_CHARS) {
-            dropped.push({ reason: 'entity-too-long' });
-        } else if (entities.length >= MAX_ENTITIES) {
-            dropped.push({ reason: 'too-many-entities' });
-        } else {
-            entities.push(entity.trim());
-        }
-    }
-
-    // Marked only when cut, so an ordinary fact keeps exactly the shape the store writes.
-    return clipped ? { text, entities, from, clipped } : { text, entities, from };
+  // Marked only when cut, so an ordinary fact keeps exactly the shape the store writes.
+  return clipped ? { text, entities, from, clipped } : { text, entities, from };
 }
 
 function drop(dropped, reason) {
-    dropped.push({ reason });
-    return null;
+  dropped.push({ reason });
+  return null;
 }

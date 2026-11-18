@@ -5,7 +5,7 @@
 
 /** ~4 characters per token. Wrong in the details, right in the ordering. */
 export function estimateTokens(text) {
-    return Math.ceil(String(text ?? '').length / 4);
+  return Math.ceil(String(text ?? "").length / 4);
 }
 
 /**
@@ -14,10 +14,10 @@ export function estimateTokens(text) {
  * @param {object} context SillyTavern.getContext()
  */
 export async function countTokens(context, text) {
-    try {
-        const count = await context.getTokenCountAsync(String(text ?? ''));
-        return Number.isFinite(count) ? count : estimateTokens(text);
-    } catch {
-        return estimateTokens(text);
-    }
+  try {
+    const count = await context.getTokenCountAsync(String(text ?? ""));
+    return Number.isFinite(count) ? count : estimateTokens(text);
+  } catch {
+    return estimateTokens(text);
+  }
 }

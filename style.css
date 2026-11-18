@@ -2,297 +2,315 @@
    active SillyTavern theme so we inherit it for free. */
 
 .cairn-settings label:not(.checkbox_label) {
-    display: block;
-    margin-top: 0.75em;
+  display: block;
+  margin-top: 0.75em;
 }
 
 .cairn-settings .checkbox_label {
-    margin-top: 0.75em;
+  margin-top: 0.75em;
 }
 
 /* Hints sit under their control, tucked in to line up with the checkbox's text. */
 .cairn-settings .checkbox_label + .cairn-hint {
-    margin-left: 1.9em;
+  margin-left: 1.9em;
 }
 
 /* Each part of the panel is its own card, so they read apart at a glance. */
 .cairn-card {
-    margin: 0.8em 0;
-    padding: 0.4em 0.8em 0.6em 0.8em;
-    border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 8px;
-    background: var(--black30a, rgba(0, 0, 0, 0.15));
+  margin: 0.8em 0;
+  padding: 0.4em 0.8em 0.6em 0.8em;
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 8px;
+  background: var(--black30a, rgba(0, 0, 0, 0.15));
 }
 
 .cairn-section {
-    margin: 0.3em 0 0.4em 0;
-    padding-bottom: 0.3em;
-    border-bottom: 1px solid var(--SmartThemeBorderColor);
+  margin: 0.3em 0 0.4em 0;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--SmartThemeBorderColor);
 }
 
 /* The memory budget's heading inside the Advanced card, one step quieter. */
 .cairn-group .cairn-section {
-    margin-top: 1em;
-    font-size: 0.95em;
-    opacity: 0.9;
+  margin-top: 1em;
+  font-size: 0.95em;
+  opacity: 0.9;
 }
 
 /* A number beside its label, so a column of them reads as a table. */
 .cairn-settings .cairn-field {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1em;
-    margin-top: 0.5em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  margin-top: 0.5em;
 }
 
 .cairn-settings .cairn-field label {
-    margin: 0;
+  margin: 0;
 }
 
 .cairn-settings .cairn-field input {
-    width: 6em;
-    flex: none;
-    margin: 0;
+  width: 6em;
+  flex: none;
+  margin: 0;
 }
 
 .cairn-indent {
-    margin-left: 1.9em;
+  margin-left: 1.9em;
 }
 
 .cairn-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
 }
 
 /* Top-level folds: Advanced settings, Last generation. */
 .cairn-group > summary {
-    cursor: pointer;
-    font-weight: bold;
-    padding: 0.2em 0;
+  cursor: pointer;
+  font-weight: bold;
+  padding: 0.2em 0;
 }
 
 .cairn-group[open] > summary {
-    margin-bottom: 0.4em;
-    padding-bottom: 0.3em;
-    border-bottom: 1px solid var(--SmartThemeBorderColor);
+  margin-bottom: 0.4em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--SmartThemeBorderColor);
 }
 
 /* Long runs must not blow the drawer out. */
 .cairn-inspector {
-    max-height: 60vh;
-    overflow-y: auto;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 .cairn-hint {
-    font-size: 0.85em;
-    opacity: 0.7;
-    margin: 0.2em 0 0.6em 0;
-    color: var(--SmartThemeBodyColor);
+  font-size: 0.85em;
+  opacity: 0.7;
+  margin: 0.2em 0 0.6em 0;
+  color: var(--SmartThemeBodyColor);
 }
 
 /* A note, not an alarm: the hint's muted weight in the warning colour. */
-.cairn-hint.cairn-note { color: var(--warning, #e0a030); }
+.cairn-hint.cairn-note {
+  color: var(--warning, #e0a030);
+}
 
 .cairn-settings select,
 .cairn-settings input[type="text"],
 .cairn-settings textarea {
-    width: 100%;
+  width: 100%;
 }
 
 .cairn-settings textarea {
-    font-family: var(--monoFontFamily, monospace);
-    font-size: 0.85em;
+  font-family: var(--monoFontFamily, monospace);
+  font-size: 0.85em;
 }
 
 /* Inspector (DESIGN.md §10). */
 
 .cairn-inspector-empty {
-    opacity: 0.7;
-    font-size: 0.9em;
+  opacity: 0.7;
+  font-size: 0.9em;
 }
 
 .cairn-row,
 .cairn-list li {
-    display: flex;
-    justify-content: space-between;
-    gap: 1em;
-    padding: 0.15em 0;
-    font-size: 0.9em;
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+  padding: 0.15em 0;
+  font-size: 0.9em;
 }
 
 .cairn-list {
-    list-style: none;
-    margin: 0.3em 0;
-    padding: 0;
+  list-style: none;
+  margin: 0.3em 0;
+  padding: 0;
 }
 
 .cairn-meter {
-    margin: 0.5em 0 0.8em 0;
+  margin: 0.5em 0 0.8em 0;
 }
 
 .cairn-meter-head {
-    display: flex;
-    justify-content: space-between;
+  display: flex;
+  justify-content: space-between;
 }
 
 .cairn-meter-track {
-    height: 6px;
-    border-radius: 3px;
-    background: var(--black30a, rgba(0, 0, 0, 0.3));
-    overflow: hidden;
-    margin: 0.3em 0;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--black30a, rgba(0, 0, 0, 0.3));
+  overflow: hidden;
+  margin: 0.3em 0;
 }
 
 .cairn-meter-fill {
-    height: 100%;
-    transition: width 0.2s ease;
+  height: 100%;
+  transition: width 0.2s ease;
 }
 
 /* Bands, not a gradient: the question is which of three states we are in. */
-.cairn-good { color: var(--active, #4caf50); }
-.cairn-fair { color: var(--warning, #e0a030); }
-.cairn-poor { color: var(--fullred, #d05050); }
-.cairn-meter-fill.cairn-good { background: var(--active, #4caf50); }
-.cairn-meter-fill.cairn-fair { background: var(--warning, #e0a030); }
-.cairn-meter-fill.cairn-poor { background: var(--fullred, #d05050); }
+.cairn-good {
+  color: var(--active, #4caf50);
+}
+.cairn-fair {
+  color: var(--warning, #e0a030);
+}
+.cairn-poor {
+  color: var(--fullred, #d05050);
+}
+.cairn-meter-fill.cairn-good {
+  background: var(--active, #4caf50);
+}
+.cairn-meter-fill.cairn-fair {
+  background: var(--warning, #e0a030);
+}
+.cairn-meter-fill.cairn-poor {
+  background: var(--fullred, #d05050);
+}
 
 .cairn-warn {
-    color: var(--warning, #e0a030);
-    font-size: 0.85em;
-    margin: 0.4em 0;
+  color: var(--warning, #e0a030);
+  font-size: 0.85em;
+  margin: 0.4em 0;
 }
 
 .cairn-details {
-    margin: 0.4em 0;
-    font-size: 0.9em;
+  margin: 0.4em 0;
+  font-size: 0.9em;
 }
 
 .cairn-group > .cairn-details {
-    margin: 0;
-    padding: 0.4em 0;
-    border-bottom: 1px dashed var(--SmartThemeBorderColor);
+  margin: 0;
+  padding: 0.4em 0;
+  border-bottom: 1px dashed var(--SmartThemeBorderColor);
 }
 
 /* The memory budget is always open: the one advanced setting people change. */
 .cairn-group > .cairn-budget {
-    padding-bottom: 0.4em;
-    border-bottom: 1px dashed var(--SmartThemeBorderColor);
+  padding-bottom: 0.4em;
+  border-bottom: 1px dashed var(--SmartThemeBorderColor);
 }
 
 .cairn-group > .cairn-budget > .cairn-section {
-    margin-top: 0.2em;
+  margin-top: 0.2em;
 }
 
 .cairn-budget-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9em;
-    margin: 0.3em 0;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin: 0.3em 0;
 }
 
 .cairn-budget-table th {
-    font-weight: normal;
-    opacity: 0.7;
-    text-align: right;
+  font-weight: normal;
+  opacity: 0.7;
+  text-align: right;
 }
 
 .cairn-budget-table td {
-    padding: 0.15em 0;
+  padding: 0.15em 0;
 }
 
 .cairn-budget-table td:not(:first-child) {
-    text-align: right;
-    white-space: nowrap;
-    padding-left: 0.6em;
+  text-align: right;
+  white-space: nowrap;
+  padding-left: 0.6em;
 }
 
 .cairn-budget-table label {
-    margin: 0;
+  margin: 0;
 }
 
 .cairn-budget-table input {
-    width: 4.5em;
-    margin: 0;
-    text-align: right;
+  width: 4.5em;
+  margin: 0;
+  text-align: right;
 }
 
 .cairn-budget-table .cairn-budget-sub td:first-child {
-    padding-left: 1.2em;
-    opacity: 0.85;
+  padding-left: 1.2em;
+  opacity: 0.85;
 }
 
 .cairn-budget-table .cairn-budget-total td {
-    border-bottom: 1px solid var(--SmartThemeBorderColor);
-    font-weight: bold;
+  border-bottom: 1px solid var(--SmartThemeBorderColor);
+  font-weight: bold;
 }
 
 .cairn-details summary {
-    cursor: pointer;
-    opacity: 0.85;
+  cursor: pointer;
+  opacity: 0.85;
 }
 
 .cairn-group > .cairn-details[open] {
-    padding-left: 0.8em;
-    border-left: 2px solid var(--SmartThemeBorderColor);
+  padding-left: 0.8em;
+  border-left: 2px solid var(--SmartThemeBorderColor);
 }
 
 .cairn-group > .cairn-details[open] > summary {
-    margin-left: -0.8em;
+  margin-left: -0.8em;
 }
 
 .cairn-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85em;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
 }
 
 .cairn-table th,
 .cairn-table td {
-    text-align: left;
-    padding: 0.15em 0.4em;
-    border-bottom: 1px solid var(--SmartThemeBorderColor);
+  text-align: left;
+  padding: 0.15em 0.4em;
+  border-bottom: 1px solid var(--SmartThemeBorderColor);
 }
 
 .cairn-table td:last-child,
 .cairn-table th:last-child {
-    text-align: right;
+  text-align: right;
 }
 
 .cairn-diff {
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-size: 0.8em;
-    margin: 0.3em 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.8em;
+  margin: 0.3em 0;
 }
 
 /* Story text, not a diff: the chat's own font. */
 .cairn-diff.cairn-prose {
-    font-family: inherit;
+  font-family: inherit;
 }
 
-.cairn-was { color: var(--fullred, #d05050); }
-.cairn-now { color: var(--active, #4caf50); }
+.cairn-was {
+  color: var(--fullred, #d05050);
+}
+.cairn-now {
+  color: var(--active, #4caf50);
+}
 
 .dim {
-    opacity: 0.6;
+  opacity: 0.6;
 }
 
 /* Summaries under their messages (src/ui/chat-marks.js), sized like qvink's. */
 
 .cairn-scene {
-    margin: 0 0 5px 0;
-    font-size: small;
-    opacity: 0.85;
+  margin: 0 0 5px 0;
+  font-size: small;
+  opacity: 0.85;
 }
 
 /* The pencils after Cairn's summary and world state: the text's own size and colour, no box (D-0099, D-0100). */
 .cairn-scene-edit,
 .cairn-state-edit,
 .cairn-character-edit {
-    font-size: inherit;
-    cursor: pointer;
+  font-size: inherit;
+  cursor: pointer;
 }
 
 .cairn-scene-edit:hover,
@@ -301,52 +319,52 @@
 .cairn-state-edit:focus-visible,
 .cairn-character-edit:hover,
 .cairn-character-edit:focus-visible {
-    opacity: 1;
-    color: var(--SmartThemeQuoteColor);
+  opacity: 1;
+  color: var(--SmartThemeQuoteColor);
 }
 
 .cairn-scene-writing,
 .cairn-scene-waiting,
 .cairn-state-writing {
-    font-style: italic;
-    opacity: 0.7;
+  font-style: italic;
+  opacity: 0.7;
 }
 
 .cairn-state-writing {
-    margin: 0 0 5px 0;
-    font-size: small;
+  margin: 0 0 5px 0;
+  font-size: small;
 }
 
 .cairn-scene-failed,
 .cairn-scene-given-up {
-    color: var(--warning, #e0a030);
+  color: var(--warning, #e0a030);
 }
 
 /* Excluded in Qvink, so the block leaves it out. */
 .cairn-scene-excluded {
-    opacity: 0.5;
+  opacity: 0.5;
 }
 
 /* The summary, world state and Established facts on their messages, as sections that fold (src/ui/chat-marks.js). */
 
 .cairn-state,
 .cairn-canon {
-    margin: 0 0 5px 0;
-    font-size: small;
-    opacity: 0.85;
+  margin: 0 0 5px 0;
+  font-size: small;
+  opacity: 0.85;
 }
 
 .cairn-scene > summary,
 .cairn-state > summary,
 .cairn-canon > summary {
-    cursor: pointer;
-    font-weight: bold;
+  cursor: pointer;
+  font-weight: bold;
 }
 
 .cairn-scene > pre,
 .cairn-state > pre,
 .cairn-canon > pre {
-    margin: 4px 0 0 0;
-    white-space: pre-wrap;
-    font-family: inherit;
+  margin: 4px 0 0 0;
+  white-space: pre-wrap;
+  font-family: inherit;
 }

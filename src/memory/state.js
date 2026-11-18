@@ -9,10 +9,10 @@
  *
  * Pure: plain data in, plain data out. No ST, no DOM, no network.
  */
-import { hashRange, readRange, readState, visible } from '../store/chat-store.js';
-import { sceneHistory } from './scenes.js';
-import { foldName, validState } from './state-schema.js';
-import { STATE_MAX_EARLIER, STATE_MAX_MESSAGES } from './state-strategy.js';
+import { hashRange, readRange, readState, visible } from "../store/chat-store.js";
+import { sceneHistory } from "./scenes.js";
+import { foldName, validState } from "./state-schema.js";
+import { STATE_MAX_EARLIER, STATE_MAX_MESSAGES } from "./state-strategy.js";
 
 /**
  * The newest usable state at or before `through`, walking back. A state counts
@@ -24,11 +24,11 @@ import { STATE_MAX_EARLIER, STATE_MAX_MESSAGES } from './state-strategy.js';
  * @returns {{index: number, state: object}|null}
  */
 export function newestState(chat, through = (chat?.length ?? 0) - 1) {
-    for (let index = Math.min(through, (chat?.length ?? 0) - 1); index >= 0; index--) {
-        const found = usableState(chat, index);
-        if (found) return found;
-    }
-    return null;
+  for (let index = Math.min(through, (chat?.length ?? 0) - 1); index >= 0; index--) {
+    const found = usableState(chat, index);
+    if (found) return found;
+  }
+  return null;
 }
 
 /**
@@ -43,16 +43,16 @@ export function newestState(chat, through = (chat?.length ?? 0) - 1) {
  * @returns {Record<string, {hair?: string, outfit?: string}>} Keyed by the stored spelling.
  */
 export function lastSeen(chat, through, names = []) {
-    const wanted = new Set(names.filter((name) => typeof name === 'string').map(foldName));
-    const found = {};
-    for (let index = Math.min(through, (chat?.length ?? 0) - 1); index >= 0 && wanted.size; index--) {
-        const characters = usableState(chat, index)?.state.value.characters;
-        for (const [name, fields] of Object.entries(characters ?? {})) {
-            if (!wanted.delete(foldName(name))) continue;
-            found[name] = { ...fields };
-        }
+  const wanted = new Set(names.filter((name) => typeof name === "string").map(foldName));
+  const found = {};
+  for (let index = Math.min(through, (chat?.length ?? 0) - 1); index >= 0 && wanted.size; index--) {
+    const characters = usableState(chat, index)?.state.value.characters;
+    for (const [name, fields] of Object.entries(characters ?? {})) {
+      if (!wanted.delete(foldName(name))) continue;
+      found[name] = { ...fields };
     }
-    return found;
+  }
+  return found;
 }
 
 /**
@@ -69,19 +69,19 @@ export function lastSeen(chat, through, names = []) {
  * @returns {{index: number, state: object, depth: number}|null} `index` is the live chat's.
  */
 export function stateForPrompt(chat, promptChat) {
-    const indexOf = new Map();
-    (chat ?? []).forEach((message, index) => {
-        if (message?.extra && typeof message.extra === 'object') indexOf.set(message.extra, index);
-    });
+  const indexOf = new Map();
+  (chat ?? []).forEach((message, index) => {
+    if (message?.extra && typeof message.extra === "object") indexOf.set(message.extra, index);
+  });
 
-    const entries = promptChat ?? [];
-    for (let at = entries.length - 1; at >= 0; at--) {
-        const index = indexOf.get(entries[at]?.extra);
-        if (index === undefined) continue;
-        const found = usableState(chat, index);
-        if (found) return { ...found, depth: entries.length - 1 - at };
-    }
-    return null;
+  const entries = promptChat ?? [];
+  for (let at = entries.length - 1; at >= 0; at--) {
+    const index = indexOf.get(entries[at]?.extra);
+    if (index === undefined) continue;
+    const found = usableState(chat, index);
+    if (found) return { ...found, depth: entries.length - 1 - at };
+  }
+  return null;
 }
 
 /**
@@ -99,12 +99,12 @@ export function stateForPrompt(chat, promptChat) {
  * }} `message` and `hash` are what `jobStillCurrent` checks before the write.
  */
 export function pendingStateJob(chat) {
-    const list = chat ?? [];
-    let index = list.length - 1;
-    while (index >= 0 && !visible(list[index])) index--;
-    if (index < 0) return null;
-    if (newestState(list, index)?.index === index) return null;
-    return stateJobAt(list, index);
+  const list = chat ?? [];
+  let index = list.length - 1;
+  while (index >= 0 && !visible(list[index])) index--;
+  if (index < 0) return null;
+  if (newestState(list, index)?.index === index) return null;
+  return stateJobAt(list, index);
 }
 
 /**
@@ -118,33 +118,36 @@ export function pendingStateJob(chat) {
  *          or one a newer Cairn wrote.
  */
 export function stateJobAt(chat, index) {
-    const list = chat ?? [];
-    if (!visible(list[index])) return null;
-    // A newer Cairn's store is not ours to overwrite (store/chat-store.js).
-    if (readState(list, index).status === 'future') return null;
+  const list = chat ?? [];
+  if (!visible(list[index])) return null;
+  // A newer Cairn's store is not ours to overwrite (store/chat-store.js).
+  if (readState(list, index).status === "future") return null;
 
-    const base = index > 0 ? newestState(list, index - 1) : null;
+  const base = index > 0 ? newestState(list, index - 1) : null;
 
-    const unread = [];
-    for (let at = (base?.index ?? -1) + 1; at <= index; at++) {
-        if (visible(list[at])) unread.push(at);
-    }
-    const read = Math.min(unread.length, STATE_MAX_MESSAGES);
-    const messages = readRange(list, index, read);
-    const earlier = unread.length > read
-        ? sceneHistory(list, unread[unread.length - read], { count: STATE_MAX_EARLIER }).map((scene) => scene.text)
-        : [];
+  const unread = [];
+  for (let at = (base?.index ?? -1) + 1; at <= index; at++) {
+    if (visible(list[at])) unread.push(at);
+  }
+  const read = Math.min(unread.length, STATE_MAX_MESSAGES);
+  const messages = readRange(list, index, read);
+  const earlier =
+    unread.length > read
+      ? sceneHistory(list, unread[unread.length - read], { count: STATE_MAX_EARLIER }).map(
+          (scene) => scene.text,
+        )
+      : [];
 
-    return {
-        index,
-        message: list[index],
-        read,
-        hash: hashRange(messages),
-        messages,
-        state: base?.state.value ?? {},
-        baseIndex: base?.index ?? null,
-        earlier,
-    };
+  return {
+    index,
+    message: list[index],
+    read,
+    hash: hashRange(messages),
+    messages,
+    state: base?.state.value ?? {},
+    baseIndex: base?.index ?? null,
+    earlier,
+  };
 }
 
 /**
@@ -157,10 +160,10 @@ export function stateJobAt(chat, index) {
  * @param {{message: object, read: number, hash: string}} job
  */
 export function jobStillCurrent(chat, job) {
-    const index = (chat ?? []).indexOf(job?.message);
-    if (index < 0) return -1;
-    const range = readRange(chat, index, job.read);
-    return range && hashRange(range) === job.hash ? index : -1;
+  const index = (chat ?? []).indexOf(job?.message);
+  if (index < 0) return -1;
+  const range = readRange(chat, index, job.read);
+  return range && hashRange(range) === job.hash ? index : -1;
 }
 
 /**
@@ -170,6 +173,6 @@ export function jobStillCurrent(chat, job) {
  * @returns {{index: number, state: object}|null}
  */
 export function usableState(chat, index) {
-    const { status, state } = readState(chat, index);
-    return status === 'valid' && validState(state.value) ? { index, state } : null;
+  const { status, state } = readState(chat, index);
+  return status === "valid" && validState(state.value) ? { index, state } : null;
 }

@@ -1,6 +1,7 @@
 {
   "path": ["src", "scripts", "index.js"],
   "format": ["javascript"],
+  "ignorePattern": ["import\\s*\\{[^}]*\\}\\s*from\\s*\"[^\"]+\";"],
   "minLines": 5,
   "minTokens": 50,
   "reporters": ["console"],

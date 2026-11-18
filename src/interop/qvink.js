@@ -7,28 +7,28 @@
  */
 
 /** qvink's `message.extra` key and settings key (its index.js:45). */
-export const QVINK_KEY = 'qvink_memory';
+export const QVINK_KEY = "qvink_memory";
 
 /** The injection it parks its short-term block under (its index.js:4023). */
-export const QVINK_SHORT_INJECTION = 'qvink_memory_short';
+export const QVINK_SHORT_INJECTION = "qvink_memory_short";
 
 /** And its long-term one, from the same call (its index.js:4022). */
-export const QVINK_LONG_INJECTION = 'qvink_memory_long';
+export const QVINK_LONG_INJECTION = "qvink_memory_long";
 
 /**
  * qvink's install folder, as its repository clones (github.com/qvink/SillyTavern-MessageSummarize),
  * under the prefix ST gives every user extension (src/endpoints/extensions.js:518).
  */
-export const QVINK_EXTENSION = 'third-party/SillyTavern-MessageSummarize';
+export const QVINK_EXTENSION = "third-party/SillyTavern-MessageSummarize";
 
 /** qvink's own defaults for the two switches Cairn reads, cited so the fallback is not a guess. */
 export const QVINK_DEFAULTS = Object.freeze({
-    /** its index.js:136 */
-    excludeAfterThreshold: true,
-    /** its index.js:116 */
-    autoSummarize: true,
-    /** its index.js:160 */
-    displayMemories: true,
+  /** its index.js:136 */
+  excludeAfterThreshold: true,
+  /** its index.js:116 */
+  autoSummarize: true,
+  /** its index.js:160 */
+  displayMemories: true,
 });
 
 /**
@@ -45,10 +45,10 @@ export const QVINK_DEFAULTS = Object.freeze({
  * @returns {string[]} Injection keys, empty when qvink is silent.
  */
 export function qvinkInjecting(extensionPrompts) {
-    return [QVINK_LONG_INJECTION, QVINK_SHORT_INJECTION].filter((key) => {
-        const parked = extensionPrompts?.[key];
-        return Boolean(parked?.value) && Number(parked.position) >= 0;
-    });
+  return [QVINK_LONG_INJECTION, QVINK_SHORT_INJECTION].filter((key) => {
+    const parked = extensionPrompts?.[key];
+    return Boolean(parked?.value) && Number(parked.position) >= 0;
+  });
 }
 
 /**
@@ -63,12 +63,18 @@ export function qvinkInjecting(extensionPrompts) {
  * @param {object} context SillyTavern.getContext()
  */
 export function qvinkRunning(context) {
-    const { extensionSettings, extensionPrompts, getExtensionManifest } = context ?? {};
-    if ([QVINK_LONG_INJECTION, QVINK_SHORT_INJECTION].some((key) => Object.hasOwn(extensionPrompts ?? {}, key))) {
-        return true;
-    }
-    return Boolean(getExtensionManifest?.(QVINK_EXTENSION))
-        && !(extensionSettings?.disabledExtensions ?? []).includes(QVINK_EXTENSION);
+  const { extensionSettings, extensionPrompts, getExtensionManifest } = context ?? {};
+  if (
+    [QVINK_LONG_INJECTION, QVINK_SHORT_INJECTION].some((key) =>
+      Object.hasOwn(extensionPrompts ?? {}, key),
+    )
+  ) {
+    return true;
+  }
+  return (
+    Boolean(getExtensionManifest?.(QVINK_EXTENSION)) &&
+    !(extensionSettings?.disabledExtensions ?? []).includes(QVINK_EXTENSION)
+  );
 }
 
 /**
@@ -79,9 +85,11 @@ export function qvinkRunning(context) {
  * @param {object} context SillyTavern.getContext()
  */
 export function qvinkExcluding(context, { key = QVINK_KEY } = {}) {
-    if (!qvinkRunning(context)) return false;
-    const settings = context.extensionSettings?.[key];
-    return Boolean(settings?.exclude_messages_after_threshold ?? QVINK_DEFAULTS.excludeAfterThreshold);
+  if (!qvinkRunning(context)) return false;
+  const settings = context.extensionSettings?.[key];
+  return Boolean(
+    settings?.exclude_messages_after_threshold ?? QVINK_DEFAULTS.excludeAfterThreshold,
+  );
 }
 
 /**
@@ -92,9 +100,9 @@ export function qvinkExcluding(context, { key = QVINK_KEY } = {}) {
  * @param {object} context SillyTavern.getContext()
  */
 export function qvinkSummarising(context, { key = QVINK_KEY } = {}) {
-    if (!qvinkRunning(context)) return false;
-    const settings = context.extensionSettings?.[key];
-    return Boolean(settings?.auto_summarize ?? QVINK_DEFAULTS.autoSummarize);
+  if (!qvinkRunning(context)) return false;
+  const settings = context.extensionSettings?.[key];
+  return Boolean(settings?.auto_summarize ?? QVINK_DEFAULTS.autoSummarize);
 }
 
 /**
@@ -105,7 +113,7 @@ export function qvinkSummarising(context, { key = QVINK_KEY } = {}) {
  * @param {object} context SillyTavern.getContext()
  */
 export function qvinkDisplaying(context, { key = QVINK_KEY } = {}) {
-    if (!qvinkRunning(context)) return false;
-    const settings = context.extensionSettings?.[key];
-    return Boolean(settings?.display_memories ?? QVINK_DEFAULTS.displayMemories);
+  if (!qvinkRunning(context)) return false;
+  const settings = context.extensionSettings?.[key];
+  return Boolean(settings?.display_memories ?? QVINK_DEFAULTS.displayMemories);
 }

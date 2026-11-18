@@ -12,7 +12,7 @@
  */
 
 /** Where `getMaxPromptTokens` lives (util/context-size.js). */
-export const loadScript = () => import(/* @vite-ignore */ '/script.js');
+export const loadScript = () => import(/* @vite-ignore */ "/script.js");
 
 /** Where the World Info budget, its cap and `getSortedEntries` live (prompt/reserves.js, prompt/lore-cap.js). */
-export const loadWorldInfo = () => import(/* @vite-ignore */ '/scripts/world-info.js');
+export const loadWorldInfo = () => import(/* @vite-ignore */ "/scripts/world-info.js");

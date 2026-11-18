@@ -13,14 +13,14 @@
  */
 
 /** The value ST itself sends to OpenRouter for "Minimum" with thoughts hidden (public/scripts/openai.js:2618-2620). */
-export const NO_REASONING = 'none';
+export const NO_REASONING = "none";
 
 /**
  * What to ask for, in order. Some OpenRouter endpoints cannot turn reasoning off and
  * refuse `none` outright ("Reasoning is mandatory for this endpoint"); `low` still
  * keeps the thinking short. Past the last, the request goes out as the preset has it.
  */
-export const EFFORTS = [NO_REASONING, 'low'];
+export const EFFORTS = [NO_REASONING, "low"];
 
 /**
  * The efforts to try for the `memoryReasoning` setting, most restrained first: it is
@@ -30,9 +30,9 @@ export const EFFORTS = [NO_REASONING, 'low'];
  * @returns {string[]}
  */
 export function effortsFor(setting = NO_REASONING) {
-    if (setting === 'preset') return [];
-    const start = EFFORTS.indexOf(setting);
-    return EFFORTS.slice(start < 0 ? 0 : start);
+  if (setting === "preset") return [];
+  const start = EFFORTS.indexOf(setting);
+  return EFFORTS.slice(start < 0 ? 0 : start);
 }
 
 /**
@@ -41,9 +41,9 @@ export function effortsFor(setting = NO_REASONING) {
  * @returns {object|null} The Connection Manager profile, or null.
  */
 export function memoryProfile(context, memoryProfileId) {
-    if (!memoryProfileId) return null;
-    const profiles = context?.extensionSettings?.connectionManager?.profiles ?? [];
-    return profiles.find((profile) => profile.id === memoryProfileId) ?? null;
+  if (!memoryProfileId) return null;
+  const profiles = context?.extensionSettings?.connectionManager?.profiles ?? [];
+  return profiles.find((profile) => profile.id === memoryProfileId) ?? null;
 }
 
 /**
@@ -53,8 +53,8 @@ export function memoryProfile(context, memoryProfileId) {
  * @returns {string|null}
  */
 export function profileSource(context, profile) {
-    if (!profile?.api) return null;
-    return context?.CONNECT_API_MAP?.[profile.api]?.source ?? null;
+  if (!profile?.api) return null;
+  return context?.CONNECT_API_MAP?.[profile.api]?.source ?? null;
 }
 
 /**
@@ -69,9 +69,9 @@ export function profileSource(context, profile) {
  * @returns {{reasoning_effort?: string}}
  */
 export function requestOverrides(context, profile, refused = new Set(), setting = NO_REASONING) {
-    if (profileSource(context, profile) !== 'openrouter') return {};
-    const effort = effortsFor(setting).find((value) => !refused.has(value));
-    return effort ? { reasoning_effort: effort } : {};
+  if (profileSource(context, profile) !== "openrouter") return {};
+  const effort = effortsFor(setting).find((value) => !refused.has(value));
+  return effort ? { reasoning_effort: effort } : {};
 }
 
 /**
@@ -79,7 +79,8 @@ export function requestOverrides(context, profile, refused = new Set(), setting 
  * It says what the material is and nothing else: a model that declines the story knowing
  * it is fiction is not argued with.
  */
-export const FICTION_FRAME = 'The material in this request comes from a work of collaborative fiction: an interactive story that a writer and an AI storyteller are writing together in SillyTavern, a roleplay application. Its characters, places and events are invented, and nothing in it happened to anyone real. The task that follows is bookkeeping for that story: recording what happens in it so that it can be continued consistently. It does not ask you to write any of the story.';
+export const FICTION_FRAME =
+  "The material in this request comes from a work of collaborative fiction: an interactive story that a writer and an AI storyteller are writing together in SillyTavern, a roleplay application. Its characters, places and events are invented, and nothing in it happened to anyone real. The task that follows is bookkeeping for that story: recording what happens in it so that it can be continued consistently. It does not ask you to write any of the story.";
 
 /**
  * A request's messages with the frame ahead of them as a system message. Chat completion
@@ -91,12 +92,12 @@ export const FICTION_FRAME = 'The material in this request comes from a work of 
  * @param {boolean} [setting] The `fictionFrame` setting; only `false` leaves the frame out.
  */
 export function framedMessages(messages, setting) {
-    return setting === false ? messages : [{ role: 'system', content: FICTION_FRAME }, ...messages];
+  return setting === false ? messages : [{ role: "system", content: FICTION_FRAME }, ...messages];
 }
 
 /** Refusals are remembered per profile and model: another model on the same profile may accept. */
 export function refusalKey(profile) {
-    return `${profile?.id ?? ''}\n${profile?.model ?? ''}`;
+  return `${profile?.id ?? ""}\n${profile?.model ?? ""}`;
 }
 
 /**
@@ -106,8 +107,8 @@ export function refusalKey(profile) {
  * own reason is not visible here — only that it was a 400.
  */
 export function isBadRequest(err) {
-    for (let at = err, depth = 0; at && depth < 5; at = at.cause, depth++) {
-        if (/bad request/i.test(String(at.message ?? ''))) return true;
-    }
-    return false;
+  for (let at = err, depth = 0; at && depth < 5; at = at.cause, depth++) {
+    if (/bad request/i.test(String(at.message ?? ""))) return true;
+  }
+  return false;
 }

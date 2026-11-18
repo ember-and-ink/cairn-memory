@@ -11,12 +11,12 @@ contributions are handled:
 
 ## Where things are
 
-| | |
-|---|---|
-| [`DESIGN.md`](../DESIGN.md) | Why Cairn works the way it does |
-| [`CLAUDE.md`](../CLAUDE.md) | The house rules — how code, tests and docs are written here |
-| [`docs/decisions.md`](../docs/decisions.md) | What was decided, when, why, and what would reopen it |
-| [`docs/development.md`](../docs/development.md) | Setup, the local gate, working against a local SillyTavern |
+|                                                 |                                                             |
+| ----------------------------------------------- | ----------------------------------------------------------- |
+| [`DESIGN.md`](../DESIGN.md)                     | Why Cairn works the way it does                             |
+| [`CLAUDE.md`](../CLAUDE.md)                     | The house rules — how code, tests and docs are written here |
+| [`docs/decisions.md`](../docs/decisions.md)     | What was decided, when, why, and what would reopen it       |
+| [`docs/development.md`](../docs/development.md) | Setup, the local gate, working against a local SillyTavern  |
 
 Settled decisions are not re-argued in a PR. New evidence gets a new entry in
 the decision log that supersedes the old one.

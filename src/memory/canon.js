@@ -74,56 +74,63 @@ export const MAX_ENTITY_CHARS = 32;
  *          gone, which is what makes a re-derivation due.
  */
 export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } = {}) {
-    const list = chat ?? [];
-    let batches = 0;
-    let newest = null;
-    let at = null;
+  const list = chat ?? [];
+  let batches = 0;
+  let newest = null;
+  let at = null;
 
-    for (let index = 0; index < list.length; index++) {
-        const { status, canon } = readCanon(list[index]);
-        if (status !== 'valid') continue;
-        batches++;
-        if (index <= through) {
-            newest = canon;
-            at = index;
-        }
+  for (let index = 0; index < list.length; index++) {
+    const { status, canon } = readCanon(list[index]);
+    if (status !== "valid") continue;
+    batches++;
+    if (index <= through) {
+      newest = canon;
+      at = index;
     }
+  }
 
-    if (!newest) {
-        return {
-            facts: [], index: null, at: null, slots: null, covers: null, coveredThrough: null, batches, dropped: 0,
-        };
-    }
-
-    const facts = [];
-    const seen = new Set();
-    let dropped = 0;
-
-    for (const fact of newest.facts) {
-        const from = (fact.from ?? []).filter((source) => Number.isInteger(source));
-        // No citation is an older batch, from before a fact cited anything. There is
-        // nothing to check it against, so it is kept: degrading to a guess would be
-        // worse than degrading to what is written (D-0074).
-        if (from.length && !from.some((source) => readIndex(list[source]).status === 'valid')) {
-            dropped++;
-            continue;
-        }
-        const key = normaliseFact(fact.text);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        facts.push({ text: fact.text, entities: [...fact.entities], from, index: at });
-    }
-
+  if (!newest) {
     return {
-        facts,
-        index: at,
-        at: typeof newest.at === 'string' ? newest.at : null,
-        slots: Number.isInteger(newest.slots) ? newest.slots : null,
-        covers: [...newest.covers],
-        coveredThrough: newest.covers[1],
-        batches,
-        dropped,
+      facts: [],
+      index: null,
+      at: null,
+      slots: null,
+      covers: null,
+      coveredThrough: null,
+      batches,
+      dropped: 0,
     };
+  }
+
+  const facts = [];
+  const seen = new Set();
+  let dropped = 0;
+
+  for (const fact of newest.facts) {
+    const from = (fact.from ?? []).filter((source) => Number.isInteger(source));
+    // No citation is an older batch, from before a fact cited anything. There is
+    // nothing to check it against, so it is kept: degrading to a guess would be
+    // worse than degrading to what is written (D-0074).
+    if (from.length && !from.some((source) => readIndex(list[source]).status === "valid")) {
+      dropped++;
+      continue;
+    }
+    const key = normaliseFact(fact.text);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    facts.push({ text: fact.text, entities: [...fact.entities], from, index: at });
+  }
+
+  return {
+    facts,
+    index: at,
+    at: typeof newest.at === "string" ? newest.at : null,
+    slots: Number.isInteger(newest.slots) ? newest.slots : null,
+    covers: [...newest.covers],
+    coveredThrough: newest.covers[1],
+    batches,
+    dropped,
+  };
 }
 
 /**
@@ -144,16 +151,16 @@ export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } 
  * @returns {{facts: Array<object>, tokens: number, dropped: number}}
  */
 export function admitCanon({ facts = [], cap = 0, tokensOf }) {
-    const limit = Math.max(0, Math.floor(cap));
-    let kept = facts;
-    let tokens = kept.length ? Math.max(0, Math.ceil(tokensOf(kept))) : 0;
+  const limit = Math.max(0, Math.floor(cap));
+  let kept = facts;
+  let tokens = kept.length ? Math.max(0, Math.ceil(tokensOf(kept))) : 0;
 
-    while (kept.length && tokens > limit) {
-        kept = kept.slice(0, -1);
-        tokens = kept.length ? Math.max(0, Math.ceil(tokensOf(kept))) : 0;
-    }
+  while (kept.length && tokens > limit) {
+    kept = kept.slice(0, -1);
+    tokens = kept.length ? Math.max(0, Math.ceil(tokensOf(kept))) : 0;
+  }
 
-    return { facts: kept, tokens, dropped: facts.length - kept.length };
+  return { facts: kept, tokens, dropped: facts.length - kept.length };
 }
 
 /**
@@ -168,25 +175,25 @@ export function admitCanon({ facts = [], cap = 0, tokensOf }) {
  * @returns {{facts: Array<{text: string, entities: string[], from: number[]}>, duplicates: number}}
  */
 export function newFacts(picked, existing = []) {
-    const seen = new Set(existing.map((fact) => normaliseFact(fact.text)));
-    const facts = [];
-    let duplicates = 0;
+  const seen = new Set(existing.map((fact) => normaliseFact(fact.text)));
+  const facts = [];
+  let duplicates = 0;
 
-    for (const fact of picked ?? []) {
-        const key = normaliseFact(fact?.text);
-        if (!key || seen.has(key)) {
-            duplicates++;
-            continue;
-        }
-        seen.add(key);
-        facts.push({
-            text: fact.text,
-            entities: [...(fact.entities ?? [])],
-            from: [...(fact.from ?? [])],
-        });
+  for (const fact of picked ?? []) {
+    const key = normaliseFact(fact?.text);
+    if (!key || seen.has(key)) {
+      duplicates++;
+      continue;
     }
+    seen.add(key);
+    facts.push({
+      text: fact.text,
+      entities: [...(fact.entities ?? [])],
+      from: [...(fact.from ?? [])],
+    });
+  }
 
-    return { facts, duplicates };
+  return { facts, duplicates };
 }
 
 /**
@@ -198,17 +205,17 @@ export function newFacts(picked, existing = []) {
  * @returns {string} Empty when there is nothing to compare.
  */
 export function normaliseFact(text) {
-    if (typeof text !== 'string') return '';
-    return text
-        .toLowerCase()
-        .replace(/[‘’]/g, '\'')
-        .replace(/[^\p{L}\p{N}'\s]+/gu, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+  if (typeof text !== "string") return "";
+  return text
+    .toLowerCase()
+    .replace(/[‘’]/g, "'")
+    .replace(/[^\p{L}\p{N}'\s]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** The slot count a setting asks for, clamped to what a pick may be asked. */
 export function slotsFor(setting) {
-    const value = Number.isFinite(setting) ? Math.floor(setting) : DEFAULT_SLOTS;
-    return Math.min(MAX_SLOTS, Math.max(MIN_SLOTS, value));
+  const value = Number.isFinite(setting) ? Math.floor(setting) : DEFAULT_SLOTS;
+  return Math.min(MAX_SLOTS, Math.max(MIN_SLOTS, value));
 }

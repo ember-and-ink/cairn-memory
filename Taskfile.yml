@@ -14,12 +14,12 @@
 #
 # Tasks that run vitest forward anything after `--`:
 #   task test -- test/canon.test.js -t carry
-version: '3'
+version: "3"
 
 set: [errexit, nounset, pipefail]
 
 vars:
-  BIN: '{{.ROOT_DIR}}/node_modules/.bin'
+  BIN: "{{.ROOT_DIR}}/node_modules/.bin"
   # Local SillyTavern checkout for verify-st. Override: task verify-st ST_PATH=...
   ST_PATH: '{{.ST_PATH | default (printf "%s/workspaces/SillyTavern" .HOME)}}'
 
@@ -28,7 +28,7 @@ tasks:
     desc: List every task
     silent: true
     cmds:
-      - '{{.TASK_EXE}} --list --sort none'
+      - "{{.TASK_EXE}} --list --sort none"
 
   # ---- Setup ----
 
@@ -42,50 +42,60 @@ tasks:
   pre-commit-install:
     desc: Install the git pre-commit hooks (prek)
     cmds:
-      - '{{.BIN}}/prek install --force'
+      - "{{.BIN}}/prek install --force"
 
   pre-commit:
     desc: Run every pre-commit hook against all files, not just staged ones
     cmds:
-      - '{{.BIN}}/prek run --all-files'
+      - "{{.BIN}}/prek run --all-files"
 
   # ---- Linting ----
 
   lint-check:
     desc: Run oxlint and auto-fix what it can
     cmds:
-      - '{{.BIN}}/oxlint --fix --deny-warnings'
+      - "{{.BIN}}/oxlint --fix --deny-warnings"
+
+  # Defaults on purpose: no house style to remember (D-0108). Code, docs, JSON, YAML,
+  # HTML and CSS alike; .gitignore and .oxfmtrc.json say what is left alone.
+  lint-format:
+    desc: Format the repo with oxfmt
+    cmds:
+      - "{{.BIN}}/oxfmt"
 
   # A clone of an unstaged file is still a clone, so this scans everything in scope.
   lint-dupes:
     desc: Check shipped code and scripts for copy-pasted logic (jscpd)
     cmds:
-      - '{{.BIN}}/jscpd --no-tips --config .jscpd.json'
+      - "{{.BIN}}/jscpd --no-tips --config .jscpd.json"
 
-  # Sequential on purpose: a fixer and a checker reading the same files at once is a race.
+  # Sequential on purpose: a fixer and a formatter rewriting the same files at once is a
+  # race. Fix before format, so the formatter has the last word on layout.
   lint:
-    desc: Run all linters and auto-fix issues
+    desc: Run all linters and the formatter, auto-fixing issues
     cmds:
       - task: lint-check
+      - task: lint-format
       - task: lint-dupes
 
   test-lint:
-    desc: Check lint and duplication without modifying files (CI mode)
+    desc: Check lint, format and duplication without modifying files (CI mode)
     cmds:
-      - '{{.BIN}}/oxlint --deny-warnings'
-      - '{{.BIN}}/jscpd --no-tips --config .jscpd.json'
+      - "{{.BIN}}/oxlint --deny-warnings"
+      - "{{.BIN}}/oxfmt --check"
+      - "{{.BIN}}/jscpd --no-tips --config .jscpd.json"
 
   # ---- Testing ----
 
   test:
     desc: Run the unit tests once
     cmds:
-      - '{{.BIN}}/vitest run {{.CLI_ARGS}}'
+      - "{{.BIN}}/vitest run {{.CLI_ARGS}}"
 
   test-watch:
     desc: Run the unit tests in watch mode
     cmds:
-      - '{{.BIN}}/vitest {{.CLI_ARGS}}'
+      - "{{.BIN}}/vitest {{.CLI_ARGS}}"
 
   # ---- Checks ----
 
@@ -110,7 +120,7 @@ tasks:
   verify-st:
     desc: Re-check docs/st-api-surface.md against a local SillyTavern checkout
     env:
-      ST_PATH: '{{.ST_PATH}}'
+      ST_PATH: "{{.ST_PATH}}"
     cmds:
       - node scripts/verify-st.mjs
 
@@ -143,7 +153,7 @@ tasks:
     cmds:
       - |
         v=$(npm version {{.PART}} --no-git-tag-version | tr -d v)
-        node -e "const f='manifest.json',fs=require('fs'),m=JSON.parse(fs.readFileSync(f)); m.version='$v'; fs.writeFileSync(f, JSON.stringify(m, null, 4) + '\n')"
+        node -e "const f='manifest.json',fs=require('fs'),m=JSON.parse(fs.readFileSync(f)); m.version='$v'; fs.writeFileSync(f, JSON.stringify(m, null, 2) + '\n')"
         echo "✓ version $v"
 
   # ---- Dependencies ----

@@ -3,8 +3,8 @@
  * The reasons are what the panel and the log show (src/ui/inspector.js,
  * src/util/disk-log.js), so a closed gate never looks like an idle queue.
  */
-import { qvinkSummarising } from '../interop/qvink.js';
-import { wtrackerLoaded } from '../interop/wtracker.js';
+import { qvinkSummarising } from "../interop/qvink.js";
+import { wtrackerLoaded } from "../interop/wtracker.js";
 
 /**
  * Whether Cairn may summarise in this chat now, and if not, why.
@@ -14,10 +14,11 @@ import { wtrackerLoaded } from '../interop/wtracker.js';
  * @returns {{ready: boolean, reason: string}}
  */
 export function assessSummarizing(context, { memoryProfileId } = {}) {
-    const reason = memoryCallsBlocked(context, memoryProfileId)
-        ?? (qvinkSummarising(context) ? 'qvink-summarising' : null);
-    if (reason) return { ready: false, reason };
-    return { ready: true, reason: 'ready' };
+  const reason =
+    memoryCallsBlocked(context, memoryProfileId) ??
+    (qvinkSummarising(context) ? "qvink-summarising" : null);
+  if (reason) return { ready: false, reason };
+  return { ready: true, reason: "ready" };
 }
 
 /**
@@ -30,14 +31,14 @@ export function assessSummarizing(context, { memoryProfileId } = {}) {
  * @returns {{ready: boolean, reason: string, tracker: string|null}}
  */
 export function assessStateUpdates(context, { memoryProfileId, worldState } = {}) {
-    const blocked = (reason, tracker = null) => ({ ready: false, reason, tracker });
-    // The switch first: when the user turned it off, that is the reason worth showing.
-    if (worldState === false) return blocked('off');
-    const reason = memoryCallsBlocked(context, memoryProfileId);
-    if (reason) return blocked(reason);
-    const tracker = wtrackerLoaded(context);
-    if (tracker) return blocked('wtracker-loaded', tracker);
-    return { ready: true, reason: 'ready', tracker: null };
+  const blocked = (reason, tracker = null) => ({ ready: false, reason, tracker });
+  // The switch first: when the user turned it off, that is the reason worth showing.
+  if (worldState === false) return blocked("off");
+  const reason = memoryCallsBlocked(context, memoryProfileId);
+  if (reason) return blocked(reason);
+  const tracker = wtrackerLoaded(context);
+  if (tracker) return blocked("wtracker-loaded", tracker);
+  return { ready: true, reason: "ready", tracker: null };
 }
 
 /**
@@ -55,13 +56,13 @@ export function assessStateUpdates(context, { memoryProfileId, worldState } = {}
  * @returns {{ready: boolean, reason: string}}
  */
 export function assessCompaction(context, { memoryProfileId, keepCanon } = {}, { writing } = {}) {
-    const blocked = (reason) => ({ ready: false, reason });
-    // The switch first: when the user turned it off, that is the reason worth showing.
-    if (keepCanon === false) return blocked('off');
-    const reason = memoryCallsBlocked(context, memoryProfileId);
-    if (reason) return blocked(reason);
-    if (writing === false) return blocked('not-writing');
-    return { ready: true, reason: 'ready' };
+  const blocked = (reason) => ({ ready: false, reason });
+  // The switch first: when the user turned it off, that is the reason worth showing.
+  if (keepCanon === false) return blocked("off");
+  const reason = memoryCallsBlocked(context, memoryProfileId);
+  if (reason) return blocked(reason);
+  if (writing === false) return blocked("not-writing");
+  return { ready: true, reason: "ready" };
 }
 
 /**
@@ -82,27 +83,33 @@ export function assessCompaction(context, { memoryProfileId, keepCanon } = {}, {
  * @returns {{ready: boolean, reason: string}}
  */
 export function assessIndexing(context, { memoryProfileId } = {}, { writing } = {}) {
-    const blocked = (reason) => ({ ready: false, reason });
-    const reason = memoryCallsBlocked(context, memoryProfileId);
-    if (reason) return blocked(reason);
-    if (writing === false) return blocked('not-writing');
-    return { ready: true, reason: 'ready' };
+  const blocked = (reason) => ({ ready: false, reason });
+  const reason = memoryCallsBlocked(context, memoryProfileId);
+  if (reason) return blocked(reason);
+  if (writing === false) return blocked("not-writing");
+  return { ready: true, reason: "ready" };
 }
 
 /** What every memory call needs, or the reason it cannot be made. */
 function memoryCallsBlocked(context, memoryProfileId) {
-    const settings = context?.extensionSettings ?? {};
+  const settings = context?.extensionSettings ?? {};
 
-    // No profile, no memory calls (docs/decisions.md D-0006, kept by D-0097).
-    if (!memoryProfileId) return 'no-profile';
-    if (context.groupId) return 'group-chat';
-    if (!context.chatId) return 'no-chat';
-    // sendRequest throws on both before it looks at the profile (extensions/shared.js:427).
-    if (!context.ConnectionManagerRequestService || (settings.disabledExtensions ?? []).includes('connection-manager')) {
-        return 'no-connection-manager';
-    }
-    if (!(settings.connectionManager?.profiles ?? []).some((profile) => profile.id === memoryProfileId)) return 'profile-missing';
-    return null;
+  // No profile, no memory calls (docs/decisions.md D-0006, kept by D-0097).
+  if (!memoryProfileId) return "no-profile";
+  if (context.groupId) return "group-chat";
+  if (!context.chatId) return "no-chat";
+  // sendRequest throws on both before it looks at the profile (extensions/shared.js:427).
+  if (
+    !context.ConnectionManagerRequestService ||
+    (settings.disabledExtensions ?? []).includes("connection-manager")
+  ) {
+    return "no-connection-manager";
+  }
+  if (
+    !(settings.connectionManager?.profiles ?? []).some((profile) => profile.id === memoryProfileId)
+  )
+    return "profile-missing";
+  return null;
 }
 
 /**
@@ -113,6 +120,8 @@ function memoryCallsBlocked(context, memoryProfileId) {
  * @param {string} [memoryProfileId]
  */
 export function sharesChatProfile(context, memoryProfileId) {
-    return Boolean(memoryProfileId)
-        && context?.extensionSettings?.connectionManager?.selectedProfile === memoryProfileId;
+  return (
+    Boolean(memoryProfileId) &&
+    context?.extensionSettings?.connectionManager?.selectedProfile === memoryProfileId
+  );
 }

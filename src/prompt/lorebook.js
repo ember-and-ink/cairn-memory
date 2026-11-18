@@ -26,19 +26,19 @@
  * @returns {Array<{order: number, count: number, uids: Array<*>}>} Ties, largest first.
  */
 export function findOrderTies(entries) {
-    const byOrder = new Map();
+  const byOrder = new Map();
 
-    for (const entry of entries ?? []) {
-        const order = entry?.order;
-        if (!Number.isFinite(order)) continue;
-        if (!byOrder.has(order)) byOrder.set(order, []);
-        byOrder.get(order).push(entry.uid);
-    }
+  for (const entry of entries ?? []) {
+    const order = entry?.order;
+    if (!Number.isFinite(order)) continue;
+    if (!byOrder.has(order)) byOrder.set(order, []);
+    byOrder.get(order).push(entry.uid);
+  }
 
-    return [...byOrder.entries()]
-        .filter(([, uids]) => uids.length > 1)
-        .map(([order, uids]) => ({ order, count: uids.length, uids }))
-        .sort((a, b) => b.count - a.count);
+  return [...byOrder.entries()]
+    .filter(([, uids]) => uids.length > 1)
+    .map(([order, uids]) => ({ order, count: uids.length, uids }))
+    .sort((a, b) => b.count - a.count);
 }
 
 /**
@@ -51,18 +51,18 @@ export function findOrderTies(entries) {
  * @param {Array<object>} entries From WORLD_INFO_ACTIVATED.
  */
 export function assessOrdering(entries) {
-    const activated = (entries ?? []).length;
-    const ties = findOrderTies(entries);
-    const tiedEntries = ties.reduce((total, tie) => total + tie.count, 0);
+  const activated = (entries ?? []).length;
+  const ties = findOrderTies(entries);
+  const tiedEntries = ties.reduce((total, tie) => total + tie.count, 0);
 
-    return {
-        activated,
-        ties,
-        tiedEntries,
-        // A tie only matters if something sits below it — but from here we cannot
-        // see what does, so this is "unstable ordering", not "broken prompt".
-        stable: tiedEntries === 0,
-    };
+  return {
+    activated,
+    ties,
+    tiedEntries,
+    // A tie only matters if something sits below it — but from here we cannot
+    // see what does, so this is "unstable ordering", not "broken prompt".
+    stable: tiedEntries === 0,
+  };
 }
 
 /**
@@ -74,10 +74,10 @@ export function assessOrdering(entries) {
  * @returns {string|null} null when the entry could never be forced.
  */
 export function entryKey(entry) {
-    if (!entry || typeof entry !== 'object') return null;
-    if (!Object.hasOwn(entry, 'world') || !Object.hasOwn(entry, 'uid')) return null;
-    if (entry.world == null || entry.uid == null) return null;
-    return `${entry.world}.${entry.uid}`;
+  if (!entry || typeof entry !== "object") return null;
+  if (!Object.hasOwn(entry, "world") || !Object.hasOwn(entry, "uid")) return null;
+  if (entry.world == null || entry.uid == null) return null;
+  return `${entry.world}.${entry.uid}`;
 }
 
 /**
@@ -120,41 +120,41 @@ export function entryKey(entry) {
  *          `kept` stays in the order it arrived in, which is the order it is forced in.
  */
 export async function trimToBudget({ entries, budget, sizeOf }) {
-    const held = [...(entries ?? [])];
-    // No usable budget is no trim, not a trim to nothing (CLAUDE.md §4.17).
-    if (!Number.isFinite(budget) || budget <= 0) return { kept: held, dropped: [], tokens: 0 };
+  const held = [...(entries ?? [])];
+  // No usable budget is no trim, not a trim to nothing (CLAUDE.md §4.17).
+  if (!Number.isFinite(budget) || budget <= 0) return { kept: held, dropped: [], tokens: 0 };
 
-    const ranked = held
-        .map((entry, arrival) => ({ entry, arrival }))
-        .filter(({ entry }) => !entry?.ignoreBudget)
-        .sort((a, b) => (b.entry?.order ?? 0) - (a.entry?.order ?? 0) || a.arrival - b.arrival);
+  const ranked = held
+    .map((entry, arrival) => ({ entry, arrival }))
+    .filter(({ entry }) => !entry?.ignoreBudget)
+    .sort((a, b) => (b.entry?.order ?? 0) - (a.entry?.order ?? 0) || a.arrival - b.arrival);
 
-    const dropped = new Set();
-    /** What the kept set weighs — the running total *before* the one that overflowed. */
-    let tokens = 0;
-    let running = 0;
-    let overflowed = false;
+  const dropped = new Set();
+  /** What the kept set weighs — the running total *before* the one that overflowed. */
+  let tokens = 0;
+  let running = 0;
+  let overflowed = false;
 
-    for (const { entry } of ranked) {
-        if (overflowed) {
-            dropped.add(entry);
-            continue;
-        }
-        // ST counts the entry plus the newline it joins on (:5059).
-        running += await sizeOf(`${entry?.content ?? ''}\n`);
-        if (running >= budget) {
-            overflowed = true;
-            dropped.add(entry);
-        } else {
-            tokens = running;
-        }
+  for (const { entry } of ranked) {
+    if (overflowed) {
+      dropped.add(entry);
+      continue;
     }
+    // ST counts the entry plus the newline it joins on (:5059).
+    running += await sizeOf(`${entry?.content ?? ""}\n`);
+    if (running >= budget) {
+      overflowed = true;
+      dropped.add(entry);
+    } else {
+      tokens = running;
+    }
+  }
 
-    return {
-        kept: held.filter((entry) => !dropped.has(entry)),
-        dropped: held.filter((entry) => dropped.has(entry)),
-        tokens,
-    };
+  return {
+    kept: held.filter((entry) => !dropped.has(entry)),
+    dropped: held.filter((entry) => dropped.has(entry)),
+    tokens,
+  };
 }
 
 /**
@@ -180,88 +180,88 @@ export async function trimToBudget({ entries, budget, sizeOf }) {
  * Pure: no ST, no DOM, no network.
  */
 export function createRememberedSet() {
-    const held = new Map();
+  const held = new Map();
 
-    return {
-        /**
-         * Learn from one turn's activations. Add-only, and a key already held
-         * keeps the object it was first seen with, so the rendered block stays
-         * byte-identical across turns.
-         *
-         * @param {Array<object>} entries From WORLD_INFO_ACTIVATED.
-         * @returns {{added: string[], size: number}}
-         */
-        observe(entries) {
-            const added = [];
-            for (const entry of entries ?? []) {
-                const key = entryKey(entry);
-                if (key === null || held.has(key)) continue;
-                held.set(key, entry);
-                added.push(key);
-            }
-            return { added, size: held.size };
-        },
+  return {
+    /**
+     * Learn from one turn's activations. Add-only, and a key already held
+     * keeps the object it was first seen with, so the rendered block stays
+     * byte-identical across turns.
+     *
+     * @param {Array<object>} entries From WORLD_INFO_ACTIVATED.
+     * @returns {{added: string[], size: number}}
+     */
+    observe(entries) {
+      const added = [];
+      for (const entry of entries ?? []) {
+        const key = entryKey(entry);
+        if (key === null || held.has(key)) continue;
+        held.set(key, entry);
+        added.push(key);
+      }
+      return { added, size: held.size };
+    },
 
-        /**
-         * Drop one book's entries so the next turn re-scans them from source.
-         *
-         * A held object is a snapshot and nothing refreshes it while we keep
-         * forcing it — the book's own entry never reaches the scan again. So an
-         * edit to a book (WORLDINFO_UPDATED, world-info.js:4160) invalidates
-         * that book. One rebuild on an edit is the right price for not serving
-         * the author stale text.
-         *
-         * @param {string} world Book name, as ST emits it.
-         * @returns {number} How many entries were dropped.
-         */
-        forget(world) {
-            let dropped = 0;
-            for (const [key, entry] of held) {
-                if (entry?.world === world) {
-                    held.delete(key);
-                    dropped++;
-                }
-            }
-            return dropped;
-        },
+    /**
+     * Drop one book's entries so the next turn re-scans them from source.
+     *
+     * A held object is a snapshot and nothing refreshes it while we keep
+     * forcing it — the book's own entry never reaches the scan again. So an
+     * edit to a book (WORLDINFO_UPDATED, world-info.js:4160) invalidates
+     * that book. One rebuild on an edit is the right price for not serving
+     * the author stale text.
+     *
+     * @param {string} world Book name, as ST emits it.
+     * @returns {number} How many entries were dropped.
+     */
+    forget(world) {
+      let dropped = 0;
+      for (const [key, entry] of held) {
+        if (entry?.world === world) {
+          held.delete(key);
+          dropped++;
+        }
+      }
+      return dropped;
+    },
 
-        /**
-         * Re-evaluate the held set against ST's budget (docs/decisions.md D-0069).
-         *
-         * The union of "currently held" and "currently activated" is the held set
-         * itself — `observe` has already folded every activation in — so the union
-         * is implicit and only the trim is work. That is the point: a *recompute*
-         * from this turn's activations would let a keyword-scan miss landing on a
-         * rebuild turn evict an entry, which is D-0023's failure again, rarer and
-         * harder to catch.
-         *
-         * Only ever called on a rebuild turn (prompt/injector.js, D-0067).
-         *
-         * @param {{budget: number, sizeOf: (text: string) => Promise<number>}} input
-         * @returns {Promise<{dropped: number, kept: number, tokens: number}>}
-         */
-        async trim({ budget, sizeOf }) {
-            const result = await trimToBudget({ entries: [...held.values()], budget, sizeOf });
-            for (const entry of result.dropped) held.delete(entryKey(entry));
-            return { dropped: result.dropped.length, kept: result.kept.length, tokens: result.tokens };
-        },
+    /**
+     * Re-evaluate the held set against ST's budget (docs/decisions.md D-0069).
+     *
+     * The union of "currently held" and "currently activated" is the held set
+     * itself — `observe` has already folded every activation in — so the union
+     * is implicit and only the trim is work. That is the point: a *recompute*
+     * from this turn's activations would let a keyword-scan miss landing on a
+     * rebuild turn evict an entry, which is D-0023's failure again, rarer and
+     * harder to catch.
+     *
+     * Only ever called on a rebuild turn (prompt/injector.js, D-0067).
+     *
+     * @param {{budget: number, sizeOf: (text: string) => Promise<number>}} input
+     * @returns {Promise<{dropped: number, kept: number, tokens: number}>}
+     */
+    async trim({ budget, sizeOf }) {
+      const result = await trimToBudget({ entries: [...held.values()], budget, sizeOf });
+      for (const entry of result.dropped) held.delete(entryKey(entry));
+      return { dropped: result.dropped.length, kept: result.kept.length, tokens: result.tokens };
+    },
 
-        /** A new chat is a new set. */
-        clear() {
-            held.clear();
-        },
+    /** A new chat is a new set. */
+    clear() {
+      held.clear();
+    },
 
-        /** What to force next turn, in first-activation order. */
-        entries() {
-            return [...held.values()];
-        },
+    /** What to force next turn, in first-activation order. */
+    entries() {
+      return [...held.values()];
+    },
 
-        has(key) {
-            return held.has(key);
-        },
+    has(key) {
+      return held.has(key);
+    },
 
-        get size() {
-            return held.size;
-        },
-    };
+    get size() {
+      return held.size;
+    },
+  };
 }

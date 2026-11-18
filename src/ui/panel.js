@@ -1,13 +1,13 @@
-import { EXTENSION_PATH, SLUG } from '../constants.js';
-import { CANON_PROMPT } from '../memory/canon-strategy.js';
-import { INDEX_PROMPT } from '../memory/index-strategy.js';
-import { DEFAULT_SUMMARY_PROMPT } from '../memory/scene-strategy.js';
-import { STATE_PROMPT } from '../memory/state-strategy.js';
-import { budgetCeilings, MARGIN_FRACTION } from '../pipeline/budgeter.js';
-import { sharesChatProfile } from '../pipeline/gates.js';
-import { createMaxPromptTokens } from '../util/context-size.js';
-import { setDebugEnabled } from '../util/log.js';
-import { escapeHtml } from './html.js';
+import { EXTENSION_PATH, SLUG } from "../constants.js";
+import { CANON_PROMPT } from "../memory/canon-strategy.js";
+import { INDEX_PROMPT } from "../memory/index-strategy.js";
+import { DEFAULT_SUMMARY_PROMPT } from "../memory/scene-strategy.js";
+import { STATE_PROMPT } from "../memory/state-strategy.js";
+import { budgetCeilings, MARGIN_FRACTION } from "../pipeline/budgeter.js";
+import { sharesChatProfile } from "../pipeline/gates.js";
+import { createMaxPromptTokens } from "../util/context-size.js";
+import { setDebugEnabled } from "../util/log.js";
+import { escapeHtml } from "./html.js";
 
 /**
  * Settings panel. Every control here has a one-sentence description in
@@ -30,67 +30,75 @@ import { escapeHtml } from './html.js';
  * @returns {Promise<HTMLElement>} The element the inspector renders into.
  */
 export async function renderSettingsPanel(context, handlers = {}) {
-    const settings = context.extensionSettings[SLUG];
-    const html = await context.renderExtensionTemplateAsync(EXTENSION_PATH, 'settings');
-    document.getElementById('extensions_settings').insertAdjacentHTML('beforeend', html);
+  const settings = context.extensionSettings[SLUG];
+  const html = await context.renderExtensionTemplateAsync(EXTENSION_PATH, "settings");
+  document.getElementById("extensions_settings").insertAdjacentHTML("beforeend", html);
 
-    // The panel reports the change; index.js decides what it means.
-    bind(context, 'enabled', CHECKBOX, (value) => handlers.onEnabledChange?.(value));
-    bind(context, 'collapseSummaries', CHECKBOX, (value) => handlers.onCollapseSummariesChange?.(value));
-    bind(context, 'showInspector', CHECKBOX, (value) => toggleInspector(value));
-    bind(context, 'logToDisk', CHECKBOX, (value) => handlers.onLogToDiskChange?.(value));
-    bind(context, 'holdWorldInfo', CHECKBOX, (value) => handlers.onHoldWorldInfoChange?.(value));
-    bind(context, 'ownMemoryBlock', CHECKBOX, (value) => handlers.onOwnMemoryBlockChange?.(value));
-    bind(context, 'worldState', CHECKBOX, (value) => handlers.onWorldStateChange?.(value));
-    bind(context, 'keepCanon', CHECKBOX, (value) => handlers.onKeepCanonChange?.(value));
-    // The budget, the pick and the examples latch are planned afresh every generation, so
-    // these need no handler: a changed slot count makes the next plan's pick due (pipeline/canon-pick.js).
-    bind(context, 'canonSlots', wholeNumber(), (value) => handlers.onCanonSlotsChange?.(value));
-    bind(context, 'dropExamples', CHECKBOX);
-    bind(context, 'fictionFrame', CHECKBOX);
-    for (const key of ['memoryFraction', 'canonFraction', 'compactFraction']) {
-        bind(context, key, PERCENT, () => refreshBudget(context));
-    }
-    bind(context, 'loreFraction', PERCENT, (value) => {
-        refreshBudget(context);
-        handlers.onLoreFractionChange?.(value);
-    });
-    bind(context, 'rawWindow', wholeNumber({ min: 1 }));
-    bind(context, 'step', wholeNumber());
-    bind(context, 'debugLogging', CHECKBOX, (value) => setDebugEnabled(value));
-
-    populateProfiles(context, settings.memoryProfileId);
-    bind(context, 'memoryProfileId', SELECT, (value) => {
-        noteSharedProfile(context);
-        handlers.onMemoryProfileChange?.(value);
-    });
-    noteSharedProfile(context);
+  // The panel reports the change; index.js decides what it means.
+  bind(context, "enabled", CHECKBOX, (value) => handlers.onEnabledChange?.(value));
+  bind(context, "collapseSummaries", CHECKBOX, (value) =>
+    handlers.onCollapseSummariesChange?.(value),
+  );
+  bind(context, "showInspector", CHECKBOX, (value) => toggleInspector(value));
+  bind(context, "logToDisk", CHECKBOX, (value) => handlers.onLogToDiskChange?.(value));
+  bind(context, "holdWorldInfo", CHECKBOX, (value) => handlers.onHoldWorldInfoChange?.(value));
+  bind(context, "ownMemoryBlock", CHECKBOX, (value) => handlers.onOwnMemoryBlockChange?.(value));
+  bind(context, "worldState", CHECKBOX, (value) => handlers.onWorldStateChange?.(value));
+  bind(context, "keepCanon", CHECKBOX, (value) => handlers.onKeepCanonChange?.(value));
+  // The budget, the pick and the examples latch are planned afresh every generation, so
+  // these need no handler: a changed slot count makes the next plan's pick due (pipeline/canon-pick.js).
+  bind(context, "canonSlots", wholeNumber(), (value) => handlers.onCanonSlotsChange?.(value));
+  bind(context, "dropExamples", CHECKBOX);
+  bind(context, "fictionFrame", CHECKBOX);
+  for (const key of ["memoryFraction", "canonFraction", "compactFraction"]) {
+    bind(context, key, PERCENT, () => refreshBudget(context));
+  }
+  bind(context, "loreFraction", PERCENT, (value) => {
     refreshBudget(context);
-    // A new choice is a fresh start: what a provider refused before is asked again (D-0088).
-    bind(context, 'memoryReasoning', SELECT, () => {
-        context.extensionSettings[SLUG].reasoningRefused = {};
-        context.saveSettingsDebounced();
-    });
-    bindPrompt(context, 'summaryPrompt', DEFAULT_SUMMARY_PROMPT);
-    bindPrompt(context, 'indexPrompt', INDEX_PROMPT);
-    bindPrompt(context, 'canonPrompt', CANON_PROMPT);
-    bindPrompt(context, 'statePrompt', STATE_PROMPT);
+    handlers.onLoreFractionChange?.(value);
+  });
+  bind(context, "rawWindow", wholeNumber({ min: 1 }));
+  bind(context, "step", wholeNumber());
+  bind(context, "debugLogging", CHECKBOX, (value) => setDebugEnabled(value));
 
-    toggleInspector(settings.showInspector);
-    return document.getElementById(`${SLUG}_inspector`);
+  populateProfiles(context, settings.memoryProfileId);
+  bind(context, "memoryProfileId", SELECT, (value) => {
+    noteSharedProfile(context);
+    handlers.onMemoryProfileChange?.(value);
+  });
+  noteSharedProfile(context);
+  refreshBudget(context);
+  // A new choice is a fresh start: what a provider refused before is asked again (D-0088).
+  bind(context, "memoryReasoning", SELECT, () => {
+    context.extensionSettings[SLUG].reasoningRefused = {};
+    context.saveSettingsDebounced();
+  });
+  bindPrompt(context, "summaryPrompt", DEFAULT_SUMMARY_PROMPT);
+  bindPrompt(context, "indexPrompt", INDEX_PROMPT);
+  bindPrompt(context, "canonPrompt", CANON_PROMPT);
+  bindPrompt(context, "statePrompt", STATE_PROMPT);
+
+  toggleInspector(settings.showInspector);
+  return document.getElementById(`${SLUG}_inspector`);
 }
 
 function toggleInspector(visible) {
-    const block = document.getElementById(`${SLUG}_inspector_block`);
-    if (block) block.hidden = !visible;
+  const block = document.getElementById(`${SLUG}_inspector_block`);
+  if (block) block.hidden = !visible;
 }
 
 const maxPromptTokens = createMaxPromptTokens();
 
 /** The budget table's token column, and which cell each figure goes in. */
 const BUDGET_CELLS = {
-    maxPrompt: 'budgetMaxPrompt', memory: 'budgetMemory', canon: 'budgetCanon', compact: 'budgetCompact',
-    full: 'budgetFull', lore: 'budgetLore', margin: 'budgetMargin', rest: 'budgetRest',
+  maxPrompt: "budgetMaxPrompt",
+  memory: "budgetMemory",
+  canon: "budgetCanon",
+  compact: "budgetCompact",
+  full: "budgetFull",
+  lore: "budgetLore",
+  margin: "budgetMargin",
+  rest: "budgetRest",
 };
 
 /**
@@ -100,23 +108,23 @@ const BUDGET_CELLS = {
  * @param {object} context SillyTavern.getContext()
  */
 export async function refreshBudget(context) {
-    if (!field('budgetMaxPrompt')) return;
-    const settings = context.extensionSettings[SLUG] ?? {};
-    const ceilings = budgetCeilings({
-        maxPromptTokens: await maxPromptTokens(context),
-        memoryFraction: settings.memoryFraction,
-        canonFraction: settings.canonFraction,
-        compactFraction: settings.compactFraction,
-        loreFraction: settings.loreFraction,
-    });
-    for (const [key, id] of Object.entries(BUDGET_CELLS)) {
-        const cell = field(id);
-        if (cell) cell.textContent = ceilings[key].toLocaleString();
-    }
-    const restShare = field('budgetRestShare');
-    if (restShare) restShare.textContent = String(ceilings.restShare);
-    const marginShare = field('budgetMarginShare');
-    if (marginShare) marginShare.textContent = String(Math.round(MARGIN_FRACTION * 100));
+  if (!field("budgetMaxPrompt")) return;
+  const settings = context.extensionSettings[SLUG] ?? {};
+  const ceilings = budgetCeilings({
+    maxPromptTokens: await maxPromptTokens(context),
+    memoryFraction: settings.memoryFraction,
+    canonFraction: settings.canonFraction,
+    compactFraction: settings.compactFraction,
+    loreFraction: settings.loreFraction,
+  });
+  for (const [key, id] of Object.entries(BUDGET_CELLS)) {
+    const cell = field(id);
+    if (cell) cell.textContent = ceilings[key].toLocaleString();
+  }
+  const restShare = field("budgetRestShare");
+  if (restShare) restShare.textContent = String(ceilings.restShare);
+  const marginShare = field("budgetMarginShare");
+  if (marginShare) marginShare.textContent = String(Math.round(MARGIN_FRACTION * 100));
 }
 
 /**
@@ -125,8 +133,9 @@ export async function refreshBudget(context) {
  * @param {object} context SillyTavern.getContext()
  */
 export function noteSharedProfile(context) {
-    const note = document.getElementById(`${SLUG}_sharedProfileNote`);
-    if (note) note.hidden = !sharesChatProfile(context, context.extensionSettings[SLUG]?.memoryProfileId);
+  const note = document.getElementById(`${SLUG}_sharedProfileNote`);
+  if (note)
+    note.hidden = !sharesChatProfile(context, context.extensionSettings[SLUG]?.memoryProfileId);
 }
 
 /**
@@ -134,16 +143,18 @@ export function noteSharedProfile(context) {
  * the user chooses, even when the choice is the chat's own profile (D-0097).
  */
 function populateProfiles(context, selectedId) {
-    const select = field('memoryProfileId');
-    if (!select) return;
+  const select = field("memoryProfileId");
+  if (!select) return;
 
-    const profiles = context.extensionSettings.connectionManager?.profiles ?? [];
-    const options = ['<option value="">— none selected —</option>'];
-    for (const profile of profiles) {
-        const selected = profile.id === selectedId ? ' selected' : '';
-        options.push(`<option value="${escapeHtml(profile.id)}"${selected}>${escapeHtml(profile.name)}</option>`);
-    }
-    select.innerHTML = options.join('');
+  const profiles = context.extensionSettings.connectionManager?.profiles ?? [];
+  const options = ['<option value="">— none selected —</option>'];
+  for (const profile of profiles) {
+    const selected = profile.id === selectedId ? " selected" : "";
+    options.push(
+      `<option value="${escapeHtml(profile.id)}"${selected}>${escapeHtml(profile.name)}</option>`,
+    );
+  }
+  select.innerHTML = options.join("");
 }
 
 /**
@@ -151,19 +162,19 @@ function populateProfiles(context, selectedId) {
  * stores the default as empty, so an unedited prompt keeps following the default.
  */
 function bindPrompt(context, key, fallback) {
-    const input = field(key);
-    if (!input) return;
-    const store = (value) => {
-        context.extensionSettings[SLUG][key] = value.trim() === fallback.trim() ? '' : value;
-        context.saveSettingsDebounced();
-    };
+  const input = field(key);
+  if (!input) return;
+  const store = (value) => {
+    context.extensionSettings[SLUG][key] = value.trim() === fallback.trim() ? "" : value;
+    context.saveSettingsDebounced();
+  };
 
-    input.value = context.extensionSettings[SLUG][key] || fallback;
-    input.addEventListener('input', () => store(input.value));
-    field(`${key}Reset`)?.addEventListener('click', () => {
-        input.value = fallback;
-        store(input.value);
-    });
+  input.value = context.extensionSettings[SLUG][key] || fallback;
+  input.addEventListener("input", () => store(input.value));
+  field(`${key}Reset`)?.addEventListener("click", () => {
+    input.value = fallback;
+    store(input.value);
+  });
 }
 
 /**
@@ -174,21 +185,23 @@ function bindPrompt(context, key, fallback) {
  * @param {{show: (input: HTMLElement, value: unknown) => void, read: (input: HTMLElement) => unknown}} kind
  */
 function bind(context, key, kind, onChange) {
-    const input = field(key);
-    if (!input) return;
-    kind.show(input, context.extensionSettings[SLUG][key]);
-    input.addEventListener('change', () => {
-        const value = kind.read(input);
-        context.extensionSettings[SLUG][key] = value;
-        kind.show(input, value);
-        context.saveSettingsDebounced();
-        onChange?.(value);
-    });
+  const input = field(key);
+  if (!input) return;
+  kind.show(input, context.extensionSettings[SLUG][key]);
+  input.addEventListener("change", () => {
+    const value = kind.read(input);
+    context.extensionSettings[SLUG][key] = value;
+    kind.show(input, value);
+    context.saveSettingsDebounced();
+    onChange?.(value);
+  });
 }
 
 const CHECKBOX = {
-    show: (input, value) => { input.checked = Boolean(value); },
-    read: (input) => input.checked,
+  show: (input, value) => {
+    input.checked = Boolean(value);
+  },
+  read: (input) => input.checked,
 };
 
 /**
@@ -196,8 +209,10 @@ const CHECKBOX = {
  * 0, which is the same "no cap" ST's own field means (src/prompt/lore-cap.js).
  */
 const wholeNumber = ({ min = 0 } = {}) => ({
-    show: (input, value) => { input.value = String(value ?? 0); },
-    read: (input) => Math.max(min, Math.floor(Number(input.value)) || 0),
+  show: (input, value) => {
+    input.value = String(value ?? 0);
+  },
+  read: (input) => Math.max(min, Math.floor(Number(input.value)) || 0),
 });
 
 /**
@@ -206,15 +221,19 @@ const wholeNumber = ({ min = 0 } = {}) => ({
  * nothing for the story.
  */
 const PERCENT = {
-    show: (input, value) => { input.value = String(Math.round((value ?? 0) * 100)); },
-    read: (input) => Math.min(90, Math.max(0, Math.round(Number(input.value)) || 0)) / 100,
+  show: (input, value) => {
+    input.value = String(Math.round((value ?? 0) * 100));
+  },
+  read: (input) => Math.min(90, Math.max(0, Math.round(Number(input.value)) || 0)) / 100,
 };
 
 const SELECT = {
-    show: (input, value) => { if (input.options.length && value !== undefined) input.value = value; },
-    read: (input) => input.value,
+  show: (input, value) => {
+    if (input.options.length && value !== undefined) input.value = value;
+  },
+  read: (input) => input.value,
 };
 
 function field(key) {
-    return document.getElementById(`${SLUG}_${key}`);
+  return document.getElementById(`${SLUG}_${key}`);
 }

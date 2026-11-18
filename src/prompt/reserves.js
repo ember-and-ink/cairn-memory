@@ -23,13 +23,13 @@
  * every path through it degrades to "no reserves", which the budgeter reads as
  * the fixed share it has been shipping (CLAUDE.md §4.17).
  */
-import { RAW_WINDOW, STEP } from '../pipeline/scheduler.js';
-import { MAX_STATE_CHARS } from '../memory/state-schema.js';
-import { wtrackerLoaded } from '../interop/wtracker.js';
-import { hashString } from '../util/hash.js';
-import { estimateTokens, countTokens } from '../util/tokens.js';
-import { warn } from '../util/log.js';
-import { loadWorldInfo } from '../util/st-modules.js';
+import { RAW_WINDOW, STEP } from "../pipeline/scheduler.js";
+import { MAX_STATE_CHARS } from "../memory/state-schema.js";
+import { wtrackerLoaded } from "../interop/wtracker.js";
+import { hashString } from "../util/hash.js";
+import { estimateTokens, countTokens } from "../util/tokens.js";
+import { warn } from "../util/log.js";
+import { loadWorldInfo } from "../util/st-modules.js";
 
 /**
  * The card fields ST puts in the story string (`storyStringParams`,
@@ -40,7 +40,13 @@ import { loadWorldInfo } from '../util/st-modules.js';
  * same object and are deliberately absent: none of them reaches the prompt.
  */
 export const CARD_FIELDS = Object.freeze([
-    'description', 'personality', 'scenario', 'persona', 'mesExamples', 'jailbreak', 'charDepthPrompt',
+  "description",
+  "personality",
+  "scenario",
+  "persona",
+  "mesExamples",
+  "jailbreak",
+  "charDepthPrompt",
 ]);
 
 /**
@@ -52,7 +58,7 @@ export const CARD_FIELDS = Object.freeze([
  * why.
  */
 export const CARD_FIELDS_STRIPPED = Object.freeze(
-    CARD_FIELDS.filter((field) => field !== 'mesExamples'),
+  CARD_FIELDS.filter((field) => field !== "mesExamples"),
 );
 
 /**
@@ -72,7 +78,7 @@ export const RUN_LENGTH = RAW_WINDOW + STEP - 1;
  * The 4-chars-per-token estimate reads a little above the ~330 tokens D-0043
  * measured, which errs towards reserving too much — the safe direction.
  */
-export const STATE_RESERVE_TOKENS = estimateTokens('x'.repeat(MAX_STATE_CHARS));
+export const STATE_RESERVE_TOKENS = estimateTokens("x".repeat(MAX_STATE_CHARS));
 
 /**
  * The heaviest run of `length` consecutive messages in the chat.
@@ -87,16 +93,16 @@ export const STATE_RESERVE_TOKENS = estimateTokens('x'.repeat(MAX_STATE_CHARS));
  * @returns {number}
  */
 export function heaviestRun(tokens, length = RUN_LENGTH) {
-    const counts = (tokens ?? []).map((n) => (Number.isFinite(n) ? Math.max(0, n) : 0));
-    const width = Math.max(1, Math.floor(length) || 1);
+  const counts = (tokens ?? []).map((n) => (Number.isFinite(n) ? Math.max(0, n) : 0));
+  const width = Math.max(1, Math.floor(length) || 1);
 
-    let sum = counts.slice(0, width).reduce((total, n) => total + n, 0);
-    let best = sum;
-    for (let i = width; i < counts.length; i++) {
-        sum += counts[i] - counts[i - width];
-        if (sum > best) best = sum;
-    }
-    return best;
+  let sum = counts.slice(0, width).reduce((total, n) => total + n, 0);
+  let best = sum;
+  for (let i = width; i < counts.length; i++) {
+    sum += counts[i] - counts[i - width];
+    if (sum > best) best = sum;
+  }
+  return best;
 }
 
 /**
@@ -109,11 +115,11 @@ export function heaviestRun(tokens, length = RUN_LENGTH) {
  * @param {{maxPromptTokens: number, percent?: number, cap?: number}} input
  */
 export function loreBudget({ maxPromptTokens, percent, cap }) {
-    const max = Number.isFinite(maxPromptTokens) ? Math.max(0, maxPromptTokens) : 0;
-    const share = Number.isFinite(percent) ? percent : 0;
-    const budget = Math.round(share * max / 100) || 1;
-    const limit = Number.isFinite(cap) ? cap : 0;
-    return limit > 0 && budget > limit ? limit : budget;
+  const max = Number.isFinite(maxPromptTokens) ? Math.max(0, maxPromptTokens) : 0;
+  const share = Number.isFinite(percent) ? percent : 0;
+  const budget = Math.round((share * max) / 100) || 1;
+  const limit = Number.isFinite(cap) ? cap : 0;
+  return limit > 0 && budget > limit ? limit : budget;
 }
 
 /**
@@ -130,28 +136,28 @@ export function loreBudget({ maxPromptTokens, percent, cap }) {
  * @returns {Promise<{tokens: number, bound: 'none'|'books'|'budget'}>}
  */
 export async function loreReserve({ entries, budget, sizeOf }) {
-    let budgeted = 0;
-    let ignoring = 0;
-    let enabled = 0;
+  let budgeted = 0;
+  let ignoring = 0;
+  let enabled = 0;
 
-    for (const entry of entries ?? []) {
-        // A disabled entry never reaches the scan, so it costs nothing.
-        if (entry?.disable) continue;
-        enabled++;
+  for (const entry of entries ?? []) {
+    // A disabled entry never reaches the scan, so it costs nothing.
+    if (entry?.disable) continue;
+    enabled++;
 
-        if (entry?.ignoreBudget) {
-            ignoring += await sizeOf(entry?.content ?? '');
-            continue;
-        }
-        // Past the budget the rest cannot add anything, and Akane's book is 110
-        // entries — so stop counting rather than tokenize a book we have capped.
-        if (budgeted > budget) continue;
-        budgeted += await sizeOf(entry?.content ?? '');
+    if (entry?.ignoreBudget) {
+      ignoring += await sizeOf(entry?.content ?? "");
+      continue;
     }
+    // Past the budget the rest cannot add anything, and Akane's book is 110
+    // entries — so stop counting rather than tokenize a book we have capped.
+    if (budgeted > budget) continue;
+    budgeted += await sizeOf(entry?.content ?? "");
+  }
 
-    if (!enabled) return { tokens: 0, bound: 'none' };
-    const capped = budgeted > budget;
-    return { tokens: (capped ? budget : budgeted) + ignoring, bound: capped ? 'budget' : 'books' };
+  if (!enabled) return { tokens: 0, bound: "none" };
+  const capped = budgeted > budget;
+  return { tokens: (capped ? budget : budgeted) + ignoring, bound: capped ? "budget" : "books" };
 }
 
 /**
@@ -163,12 +169,12 @@ export async function loreReserve({ entries, budget, sizeOf }) {
  * @param {{powerUser?: object, cardSystem?: string, mainApi?: string}} input
  */
 export function systemPromptText({ powerUser, cardSystem, mainApi }) {
-    if (mainApi === 'openai') return '';
-    const sysprompt = powerUser?.sysprompt;
-    if (!sysprompt?.enabled) return '';
-    return powerUser?.prefer_character_prompt && cardSystem
-        ? String(cardSystem)
-        : String(sysprompt.content ?? '');
+  if (mainApi === "openai") return "";
+  const sysprompt = powerUser?.sysprompt;
+  if (!sysprompt?.enabled) return "";
+  return powerUser?.prefer_character_prompt && cardSystem
+    ? String(cardSystem)
+    : String(sysprompt.content ?? "");
 }
 
 /**
@@ -181,12 +187,12 @@ export function systemPromptText({ powerUser, cardSystem, mainApi }) {
  *        be the *same* latch that wrote `power_user.strip_examples` — a reserve
  *        that disagrees with the prompt is worse than either alone (D-0068).
  */
-export function cardText(fields, systemPrompt = '', { stripExamples = false } = {}) {
-    const names = stripExamples ? CARD_FIELDS_STRIPPED : CARD_FIELDS;
-    return [systemPrompt, ...names.map((field) => fields?.[field] ?? '')]
-        .map((part) => String(part ?? ''))
-        .filter(Boolean)
-        .join('\n');
+export function cardText(fields, systemPrompt = "", { stripExamples = false } = {}) {
+  const names = stripExamples ? CARD_FIELDS_STRIPPED : CARD_FIELDS;
+  return [systemPrompt, ...names.map((field) => fields?.[field] ?? "")]
+    .map((part) => String(part ?? ""))
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
@@ -199,144 +205,144 @@ export function cardText(fields, systemPrompt = '', { stripExamples = false } = 
  *        `load` is injected in tests; there is no `/scripts/world-info.js`
  *        outside the browser.
  */
-export function createReserves(getContext, {
-    load = loadWorldInfo,
-    settings = null,
-    scope = globalThis,
-    runLength = RUN_LENGTH,
-} = {}) {
-    /** text hash -> tokens. ST counts every message on every generation, so its own cache is warm. */
-    const sizes = new Map();
-    /** One warning per run of failures, not one per turn. */
-    let warned = false;
+export function createReserves(
+  getContext,
+  { load = loadWorldInfo, settings = null, scope = globalThis, runLength = RUN_LENGTH } = {},
+) {
+  /** text hash -> tokens. ST counts every message on every generation, so its own cache is warm. */
+  const sizes = new Map();
+  /** One warning per run of failures, not one per turn. */
+  let warned = false;
 
-    async function sized(context, text) {
-        const key = hashString(String(text ?? ''));
-        if (!sizes.has(key)) sizes.set(key, await countTokens(context, text));
-        return sizes.get(key);
+  async function sized(context, text) {
+    const key = hashString(String(text ?? ""));
+    if (!sizes.has(key)) sizes.set(key, await countTokens(context, text));
+    return sizes.get(key);
+  }
+
+  /**
+   * @param {number} maxPromptTokens What the cap is a share of, and what ST
+   *        works its own World Info budget out from.
+   * @param {{runLength?: number, since?: number}} [options] `runLength` is the
+   *        see-saw's own widest window, so a changed `RAW_WINDOW` or `STEP`
+   *        cannot leave this reading a number the scheduler no longer uses.
+   *        `since` is the threshold: messages after it go to the model raw.
+   *        `stripExamples` is the examples latch (memory/examples.js).
+   * @returns {Promise<{card: number, lore: number, loreBound: string,
+   *                    loreBudget: number, window: number, windowNow: number,
+   *                    state: number}|null>}
+   *          null when a read failed: the budgeter then falls back to the fixed
+   *          share rather than to a reserve of zero, which would hand the block
+   *          room the prompt does not have.
+   */
+  async function read(
+    maxPromptTokens,
+    { runLength: width = runLength, since = -1, stripExamples = false } = {},
+  ) {
+    try {
+      const context = getContext();
+      const sizeOf = (text) => sized(context, text);
+
+      const reserves = {
+        card: await cardReserve(context, sizeOf, stripExamples),
+        ...(await loreFor(context, maxPromptTokens, sizeOf)),
+        ...(await windowReserve(context, sizeOf, width, since)),
+        state: stateReserve(context),
+      };
+
+      warned = false;
+      return reserves;
+    } catch (err) {
+      if (!warned) {
+        warned = true;
+        warn(
+          "Could not work out what the rest of the prompt needs; the memory block keeps its fixed share.",
+          err,
+        );
+      }
+      return null;
     }
+  }
+
+  async function cardReserve(context, sizeOf, stripExamples) {
+    const fields = context.getCharacterCardFields();
+    const system = systemPromptText({
+      powerUser: context.powerUserSettings,
+      cardSystem: fields?.system,
+      mainApi: context.mainApi,
+    });
+    return sizeOf(cardText(fields, system, { stripExamples }));
+  }
+
+  async function loreFor(context, maxPromptTokens, sizeOf) {
+    const worldInfo = await load();
+    const budget = loreBudget({
+      maxPromptTokens,
+      // Live `let` exports, so they are read at the point of use (D-0016).
+      percent: Number(worldInfo.world_info_budget),
+      cap: Number(worldInfo.world_info_budget_cap),
+    });
+    // `getSortedEntries` emits WORLDINFO_ENTRIES_LOADED (world-info.js:4604),
+    // so this fires it a second time per generation. Nothing in ST listens,
+    // and a third-party listener sees the same freshly built arrays ST's own
+    // call will build again — but it is a side effect and it is ours.
+    const { tokens, bound } = await loreReserve({
+      entries: await worldInfo.getSortedEntries(),
+      budget,
+      sizeOf,
+    });
+    // The budget itself, not just what the books weigh against it: the holder
+    // trims the held set to this number at a rebuild (docs/decisions.md D-0069),
+    // and it has to be the same budget the reserve was worked out from or the
+    // two disagree the way the card and the examples latch could (D-0068).
+    return { lore: tokens, loreBound: bound, loreBudget: budget };
+  }
+
+  /**
+   * Hidden messages are left out, as ST leaves them out of `coreChat`
+   * (public/script.js:4496).
+   *
+   * `windowNow` is what the window weighs *this* turn. It is reported and never
+   * planned against: the reserve has to be the same number between steps, and
+   * this one swings by about 5,000 tokens across a cycle. It is there so a run
+   * can be checked against what the margin actually had to cover.
+   */
+  async function windowReserve(context, sizeOf, width, since) {
+    const chat = Array.isArray(context.chat) ? context.chat : [];
+    const counts = [];
+    let now = 0;
+
+    for (let i = 0; i < chat.length; i++) {
+      if (chat[i]?.is_system) continue;
+      const count = await sizeOf(chat[i]?.mes ?? "");
+      counts.push(count);
+      if (i > since) now += count;
+    }
+
+    return { window: heaviestRun(counts, width), windowNow: now };
+  }
+
+  /** The bound while the state is on and no WTracker is holding it back, 0 otherwise. */
+  function stateReserve(context) {
+    if (settings?.()?.worldState === false) return 0;
+    return wtrackerLoaded(context, { scope }) ? 0 : STATE_RESERVE_TOKENS;
+  }
+
+  return {
+    read,
 
     /**
-     * @param {number} maxPromptTokens What the cap is a share of, and what ST
-     *        works its own World Info budget out from.
-     * @param {{runLength?: number, since?: number}} [options] `runLength` is the
-     *        see-saw's own widest window, so a changed `RAW_WINDOW` or `STEP`
-     *        cannot leave this reading a number the scheduler no longer uses.
-     *        `since` is the threshold: messages after it go to the model raw.
-     *        `stripExamples` is the examples latch (memory/examples.js).
-     * @returns {Promise<{card: number, lore: number, loreBound: string,
-     *                    loreBudget: number, window: number, windowNow: number,
-     *                    state: number}|null>}
-     *          null when a read failed: the budgeter then falls back to the fixed
-     *          share rather than to a reserve of zero, which would hand the block
-     *          room the prompt does not have.
+     * A new chat is a new card, a new book and new messages. The sizes are
+     * keyed by content hash so they would still be correct, but nothing in
+     * the old chat is worth carrying.
      */
-    async function read(maxPromptTokens, {
-        runLength: width = runLength,
-        since = -1,
-        stripExamples = false,
-    } = {}) {
-        try {
-            const context = getContext();
-            const sizeOf = (text) => sized(context, text);
+    reset() {
+      sizes.clear();
+      warned = false;
+    },
 
-            const reserves = {
-                card: await cardReserve(context, sizeOf, stripExamples),
-                ...await loreFor(context, maxPromptTokens, sizeOf),
-                ...await windowReserve(context, sizeOf, width, since),
-                state: stateReserve(context),
-            };
-
-            warned = false;
-            return reserves;
-        } catch (err) {
-            if (!warned) {
-                warned = true;
-                warn('Could not work out what the rest of the prompt needs; the memory block keeps its fixed share.', err);
-            }
-            return null;
-        }
-    }
-
-    async function cardReserve(context, sizeOf, stripExamples) {
-        const fields = context.getCharacterCardFields();
-        const system = systemPromptText({
-            powerUser: context.powerUserSettings,
-            cardSystem: fields?.system,
-            mainApi: context.mainApi,
-        });
-        return sizeOf(cardText(fields, system, { stripExamples }));
-    }
-
-    async function loreFor(context, maxPromptTokens, sizeOf) {
-        const worldInfo = await load();
-        const budget = loreBudget({
-            maxPromptTokens,
-            // Live `let` exports, so they are read at the point of use (D-0016).
-            percent: Number(worldInfo.world_info_budget),
-            cap: Number(worldInfo.world_info_budget_cap),
-        });
-        // `getSortedEntries` emits WORLDINFO_ENTRIES_LOADED (world-info.js:4604),
-        // so this fires it a second time per generation. Nothing in ST listens,
-        // and a third-party listener sees the same freshly built arrays ST's own
-        // call will build again — but it is a side effect and it is ours.
-        const { tokens, bound } = await loreReserve({
-            entries: await worldInfo.getSortedEntries(),
-            budget,
-            sizeOf,
-        });
-        // The budget itself, not just what the books weigh against it: the holder
-        // trims the held set to this number at a rebuild (docs/decisions.md D-0069),
-        // and it has to be the same budget the reserve was worked out from or the
-        // two disagree the way the card and the examples latch could (D-0068).
-        return { lore: tokens, loreBound: bound, loreBudget: budget };
-    }
-
-    /**
-     * Hidden messages are left out, as ST leaves them out of `coreChat`
-     * (public/script.js:4496).
-     *
-     * `windowNow` is what the window weighs *this* turn. It is reported and never
-     * planned against: the reserve has to be the same number between steps, and
-     * this one swings by about 5,000 tokens across a cycle. It is there so a run
-     * can be checked against what the margin actually had to cover.
-     */
-    async function windowReserve(context, sizeOf, width, since) {
-        const chat = Array.isArray(context.chat) ? context.chat : [];
-        const counts = [];
-        let now = 0;
-
-        for (let i = 0; i < chat.length; i++) {
-            if (chat[i]?.is_system) continue;
-            const count = await sizeOf(chat[i]?.mes ?? '');
-            counts.push(count);
-            if (i > since) now += count;
-        }
-
-        return { window: heaviestRun(counts, width), windowNow: now };
-    }
-
-    /** The bound while the state is on and no WTracker is holding it back, 0 otherwise. */
-    function stateReserve(context) {
-        if (settings?.()?.worldState === false) return 0;
-        return wtrackerLoaded(context, { scope }) ? 0 : STATE_RESERVE_TOKENS;
-    }
-
-    return {
-        read,
-
-        /**
-         * A new chat is a new card, a new book and new messages. The sizes are
-         * keyed by content hash so they would still be correct, but nothing in
-         * the old chat is worth carrying.
-         */
-        reset() {
-            sizes.clear();
-            warned = false;
-        },
-
-        get cached() {
-            return sizes.size;
-        },
-    };
+    get cached() {
+      return sizes.size;
+    },
+  };
 }

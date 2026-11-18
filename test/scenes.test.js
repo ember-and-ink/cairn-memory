@@ -1,196 +1,225 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
-    cairnStart,
-    SCENE_HISTORY,
-    pendingScenes,
-    sceneHistory,
-    readScenes,
-} from '../src/memory/scenes.js';
-import { makeQvinkChat, makeQvinkData } from './mocks/qvink.js';
-import { cairnStore, cairnSummary, makeMixedChat } from './mocks/cairn.js';
+  cairnStart,
+  SCENE_HISTORY,
+  pendingScenes,
+  sceneHistory,
+  readScenes,
+} from "../src/memory/scenes.js";
+import { makeQvinkChat, makeQvinkData } from "./mocks/qvink.js";
+import { cairnStore, cairnSummary, makeMixedChat } from "./mocks/cairn.js";
 
-describe('reading tier 2 out of message.extra', () => {
-    it('reads one scene per summarised message, in chat order', () => {
-        const scenes = readScenes(makeQvinkChat({ length: 12 }));
+describe("reading tier 2 out of message.extra", () => {
+  it("reads one scene per summarised message, in chat order", () => {
+    const scenes = readScenes(makeQvinkChat({ length: 12 }));
 
-        expect(scenes).toHaveLength(12);
-        expect(scenes.map((scene) => scene.index)).toEqual([...Array(12).keys()]);
-        expect(scenes[0].chars).toBe(scenes[0].text.length);
-    });
+    expect(scenes).toHaveLength(12);
+    expect(scenes.map((scene) => scene.index)).toEqual([...Array(12).keys()]);
+    expect(scenes[0].chars).toBe(scenes[0].text.length);
+  });
 
-    it('skips messages with no summary rather than emitting empty scenes', () => {
-        const chat = makeQvinkChat({ length: 4 });
-        chat[2].extra.qvink_memory.memory = '';
-        delete chat[3].extra.qvink_memory;
+  it("skips messages with no summary rather than emitting empty scenes", () => {
+    const chat = makeQvinkChat({ length: 4 });
+    chat[2].extra.qvink_memory.memory = "";
+    delete chat[3].extra.qvink_memory;
 
-        expect(readScenes(chat).map((scene) => scene.index)).toEqual([0, 1]);
-    });
+    expect(readScenes(chat).map((scene) => scene.index)).toEqual([0, 1]);
+  });
 
-    it('leaves the prefill out, as qvink does by default (its index.js:113, :3521)', () => {
-        const chat = makeQvinkChat({ length: 1 });
+  it("leaves the prefill out, as qvink does by default (its index.js:113, :3521)", () => {
+    const chat = makeQvinkChat({ length: 1 });
 
-        expect(readScenes(chat)[0].text.startsWith('Summary: ')).toBe(false);
-    });
+    expect(readScenes(chat)[0].text.startsWith("Summary: ")).toBe(false);
+  });
 
-    it('drops excluded scenes but lets a remembered one through anyway', () => {
-        const chat = makeQvinkChat({ length: 6, exclude: [1, 2], remember: [2] });
-        const eligible = readScenes(chat).filter((scene) => scene.eligible).map((s) => s.index);
+  it("drops excluded scenes but lets a remembered one through anyway", () => {
+    const chat = makeQvinkChat({ length: 6, exclude: [1, 2], remember: [2] });
+    const eligible = readScenes(chat)
+      .filter((scene) => scene.eligible)
+      .map((s) => s.index);
 
-        expect(eligible).toEqual([0, 2, 3, 4, 5]);
-    });
+    expect(eligible).toEqual([0, 2, 3, 4, 5]);
+  });
 
-    it('never mutates the chat it read', () => {
-        const chat = makeQvinkChat({ length: 3 });
-        const before = JSON.stringify(chat);
-        readScenes(chat);
+  it("never mutates the chat it read", () => {
+    const chat = makeQvinkChat({ length: 3 });
+    const before = JSON.stringify(chat);
+    readScenes(chat);
 
-        expect(JSON.stringify(chat)).toBe(before);
-    });
+    expect(JSON.stringify(chat)).toBe(before);
+  });
 });
 
 /**
  * Two sources, one scene per message (docs/decisions.md D-0037). qvink's summaries are
  * read and never rewritten; Cairn's count only while their hash still matches.
  */
-describe('reading qvink and Cairn scenes together', () => {
-    it('reads qvink scenes then Cairn scenes, in chat order, each named by source', () => {
-        const chat = makeMixedChat({ length: 20, qvinkThrough: 9, cairnThrough: 17 });
-        const scenes = readScenes(chat);
+describe("reading qvink and Cairn scenes together", () => {
+  it("reads qvink scenes then Cairn scenes, in chat order, each named by source", () => {
+    const chat = makeMixedChat({ length: 20, qvinkThrough: 9, cairnThrough: 17 });
+    const scenes = readScenes(chat);
 
-        expect(scenes.map((scene) => scene.index)).toEqual([...Array(18).keys()]);
-        expect(scenes.slice(0, 10).every((scene) => scene.source === 'qvink')).toBe(true);
-        expect(scenes.slice(10).every((scene) => scene.source === 'cairn')).toBe(true);
-        expect(scenes[12]).toMatchObject({ text: cairnSummary(12), chars: cairnSummary(12).length, eligible: true });
+    expect(scenes.map((scene) => scene.index)).toEqual([...Array(18).keys()]);
+    expect(scenes.slice(0, 10).every((scene) => scene.source === "qvink")).toBe(true);
+    expect(scenes.slice(10).every((scene) => scene.source === "cairn")).toBe(true);
+    expect(scenes[12]).toMatchObject({
+      text: cairnSummary(12),
+      chars: cairnSummary(12).length,
+      eligible: true,
     });
+  });
 
-    it('lets the Cairn scene win when a message has both', () => {
-        const chat = makeQvinkChat({ length: 3 });
-        chat[1].extra.cairn = cairnStore(chat[1], 'Cairn wrote this one.');
+  it("lets the Cairn scene win when a message has both", () => {
+    const chat = makeQvinkChat({ length: 3 });
+    chat[1].extra.cairn = cairnStore(chat[1], "Cairn wrote this one.");
 
-        const scene = readScenes(chat)[1];
-        expect(scene).toMatchObject({ source: 'cairn', text: 'Cairn wrote this one.' });
-    });
+    const scene = readScenes(chat)[1];
+    expect(scene).toMatchObject({ source: "cairn", text: "Cairn wrote this one." });
+  });
 
-    it('drops a scene whose message was edited, and does not fall back to an older qvink one', () => {
-        // A qvink summary on the same message is at least as old as the edit made
-        // Cairn's, so it is no better (docs/decisions.md D-0037).
-        const chat = makeQvinkChat({ length: 3 });
-        chat[1].extra.cairn = cairnStore(chat[1], 'Before the edit.');
-        chat[1].mes += ' An afterthought.';
+  it("drops a scene whose message was edited, and does not fall back to an older qvink one", () => {
+    // A qvink summary on the same message is at least as old as the edit made
+    // Cairn's, so it is no better (docs/decisions.md D-0037).
+    const chat = makeQvinkChat({ length: 3 });
+    chat[1].extra.cairn = cairnStore(chat[1], "Before the edit.");
+    chat[1].mes += " An afterthought.";
 
-        expect(readScenes(chat).map((scene) => scene.index)).toEqual([0, 2]);
-    });
+    expect(readScenes(chat).map((scene) => scene.index)).toEqual([0, 2]);
+  });
 
-    it('falls back to qvink when the Cairn store is unreadable', () => {
-        const chat = makeQvinkChat({ length: 2 });
-        chat[1].extra.cairn = { v: 1, scene: { text: '' } };
+  it("falls back to qvink when the Cairn store is unreadable", () => {
+    const chat = makeQvinkChat({ length: 2 });
+    chat[1].extra.cairn = { v: 1, scene: { text: "" } };
 
-        expect(readScenes(chat)[1].source).toBe('qvink');
-    });
+    expect(readScenes(chat)[1].source).toBe("qvink");
+  });
 
-    it('never mutates the chat it read', () => {
-        const chat = makeMixedChat({ length: 12, qvinkThrough: 4, cairnThrough: 10 });
-        chat[7].mes += ' edited';
-        const before = JSON.stringify(chat);
-        readScenes(chat);
-        pendingScenes(chat);
+  it("never mutates the chat it read", () => {
+    const chat = makeMixedChat({ length: 12, qvinkThrough: 4, cairnThrough: 10 });
+    chat[7].mes += " edited";
+    const before = JSON.stringify(chat);
+    readScenes(chat);
+    pendingScenes(chat);
 
-        expect(JSON.stringify(chat)).toBe(before);
-    });
+    expect(JSON.stringify(chat)).toBe(before);
+  });
 });
 
-describe('which messages are waiting for a summary', () => {
-    it('starts after the newest qvink summary, whatever qvink skipped before it', () => {
-        const chat = makeMixedChat({ length: 20, qvinkThrough: 9, cairnThrough: 9 });
-        delete chat[3].extra.qvink_memory.memory;
+describe("which messages are waiting for a summary", () => {
+  it("starts after the newest qvink summary, whatever qvink skipped before it", () => {
+    const chat = makeMixedChat({ length: 20, qvinkThrough: 9, cairnThrough: 9 });
+    delete chat[3].extra.qvink_memory.memory;
 
-        expect(cairnStart(chat)).toBe(10);
-        expect(pendingScenes(chat)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18]);
+    expect(cairnStart(chat)).toBe(10);
+    expect(pendingScenes(chat)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18]);
+  });
+
+  it("starts at the top of a chat qvink never touched", () => {
+    const chat = makeMixedChat({ length: 6, qvinkThrough: -1, cairnThrough: -1 });
+
+    expect(cairnStart(chat)).toBe(0);
+    expect(pendingScenes(chat)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it("never includes the last message, which can still be swiped or edited", () => {
+    for (let length = 0; length <= 14; length++) {
+      const chat = makeMixedChat({ length, qvinkThrough: -1, cairnThrough: -1 });
+      expect(pendingScenes(chat)).not.toContain(length - 1);
+    }
+    // Even when everything before it is done.
+    const done = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12 });
+    expect(pendingScenes(done)).toEqual([]);
+  });
+
+  it("skips short and hidden messages, which never get a summary", () => {
+    const chat = makeMixedChat({
+      length: 14,
+      qvinkThrough: 5,
+      cairnThrough: 12,
+      short: [8],
+      hidden: [10],
     });
 
-    it('starts at the top of a chat qvink never touched', () => {
-        const chat = makeMixedChat({ length: 6, qvinkThrough: -1, cairnThrough: -1 });
+    expect(pendingScenes(chat)).toEqual([]);
+  });
 
-        expect(cairnStart(chat)).toBe(0);
-        expect(pendingScenes(chat)).toEqual([0, 1, 2, 3, 4]);
-    });
+  it("queues a gap and an edited message, oldest first", () => {
+    const chat = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12, gaps: [9] });
+    chat[7].mes += " An afterthought.";
 
-    it('never includes the last message, which can still be swiped or edited', () => {
-        for (let length = 0; length <= 14; length++) {
-            const chat = makeMixedChat({ length, qvinkThrough: -1, cairnThrough: -1 });
-            expect(pendingScenes(chat)).not.toContain(length - 1);
-        }
-        // Even when everything before it is done.
-        const done = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12 });
-        expect(pendingScenes(done)).toEqual([]);
-    });
+    expect(pendingScenes(chat)).toEqual([7, 9]);
+  });
 
-    it('skips short and hidden messages, which never get a summary', () => {
-        const chat = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12, short: [8], hidden: [10] });
+  it("leaves a newer Cairn's store alone rather than queueing a summary it cannot write", () => {
+    const chat = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12, gaps: [9] });
+    chat[9].extra.cairn = { v: 99, scene: { text: "from the future" } };
 
-        expect(pendingScenes(chat)).toEqual([]);
-    });
-
-    it('queues a gap and an edited message, oldest first', () => {
-        const chat = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12, gaps: [9] });
-        chat[7].mes += ' An afterthought.';
-
-        expect(pendingScenes(chat)).toEqual([7, 9]);
-    });
-
-    it('leaves a newer Cairn\'s store alone rather than queueing a summary it cannot write', () => {
-        const chat = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12, gaps: [9] });
-        chat[9].extra.cairn = { v: 99, scene: { text: 'from the future' } };
-
-        expect(pendingScenes(chat)).toEqual([]);
-    });
+    expect(pendingScenes(chat)).toEqual([]);
+  });
 });
 
-describe('the history sent with a summary request', () => {
-    it('is the five scenes just before the message, oldest first, from either source', () => {
-        const chat = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12 });
+describe("the history sent with a summary request", () => {
+  it("is the five scenes just before the message, oldest first, from either source", () => {
+    const chat = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12 });
 
-        const history = sceneHistory(chat, 9);
+    const history = sceneHistory(chat, 9);
 
-        expect(SCENE_HISTORY).toBe(5);
-        expect(history.map((scene) => scene.index)).toEqual([4, 5, 6, 7, 8]);
-        expect(history.map((scene) => scene.source)).toEqual(['qvink', 'qvink', 'cairn', 'cairn', 'cairn']);
-    });
+    expect(SCENE_HISTORY).toBe(5);
+    expect(history.map((scene) => scene.index)).toEqual([4, 5, 6, 7, 8]);
+    expect(history.map((scene) => scene.source)).toEqual([
+      "qvink",
+      "qvink",
+      "cairn",
+      "cairn",
+      "cairn",
+    ]);
+  });
 
-    it('skips gaps and edited scenes rather than sending one that no longer matches its message', () => {
-        const chat = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12, gaps: [7] });
-        chat[8].mes += ' An afterthought.';
+  it("skips gaps and edited scenes rather than sending one that no longer matches its message", () => {
+    const chat = makeMixedChat({ length: 14, qvinkThrough: 5, cairnThrough: 12, gaps: [7] });
+    chat[8].mes += " An afterthought.";
 
-        expect(sceneHistory(chat, 10).map((scene) => scene.index)).toEqual([3, 4, 5, 6, 9]);
-    });
+    expect(sceneHistory(chat, 10).map((scene) => scene.index)).toEqual([3, 4, 5, 6, 9]);
+  });
 
-    it('leaves out a summary the user excluded from memory', () => {
-        const chat = makeQvinkChat({ length: 10, exclude: [7] });
+  it("leaves out a summary the user excluded from memory", () => {
+    const chat = makeQvinkChat({ length: 10, exclude: [7] });
 
-        expect(sceneHistory(chat, 9).map((scene) => scene.index)).toEqual([3, 4, 5, 6, 8]);
-    });
+    expect(sceneHistory(chat, 9).map((scene) => scene.index)).toEqual([3, 4, 5, 6, 8]);
+  });
 
-    it('is empty at the top of a chat', () => {
-        expect(sceneHistory(makeMixedChat({ length: 6, qvinkThrough: -1, cairnThrough: -1 }), 0)).toEqual([]);
-    });
+  it("is empty at the top of a chat", () => {
+    expect(
+      sceneHistory(makeMixedChat({ length: 6, qvinkThrough: -1, cairnThrough: -1 }), 0),
+    ).toEqual([]);
+  });
 });
 
-describe('the fixture itself', () => {
-    it('carries every key the real data has', () => {
-        // A reader that depends on a key we did not model has to fail here, not
-        // in play (CLAUDE.md §3.11).
-        expect(Object.keys(makeQvinkData()).sort()).toEqual([
-            'edited', 'error', 'exclude', 'hash', 'include',
-            'lagging', 'memory', 'prefill', 'reasoning', 'remember', 'remember_auto',
-        ]);
-    });
+describe("the fixture itself", () => {
+  it("carries every key the real data has", () => {
+    // A reader that depends on a key we did not model has to fail here, not
+    // in play (CLAUDE.md §3.11).
+    expect(Object.keys(makeQvinkData()).sort()).toEqual([
+      "edited",
+      "error",
+      "exclude",
+      "hash",
+      "include",
+      "lagging",
+      "memory",
+      "prefill",
+      "reasoning",
+      "remember",
+      "remember_auto",
+    ]);
+  });
 
-    it('produces summaries in the range the corpus showed', () => {
-        const scenes = readScenes(makeQvinkChat({ length: 30 }));
-        const lengths = scenes.map((scene) => scene.chars);
+  it("produces summaries in the range the corpus showed", () => {
+    const scenes = readScenes(makeQvinkChat({ length: 30 }));
+    const lengths = scenes.map((scene) => scene.chars);
 
-        expect(Math.min(...lengths)).toBeGreaterThanOrEqual(196);
-        expect(Math.max(...lengths)).toBeLessThanOrEqual(641);
-        expect(new Set(scenes.map((scene) => scene.text)).size).toBe(30);
-    });
+    expect(Math.min(...lengths)).toBeGreaterThanOrEqual(196);
+    expect(Math.max(...lengths)).toBeLessThanOrEqual(641);
+    expect(new Set(scenes.map((scene) => scene.text)).size).toBe(30);
+  });
 });

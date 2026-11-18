@@ -13,8 +13,8 @@
  * Pure: plain data in, plain data out. No ST, no DOM, no network.
  */
 
-import { readScene, summarisable } from '../store/chat-store.js';
-import { QVINK_KEY } from '../interop/qvink.js';
+import { readScene, summarisable } from "../store/chat-store.js";
+import { QVINK_KEY } from "../interop/qvink.js";
 
 /**
  * Every message carrying a scene, oldest first.
@@ -28,54 +28,54 @@ import { QVINK_KEY } from '../interop/qvink.js';
  *          excluded, include, lagging}`, plus `edited` on Cairn's own (D-0099)
  */
 export function readScenes(chat, { key = QVINK_KEY } = {}) {
-    const scenes = [];
+  const scenes = [];
 
-    (chat ?? []).forEach((message, index) => {
-        const cairn = readScene(message);
-        if (cairn.status === 'valid') {
-            scenes.push({
-                index,
-                source: 'cairn',
-                text: cairn.scene.text,
-                chars: cairn.scene.text.length,
-                edited: cairn.scene.edited === true,
-                eligible: true,
-                remembered: false,
-                excluded: false,
-                include: null,
-                lagging: false,
-            });
-            return;
-        }
-        // An edit invalidated Cairn's scene, and any qvink one on the same
-        // message is older still: the message goes back to being raw.
-        if (cairn.status === 'stale') return;
+  (chat ?? []).forEach((message, index) => {
+    const cairn = readScene(message);
+    if (cairn.status === "valid") {
+      scenes.push({
+        index,
+        source: "cairn",
+        text: cairn.scene.text,
+        chars: cairn.scene.text.length,
+        edited: cairn.scene.edited === true,
+        eligible: true,
+        remembered: false,
+        excluded: false,
+        include: null,
+        lagging: false,
+      });
+      return;
+    }
+    // An edit invalidated Cairn's scene, and any qvink one on the same
+    // message is older still: the message goes back to being raw.
+    if (cairn.status === "stale") return;
 
-        const data = message?.extra?.[key];
-        const memory = data?.memory;
-        if (typeof memory !== 'string' || memory === '') return;
+    const data = message?.extra?.[key];
+    const memory = data?.memory;
+    if (typeof memory !== "string" || memory === "") return;
 
-        const remembered = Boolean(data.remember);
-        const excluded = Boolean(data.exclude);
+    const remembered = Boolean(data.remember);
+    const excluded = Boolean(data.exclude);
 
-        scenes.push({
-            index,
-            source: 'qvink',
-            text: memory,
-            chars: memory.length,
-            // qvink's exclusion rule, minus the parts we cannot see from `extra`:
-            // a `remember` flag bypasses everything, an `exclude` flag removes it
-            // (its index.js:3745-3760). The message-length test is not reproduced
-            // — a message too short to summarise has no summary to read.
-            eligible: remembered || !excluded,
-            remembered,
-            excluded,
-            include: data.include ?? null,
-            lagging: Boolean(data.lagging),
-        });
+    scenes.push({
+      index,
+      source: "qvink",
+      text: memory,
+      chars: memory.length,
+      // qvink's exclusion rule, minus the parts we cannot see from `extra`:
+      // a `remember` flag bypasses everything, an `exclude` flag removes it
+      // (its index.js:3745-3760). The message-length test is not reproduced
+      // — a message too short to summarise has no summary to read.
+      eligible: remembered || !excluded,
+      remembered,
+      excluded,
+      include: data.include ?? null,
+      lagging: Boolean(data.lagging),
     });
+  });
 
-    return scenes;
+  return scenes;
 }
 
 /**
@@ -84,12 +84,12 @@ export function readScenes(chat, { key = QVINK_KEY } = {}) {
  * would insert scenes into the middle of the block (docs/decisions.md D-0037).
  */
 export function cairnStart(chat, { key = QVINK_KEY } = {}) {
-    const list = chat ?? [];
-    for (let index = list.length - 1; index >= 0; index--) {
-        const memory = list[index]?.extra?.[key]?.memory;
-        if (typeof memory === 'string' && memory !== '') return index + 1;
-    }
-    return 0;
+  const list = chat ?? [];
+  for (let index = list.length - 1; index >= 0; index--) {
+    const memory = list[index]?.extra?.[key]?.memory;
+    if (typeof memory === "string" && memory !== "") return index + 1;
+  }
+  return 0;
 }
 
 /**
@@ -100,16 +100,16 @@ export function cairnStart(chat, { key = QVINK_KEY } = {}) {
  * @returns {number[]} Chat indexes.
  */
 export function pendingScenes(chat, { key = QVINK_KEY } = {}) {
-    const list = chat ?? [];
-    const pending = [];
-    for (let index = cairnStart(list, { key }); index < list.length - 1; index++) {
-        const message = list[index];
-        if (!summarisable(message)) continue;
-        // A newer Cairn's store is not ours to overwrite (store/chat-store.js).
-        const { status } = readScene(message);
-        if (status !== 'valid' && status !== 'future') pending.push(index);
-    }
-    return pending;
+  const list = chat ?? [];
+  const pending = [];
+  for (let index = cairnStart(list, { key }); index < list.length - 1; index++) {
+    const message = list[index];
+    if (!summarisable(message)) continue;
+    // A newer Cairn's store is not ours to overwrite (store/chat-store.js).
+    const { status } = readScene(message);
+    if (status !== "valid" && status !== "future") pending.push(index);
+  }
+  return pending;
 }
 
 /**
@@ -120,16 +120,16 @@ export function pendingScenes(chat, { key = QVINK_KEY } = {}) {
  * @returns {number[]} Chat indexes.
  */
 export function redoScenes(chat, { key = QVINK_KEY } = {}) {
-    const list = chat ?? [];
-    const redo = [];
-    for (let index = 0; index < list.length - 1; index++) {
-        const message = list[index];
-        if (!summarisable(message) || readScene(message).status === 'future') continue;
-        const qvink = message.extra?.[key];
-        if (qvink?.exclude && !qvink.remember) continue;
-        redo.push(index);
-    }
-    return redo;
+  const list = chat ?? [];
+  const redo = [];
+  for (let index = 0; index < list.length - 1; index++) {
+    const message = list[index];
+    if (!summarisable(message) || readScene(message).status === "future") continue;
+    const qvink = message.extra?.[key];
+    if (qvink?.exclude && !qvink.remember) continue;
+    redo.push(index);
+  }
+  return redo;
 }
 
 /** Scenes sent back with each summary request (docs/decisions.md D-0037). */
@@ -142,7 +142,7 @@ export const SCENE_HISTORY = 5;
  * @returns {Array<object>} Scenes as `readScenes` returns them.
  */
 export function sceneHistory(chat, index, { count = SCENE_HISTORY, key = QVINK_KEY } = {}) {
-    return readScenes(chat, { key })
-        .filter((scene) => scene.index < index && scene.eligible)
-        .slice(-count);
+  return readScenes(chat, { key })
+    .filter((scene) => scene.index < index && scene.eligible)
+    .slice(-count);
 }

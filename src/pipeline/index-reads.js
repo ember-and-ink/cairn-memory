@@ -29,18 +29,22 @@
  *        to consider; an adoption indexes the chat a step at a time.
  * @returns {Array<{index: number, text: string}>} Oldest first, at most `limit`.
  */
-export function pendingIndex(chat, { readScene, readIndex }, { limit = Infinity, through = Infinity } = {}) {
-    const waiting = [];
+export function pendingIndex(
+  chat,
+  { readScene, readIndex },
+  { limit = Infinity, through = Infinity } = {},
+) {
+  const waiting = [];
 
-    (chat ?? []).forEach((message, index) => {
-        if (waiting.length >= limit || index > through) return;
-        const scene = readScene(message);
-        if (scene.status !== 'valid') return;
-        if (readIndex(message).status === 'valid') return;
-        waiting.push({ index, text: scene.scene.text });
-    });
+  (chat ?? []).forEach((message, index) => {
+    if (waiting.length >= limit || index > through) return;
+    const scene = readScene(message);
+    if (scene.status !== "valid") return;
+    if (readIndex(message).status === "valid") return;
+    waiting.push({ index, text: scene.scene.text });
+  });
 
-    return waiting;
+  return waiting;
 }
 
 /**
@@ -55,12 +59,12 @@ export function pendingIndex(chat, { readScene, readIndex }, { limit = Infinity,
  * @returns {Array<{index: number, record: object}>} Oldest first.
  */
 export function indexRecords(chat, { readIndex }) {
-    const records = [];
+  const records = [];
 
-    (chat ?? []).forEach((message, index) => {
-        const found = readIndex(message);
-        if (found.status === 'valid') records.push({ index, record: found.index.record });
-    });
+  (chat ?? []).forEach((message, index) => {
+    const found = readIndex(message);
+    if (found.status === "valid") records.push({ index, record: found.index.record });
+  });
 
-    return records;
+  return records;
 }

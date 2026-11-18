@@ -9,16 +9,16 @@
  * Pure string math. No tokenizer: characters are close enough to rank turns
  * against each other, and this runs on every generation.
  */
-import { round1 } from './values.js';
+import { round1 } from "./values.js";
 
 /** @returns {number} Characters shared from the start of both strings. */
 export function commonPrefixLength(a, b) {
-    if (!a || !b) return 0;
+  if (!a || !b) return 0;
 
-    const limit = Math.min(a.length, b.length);
-    let i = 0;
-    while (i < limit && a.charCodeAt(i) === b.charCodeAt(i)) i++;
-    return i;
+  const limit = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < limit && a.charCodeAt(i) === b.charCodeAt(i)) i++;
+  return i;
 }
 
 /**
@@ -33,34 +33,36 @@ export function commonPrefixLength(a, b) {
  * @param {{excerpt?: number}} [options]
  */
 export function comparePrompts(previous, current, { excerpt = 100 } = {}) {
-    const currentLength = current?.length ?? 0;
+  const currentLength = current?.length ?? 0;
 
-    if (previous == null) {
-        return {
-            previousLength: 0,
-            currentLength,
-            commonPrefix: 0,
-            stabilityPercent: null, // No previous turn — not 0%, not 100%.
-            divergence: null,
-        };
-    }
-
-    const common = commonPrefixLength(previous, current);
-    const identical = common === previous.length && common === currentLength;
-
+  if (previous == null) {
     return {
-        previousLength: previous.length,
-        currentLength,
-        commonPrefix: common,
-        stabilityPercent: currentLength === 0 ? 0 : round1((common / currentLength) * 100),
-        // Where the prompts parted company, with enough either side to recognise
-        // what moved. This is the whole diagnostic.
-        divergence: identical ? null : {
-            index: common,
-            previous: previous.slice(common, common + excerpt),
-            current: current.slice(common, common + excerpt),
-        },
+      previousLength: 0,
+      currentLength,
+      commonPrefix: 0,
+      stabilityPercent: null, // No previous turn — not 0%, not 100%.
+      divergence: null,
     };
+  }
+
+  const common = commonPrefixLength(previous, current);
+  const identical = common === previous.length && common === currentLength;
+
+  return {
+    previousLength: previous.length,
+    currentLength,
+    commonPrefix: common,
+    stabilityPercent: currentLength === 0 ? 0 : round1((common / currentLength) * 100),
+    // Where the prompts parted company, with enough either side to recognise
+    // what moved. This is the whole diagnostic.
+    divergence: identical
+      ? null
+      : {
+          index: common,
+          previous: previous.slice(common, common + excerpt),
+          current: current.slice(common, common + excerpt),
+        },
+  };
 }
 
 /**
@@ -69,19 +71,19 @@ export function comparePrompts(previous, current, { excerpt = 100 } = {}) {
  * Never mutates the input (CLAUDE.md §2.8).
  */
 export function flattenPrompt(prompt) {
-    if (typeof prompt === 'string') return prompt;
-    if (!Array.isArray(prompt)) return '';
+  if (typeof prompt === "string") return prompt;
+  if (!Array.isArray(prompt)) return "";
 
-    return prompt
-        .map((message) => `${message?.role ?? ''}: ${stringifyContent(message?.content)}`)
-        .join('\n');
+  return prompt
+    .map((message) => `${message?.role ?? ""}: ${stringifyContent(message?.content)}`)
+    .join("\n");
 }
 
 function stringifyContent(content) {
-    if (typeof content === 'string') return content;
-    // Multimodal content is an array of parts; only the text parts are comparable.
-    if (Array.isArray(content)) {
-        return content.map((part) => (typeof part?.text === 'string' ? part.text : '')).join('');
-    }
-    return '';
+  if (typeof content === "string") return content;
+  // Multimodal content is an array of parts; only the text parts are comparable.
+  if (Array.isArray(content)) {
+    return content.map((part) => (typeof part?.text === "string" ? part.text : "")).join("");
+  }
+  return "";
 }

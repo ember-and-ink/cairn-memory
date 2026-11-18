@@ -6,16 +6,16 @@
  * the number that would have caught the interceptor regression in a turn instead
  * of in a forensic afternoon.
  */
-import { SLUG } from '../constants.js';
-import { MIN_CAP_FRACTION } from '../pipeline/budgeter.js';
-import { nearPromptLimit } from '../util/context-size.js';
-import { GATES, escapeHtml, fmt, row } from './html.js';
-import { renderStateSection } from './state-section.js';
+import { SLUG } from "../constants.js";
+import { MIN_CAP_FRACTION } from "../pipeline/budgeter.js";
+import { nearPromptLimit } from "../util/context-size.js";
+import { GATES, escapeHtml, fmt, row } from "./html.js";
+import { renderStateSection } from "./state-section.js";
 
 const STABILITY_BANDS = [
-    { min: 95, className: 'good', note: 'prefix holding' },
-    { min: 75, className: 'fair', note: 'prefix moving' },
-    { min: 0, className: 'poor', note: 'prefix broken — something volatile is sitting too high' },
+  { min: 95, className: "good", note: "prefix holding" },
+  { min: 75, className: "fair", note: "prefix moving" },
+  { min: 0, className: "poor", note: "prefix broken — something volatile is sitting too high" },
 ];
 
 /**
@@ -23,35 +23,36 @@ const STABILITY_BANDS = [
  * @param {{canon?: () => object|null}} [sources] `canon` is the assembler's `canonView`.
  */
 export function createInspector(host, { canon = () => null } = {}) {
-    // Drawn apart: summaries and states land between generations, and redrawing the
-    // snapshot for each would close whatever details the reader has open. `-state` is
-    // taken by the chat mark (style.css), so the state part is `-state-view`, like canon.
-    host.innerHTML = `<div class="${SLUG}-canon-view"></div><div class="${SLUG}-snapshot"></div>`
-        + `<div class="${SLUG}-summaries"></div><div class="${SLUG}-state-view"></div>`;
-    const [canonPart, snapshotPart, summariesPart, statePart] = host.children;
-    // The state section joins the queue, which moves between generations, to the
-    // placement, which only a generation changes.
-    let stateStatus = null;
-    let placement = null;
-    const drawState = () => {
-        statePart.innerHTML = renderStateSection(stateStatus, placement);
-    };
+  // Drawn apart: summaries and states land between generations, and redrawing the
+  // snapshot for each would close whatever details the reader has open. `-state` is
+  // taken by the chat mark (style.css), so the state part is `-state-view`, like canon.
+  host.innerHTML =
+    `<div class="${SLUG}-canon-view"></div><div class="${SLUG}-snapshot"></div>` +
+    `<div class="${SLUG}-summaries"></div><div class="${SLUG}-state-view"></div>`;
+  const [canonPart, snapshotPart, summariesPart, statePart] = host.children;
+  // The state section joins the queue, which moves between generations, to the
+  // placement, which only a generation changes.
+  let stateStatus = null;
+  let placement = null;
+  const drawState = () => {
+    statePart.innerHTML = renderStateSection(stateStatus, placement);
+  };
 
-    return {
-        render(snapshot) {
-            canonPart.innerHTML = snapshot ? renderCanonView(canon()) : '';
-            snapshotPart.innerHTML = snapshot ? renderSnapshot(snapshot) : renderEmpty();
-            placement = snapshot?.state ?? null;
-            drawState();
-        },
+  return {
+    render(snapshot) {
+      canonPart.innerHTML = snapshot ? renderCanonView(canon()) : "";
+      snapshotPart.innerHTML = snapshot ? renderSnapshot(snapshot) : renderEmpty();
+      placement = snapshot?.state ?? null;
+      drawState();
+    },
 
-        /** @param {object|null} status The summarizer's `status`. */
-        summaries(status) {
-            summariesPart.innerHTML = renderSummaries(status);
-            stateStatus = status?.state ?? null;
-            drawState();
-        },
-    };
+    /** @param {object|null} status The summarizer's `status`. */
+    summaries(status) {
+      summariesPart.innerHTML = renderSummaries(status);
+      stateStatus = status?.state ?? null;
+      drawState();
+    },
+  };
 }
 
 /**
@@ -62,20 +63,24 @@ export function createInspector(host, { canon = () => null } = {}) {
  * @param {{inPrompt: string[], spilled: string[], waiting: string[], slots: number}|null} view
  */
 export function renderCanonView(view) {
-    if (!view) return '';
-    const list = (texts) => `<ul class="${SLUG}-list ${SLUG}-canon-facts">${
-        texts.map((text) => `<li>${escapeHtml(text)}</li>`).join('')}</ul>`;
+  if (!view) return "";
+  const list = (texts) =>
+    `<ul class="${SLUG}-list ${SLUG}-canon-facts">${texts
+      .map((text) => `<li>${escapeHtml(text)}</li>`)
+      .join("")}</ul>`;
 
-    if (!view.inPrompt.length && !view.waiting.length) {
-        return `<details class="${SLUG}-details" open><summary>Canon</summary>
+  if (!view.inPrompt.length && !view.waiting.length) {
+    return `<details class="${SLUG}-details" open><summary>Canon</summary>
             <div class="dim">No canon yet. It is picked once the index has a few records.</div></details>`;
-    }
-    const spilled = view.spilled.length
-        ? `<div class="${SLUG}-hint">Left out for want of room:</div>${list(view.spilled)}` : '';
-    const waiting = view.waiting.length
-        ? `<div class="${SLUG}-hint">A newer pick, which goes in at the next step:</div>${list(view.waiting)}` : '';
+  }
+  const spilled = view.spilled.length
+    ? `<div class="${SLUG}-hint">Left out for want of room:</div>${list(view.spilled)}`
+    : "";
+  const waiting = view.waiting.length
+    ? `<div class="${SLUG}-hint">A newer pick, which goes in at the next step:</div>${list(view.waiting)}`
+    : "";
 
-    return `
+  return `
         <details class="${SLUG}-details" open>
             <summary>Canon in the prompt (${fmt(view.inPrompt.length)} of ${fmt(view.slots)} lines)</summary>
             ${view.inPrompt.length ? list(view.inPrompt) : '<div class="dim">None in the prompt yet.</div>'}
@@ -84,7 +89,7 @@ export function renderCanonView(view) {
 }
 
 function renderEmpty() {
-    return `<div class="${SLUG}-inspector-empty">No generation observed yet. Send a message.</div>`;
+  return `<div class="${SLUG}-inspector-empty">No generation observed yet. Send a message.</div>`;
 }
 
 /**
@@ -93,29 +98,29 @@ function renderEmpty() {
  * checking in — the same split `state-section.js` and `canon-section.js` already sit on.
  */
 export function renderSnapshot(snapshot) {
-    const { stability, summary, inventory, worldInfo } = snapshot;
+  const { stability, summary, inventory, worldInfo } = snapshot;
 
-    return [
-        renderStability(stability),
-        renderTotals(snapshot, summary),
-        renderNearLimit(snapshot),
-        renderWriters(summary),
-        renderInventory(inventory),
-        renderWorldInfo(worldInfo, snapshot.worldInfoOrdering, snapshot.worldInfoHeld),
-        renderMemory(snapshot.memory),
-        renderDivergence(stability, snapshot.divergenceIn),
-    ].join('');
+  return [
+    renderStability(stability),
+    renderTotals(snapshot, summary),
+    renderNearLimit(snapshot),
+    renderWriters(summary),
+    renderInventory(inventory),
+    renderWorldInfo(worldInfo, snapshot.worldInfoOrdering, snapshot.worldInfoHeld),
+    renderMemory(snapshot.memory),
+    renderDivergence(stability, snapshot.divergenceIn),
+  ].join("");
 }
 
 function renderStability(stability) {
-    const percent = stability.stabilityPercent;
+  const percent = stability.stabilityPercent;
 
-    if (percent == null) {
-        return row('Prefix stability', '— <span class="dim">(first turn — no baseline)</span>');
-    }
+  if (percent == null) {
+    return row("Prefix stability", '— <span class="dim">(first turn — no baseline)</span>');
+  }
 
-    const band = STABILITY_BANDS.find((b) => percent >= b.min);
-    return `
+  const band = STABILITY_BANDS.find((b) => percent >= b.min);
+  return `
         <div class="${SLUG}-meter">
             <div class="${SLUG}-meter-head">
                 <span>Prefix stability</span>
@@ -129,13 +134,16 @@ function renderStability(stability) {
 }
 
 function renderTotals(snapshot, summary) {
-    const context = snapshot.contextPercent == null
-        ? `${fmt(snapshot.promptTokens)} tokens`
-        : `${fmt(snapshot.promptTokens)} / ${fmt(snapshot.maxContext)} tokens (${snapshot.contextPercent}%)`;
+  const context =
+    snapshot.contextPercent == null
+      ? `${fmt(snapshot.promptTokens)} tokens`
+      : `${fmt(snapshot.promptTokens)} / ${fmt(snapshot.maxContext)} tokens (${snapshot.contextPercent}%)`;
 
-    return row('Prompt', context)
-        + row('API', snapshot.api)
-        + row('Injected', `${fmt(summary.tokens)} tokens across ${summary.count} injection(s)`);
+  return (
+    row("Prompt", context) +
+    row("API", snapshot.api) +
+    row("Injected", `${fmt(summary.tokens)} tokens across ${summary.count} injection(s)`)
+  );
 }
 
 /**
@@ -144,40 +152,45 @@ function renderTotals(snapshot, summary) {
  * (docs/decisions.md D-0038).
  */
 function renderNearLimit(snapshot) {
-    const max = snapshot.memory?.maxPromptTokens;
-    if (!nearPromptLimit(snapshot.promptTokens, max)) return '';
+  const max = snapshot.memory?.maxPromptTokens;
+  if (!nearPromptLimit(snapshot.promptTokens, max)) return "";
 
-    return `<div class="${SLUG}-warn">The prompt is ${fmt(snapshot.promptTokens)} of the ${fmt(max)} tokens
+  return `<div class="${SLUG}-warn">The prompt is ${fmt(snapshot.promptTokens)} of the ${fmt(max)} tokens
         it may use, so SillyTavern may be dropping the oldest messages from the history.</div>`;
 }
 
 function renderWriters(summary) {
-    if (!summary.count) return '';
+  if (!summary.count) return "";
 
-    // More than one writer is the condition the whole design exists to remove.
-    const warning = summary.writers > 1
-        ? `<div class="${SLUG}-warn">${summary.writers} extensions are writing into this prompt.</div>`
-        : '';
+  // More than one writer is the condition the whole design exists to remove.
+  const warning =
+    summary.writers > 1
+      ? `<div class="${SLUG}-warn">${summary.writers} extensions are writing into this prompt.</div>`
+      : "";
 
-    const items = summary.byOwner
-        .map((o) => `<li><span>${escapeHtml(o.owner)}</span><b>${fmt(o.tokens)}</b></li>`)
-        .join('');
+  const items = summary.byOwner
+    .map((o) => `<li><span>${escapeHtml(o.owner)}</span><b>${fmt(o.tokens)}</b></li>`)
+    .join("");
 
-    return `${warning}<ul class="${SLUG}-list">${items}</ul>`;
+  return `${warning}<ul class="${SLUG}-list">${items}</ul>`;
 }
 
 function renderInventory(inventory) {
-    if (!inventory.length) return '';
+  if (!inventory.length) return "";
 
-    const rows = inventory.map((entry) => `
+  const rows = inventory
+    .map(
+      (entry) => `
         <tr>
             <td>${escapeHtml(entry.label)}</td>
             <td>${escapeHtml(entry.positionName)}</td>
-            <td>${entry.position === 1 ? entry.depth : '—'}</td>
+            <td>${entry.position === 1 ? entry.depth : "—"}</td>
             <td>${fmt(entry.tokens)}</td>
-        </tr>`).join('');
+        </tr>`,
+    )
+    .join("");
 
-    return `
+  return `
         <details class="${SLUG}-details">
             <summary>Injections in prompt order</summary>
             <table class="${SLUG}-table">
@@ -188,23 +201,29 @@ function renderInventory(inventory) {
 }
 
 function renderWorldInfo(worldInfo, ordering, held) {
-    if (!worldInfo?.length) return '';
+  if (!worldInfo?.length) return "";
 
-    const items = worldInfo
-        .map((e) => `<li>${escapeHtml(e.comment || `uid ${e.uid}`)} <span class="dim">${escapeHtml(e.world)}</span></li>`)
-        .join('');
+  const items = worldInfo
+    .map(
+      (e) =>
+        `<li>${escapeHtml(e.comment || `uid ${e.uid}`)} <span class="dim">${escapeHtml(e.world)}</span></li>`,
+    )
+    .join("");
 
-    // Says which of the two regimes produced this block, so a stability number
-    // read off the panel is never ambiguous about it (docs/decisions.md D-0024).
-    const holding = Number.isFinite(held)
-        ? ` <span class="dim">— ${held} held</span>`
-        : ' <span class="dim">— not held</span>';
+  // Says which of the two regimes produced this block, so a stability number
+  // read off the panel is never ambiguous about it (docs/decisions.md D-0024).
+  const holding = Number.isFinite(held)
+    ? ` <span class="dim">— ${held} held</span>`
+    : ' <span class="dim">— not held</span>';
 
-    return renderOrderWarning(ordering) + `
+  return (
+    renderOrderWarning(ordering) +
+    `
         <details class="${SLUG}-details">
             <summary>Lorebook entries activated (${worldInfo.length})${holding}</summary>
             <ul class="${SLUG}-list">${items}</ul>
-        </details>`;
+        </details>`
+  );
 }
 
 /**
@@ -214,10 +233,10 @@ function renderWorldInfo(worldInfo, ordering, held) {
  * hand once (docs/decisions.md D-0022). Now it says so.
  */
 function renderOrderWarning(ordering) {
-    if (!ordering || ordering.stable) return '';
+  if (!ordering || ordering.stable) return "";
 
-    const { tiedEntries, activated } = ordering;
-    return `<div class="${SLUG}-warn">${tiedEntries} of ${activated} lorebook entries share an
+  const { tiedEntries, activated } = ordering;
+  return `<div class="${SLUG}-warn">${tiedEntries} of ${activated} lorebook entries share an
         <code>order</code> value, so their order in the prompt is decided by which keyword matched
         first and changes every turn. Give them distinct <code>order</code> values.</div>`;
 }
@@ -231,43 +250,47 @@ function renderOrderWarning(ordering) {
  * play — which is why it is on the panel rather than only in the log.
  */
 function renderMemory(memory) {
-    if (!memory) return '';
+  if (!memory) return "";
 
-    const where = memory.change?.divergencePercent;
-    const change = memory.change?.stabilityPercent == null
-        ? 'first turn — no baseline'
-        : (where == null
-            ? 'unchanged since last turn'
-            : `changed ${where}% of the way into the block`);
+  const where = memory.change?.divergencePercent;
+  const change =
+    memory.change?.stabilityPercent == null
+      ? "first turn — no baseline"
+      : where == null
+        ? "unchanged since last turn"
+        : `changed ${where}% of the way into the block`;
 
-    const step = memory.stepped ? `stepped (${escapeHtml(memory.stepReason)})` : 'held';
-    const waiting = memory.stepWaiting
-        ? ` <span class="${SLUG}-fair">\u2014 a step is waiting for a summary</span>`
-        : '';
-    const evicted = memory.evicted
-        ? `<span class="${SLUG}-poor">evicted ${memory.evicted}</span>`
-        : 'no eviction';
+  const step = memory.stepped ? `stepped (${escapeHtml(memory.stepReason)})` : "held";
+  const waiting = memory.stepWaiting
+    ? ` <span class="${SLUG}-fair">\u2014 a step is waiting for a summary</span>`
+    : "";
+  const evicted = memory.evicted
+    ? `<span class="${SLUG}-poor">evicted ${memory.evicted}</span>`
+    : "no eviction";
 
-    const title = memory.writing
-        ? `Memory block Cairn is injecting (${fmt(memory.tokens)} tokens)`
-        : `Memory block Cairn would inject (${fmt(memory.tokens)} tokens)`;
-    const budget = `${fmt(memory.tokens)} / ${fmt(memory.cap)} tokens, floor ${fmt(memory.floor)} \u2014 ${evicted}`;
+  const title = memory.writing
+    ? `Memory block Cairn is injecting (${fmt(memory.tokens)} tokens)`
+    : `Memory block Cairn would inject (${fmt(memory.tokens)} tokens)`;
+  const budget = `${fmt(memory.tokens)} / ${fmt(memory.cap)} tokens, floor ${fmt(memory.floor)} \u2014 ${evicted}`;
 
-    return renderRecoupled(memory) + `
+  return (
+    renderRecoupled(memory) +
+    `
         <details class="${SLUG}-details">
             <summary>${title}</summary>
-            ${row('Writing', renderHandover(memory))}
-            ${row('Scenes', `${fmt(memory.included)} in the block, of ${fmt(memory.scenes)} summarised (messages ${memory.oldest ?? '—'}\u2013${memory.newest ?? '—'})`)}
-            ${row('Written by', describeSource(memory))}
-            ${row('See-saw', `${step} at message ${memory.summarisedThrough}, ${memory.rawWindow} kept raw${waiting}`)}
-            ${row('Budget', budget)}
+            ${row("Writing", renderHandover(memory))}
+            ${row("Scenes", `${fmt(memory.included)} in the block, of ${fmt(memory.scenes)} summarised (messages ${memory.oldest ?? "—"}\u2013${memory.newest ?? "—"})`)}
+            ${row("Written by", describeSource(memory))}
+            ${row("See-saw", `${step} at message ${memory.summarisedThrough}, ${memory.rawWindow} kept raw${waiting}`)}
+            ${row("Budget", budget)}
             ${renderFidelity(memory)}
             ${renderIndexTally(memory)}
             ${renderCanon(memory)}
             ${renderCap(memory.budget, memory.maxPromptTokens)}
             ${renderExamples(memory)}
-            ${row('Block change', change)}
-        </details>`;
+            ${row("Block change", change)}
+        </details>`
+  );
 }
 
 /**
@@ -279,20 +302,23 @@ function renderMemory(memory) {
  * because a demotion rewrites the block's head exactly as an eviction does.
  */
 function renderFidelity(memory) {
-    if (!memory.blockCompact && !memory.compactMissing) return '';
+  if (!memory.blockCompact && !memory.compactMissing) return "";
 
-    const demoted = memory.demoted
-        ? ` \u2014 ${fmt(memory.demoted)} shortened this turn`
-          + (memory.rebuilt ? '' : ` <span class="${SLUG}-poor">on a turn that was not rebuilding</span>`)
-        : '';
-    // A summary with no compact line evicts as it did before the tier existed. That is
-    // the index queue lagging behind the boundary, never a correctness problem.
-    const missing = memory.compactMissing
-        ? ` <span class="${SLUG}-fair">\u2014 ${fmt(memory.compactMissing)} dropped for want of a short version</span>`
-        : '';
+  const demoted = memory.demoted
+    ? ` \u2014 ${fmt(memory.demoted)} shortened this turn` +
+      (memory.rebuilt ? "" : ` <span class="${SLUG}-poor">on a turn that was not rebuilding</span>`)
+    : "";
+  // A summary with no compact line evicts as it did before the tier existed. That is
+  // the index queue lagging behind the boundary, never a correctness problem.
+  const missing = memory.compactMissing
+    ? ` <span class="${SLUG}-fair">\u2014 ${fmt(memory.compactMissing)} dropped for want of a short version</span>`
+    : "";
 
-    return row('Fidelity', `${fmt(memory.blockFull)} in full, ${fmt(memory.blockCompact)} shortened `
-        + `<span class="dim">(tail ${fmt(memory.compactCap)} of ${fmt(memory.sceneCap)} tokens)</span>${demoted}${missing}`);
+  return row(
+    "Fidelity",
+    `${fmt(memory.blockFull)} in full, ${fmt(memory.blockCompact)} shortened ` +
+      `<span class="dim">(tail ${fmt(memory.compactCap)} of ${fmt(memory.sceneCap)} tokens)</span>${demoted}${missing}`,
+  );
 }
 
 /**
@@ -306,15 +332,18 @@ function renderFidelity(memory) {
  * stopped trying.
  */
 function renderIndexTally(memory) {
-    if (!memory.indexRecords) return '';
+  if (!memory.indexRecords) return "";
 
-    const kinds = Object.entries(memory.indexKinds ?? {})
-        .sort(([, a], [, b]) => b - a)
-        .map(([kind, count]) => `${fmt(count)} ${escapeHtml(kind)}`)
-        .join(', ');
+  const kinds = Object.entries(memory.indexKinds ?? {})
+    .sort(([, a], [, b]) => b - a)
+    .map(([kind, count]) => `${fmt(count)} ${escapeHtml(kind)}`)
+    .join(", ");
 
-    return row('Index', `${fmt(memory.indexRecords)} records of ${fmt(memory.scenes)} summaries`
-        + (kinds ? ` <span class="dim">(${kinds})</span>` : ''));
+  return row(
+    "Index",
+    `${fmt(memory.indexRecords)} records of ${fmt(memory.scenes)} summaries` +
+      (kinds ? ` <span class="dim">(${kinds})</span>` : ""),
+  );
 }
 
 /**
@@ -323,36 +352,45 @@ function renderIndexTally(memory) {
  * suggest otherwise.
  */
 function renderCanon(memory) {
-    if (!memory.canonFacts) return '';
+  if (!memory.canonFacts) return "";
 
-    const spilled = memory.canonSpilled
-        ? ` <span class="${SLUG}-fair">\u2014 ${fmt(memory.canonSpilled)} left out for want of room</span>`
-        : '';
-    // The applied cap is what the block was actually fitted to, so it is what the
-    // numbers here are measured against (CLAUDE.md \u00a74.18). The live cap moves every
-    // turn; showing it would read as "49 / 0 tokens" on a turn canon is still holding.
-    const applied = memory.canonCapApplied ?? memory.canonCap;
-    // Full means the *cap* left facts out, which is the only one of the two kinds of
-    // full that is a problem: the slot count is the size of the question, and a pick
-    // that fills fewer slots than it was offered is an answer (docs/decisions.md D-0079).
-    const room = memory.canonFull
-        ? `<span class="${SLUG}-fair">over the block's room, so the newest lines are held back</span>`
-        : `${fmt(Math.max(0, applied - memory.canonTokens))} tokens spare`;
-    const held = applied !== memory.canonCap
-        ? ` <span class="${SLUG}-fair">\u2014 share is now ${fmt(memory.canonCap)}, held until the next rebuild</span>`
-        : '';
+  const spilled = memory.canonSpilled
+    ? ` <span class="${SLUG}-fair">\u2014 ${fmt(memory.canonSpilled)} left out for want of room</span>`
+    : "";
+  // The applied cap is what the block was actually fitted to, so it is what the
+  // numbers here are measured against (CLAUDE.md \u00a74.18). The live cap moves every
+  // turn; showing it would read as "49 / 0 tokens" on a turn canon is still holding.
+  const applied = memory.canonCapApplied ?? memory.canonCap;
+  // Full means the *cap* left facts out, which is the only one of the two kinds of
+  // full that is a problem: the slot count is the size of the question, and a pick
+  // that fills fewer slots than it was offered is an answer (docs/decisions.md D-0079).
+  const room = memory.canonFull
+    ? `<span class="${SLUG}-fair">over the block's room, so the newest lines are held back</span>`
+    : `${fmt(Math.max(0, applied - memory.canonTokens))} tokens spare`;
+  const held =
+    applied !== memory.canonCap
+      ? ` <span class="${SLUG}-fair">\u2014 share is now ${fmt(memory.canonCap)}, held until the next rebuild</span>`
+      : "";
 
-    const slots = memory.canonSlots
-        ? ` <span class="dim">(${fmt(memory.canonPicked)} of ${fmt(memory.canonSlots)} slots filled)</span>`
-        : '';
-    const lost = memory.canonLostSources
-        ? ` <span class="${SLUG}-fair">\u2014 ${fmt(memory.canonLostSources)} lost the summary behind it, so canon is chosen again</span>`
-        : '';
+  const slots = memory.canonSlots
+    ? ` <span class="dim">(${fmt(memory.canonPicked)} of ${fmt(memory.canonSlots)} slots filled)</span>`
+    : "";
+  const lost = memory.canonLostSources
+    ? ` <span class="${SLUG}-fair">\u2014 ${fmt(memory.canonLostSources)} lost the summary behind it, so canon is chosen again</span>`
+    : "";
 
-    return row('Canon', `${fmt(memory.canonAdmitted)} of ${fmt(memory.canonFacts)} facts, `
-        + `${fmt(memory.canonTokens)} / ${fmt(applied)} tokens \u2014 ${room}${slots}${spilled}${held}${lost}`)
-        + row('Scene budget', `${fmt(memory.sceneCap)} tokens, `
-            + `after canon took ${fmt(memory.cap - memory.sceneCap)} of the block's ${fmt(memory.cap)}`);
+  return (
+    row(
+      "Canon",
+      `${fmt(memory.canonAdmitted)} of ${fmt(memory.canonFacts)} facts, ` +
+        `${fmt(memory.canonTokens)} / ${fmt(applied)} tokens \u2014 ${room}${slots}${spilled}${held}${lost}`,
+    ) +
+    row(
+      "Scene budget",
+      `${fmt(memory.sceneCap)} tokens, ` +
+        `after canon took ${fmt(memory.cap - memory.sceneCap)} of the block's ${fmt(memory.cap)}`,
+    )
+  );
 }
 
 /** The floor under the cap, as the percent the panel talks in. */
@@ -363,21 +401,24 @@ const MIN_CAP_PERCENT = Math.round(MIN_CAP_FRACTION * 100);
  * setting (docs/decisions.md D-0085), so its percent is read back off the plan.
  */
 function capLimit(budget, maxPromptTokens) {
-    const percent = maxPromptTokens > 0 ? Math.round((budget.share / maxPromptTokens) * 100) : null;
-    const share = percent === null ? 'the share of the prompt' : `the ${percent}% share of the prompt`;
-    return {
-        share,
-        room: 'what the rest of the prompt leaves',
-        starved: `the ${MIN_CAP_PERCENT}% minimum — the card, lore and history already fill the prompt`,
-        unknown: `${share} — the rest of the prompt could not be read`,
-    }[budget.limitedBy] ?? budget.limitedBy;
+  const percent = maxPromptTokens > 0 ? Math.round((budget.share / maxPromptTokens) * 100) : null;
+  const share =
+    percent === null ? "the share of the prompt" : `the ${percent}% share of the prompt`;
+  return (
+    {
+      share,
+      room: "what the rest of the prompt leaves",
+      starved: `the ${MIN_CAP_PERCENT}% minimum — the card, lore and history already fill the prompt`,
+      unknown: `${share} — the rest of the prompt could not be read`,
+    }[budget.limitedBy] ?? budget.limitedBy
+  );
 }
 
 /** Where the lore reserve stopped. */
 const LORE_BOUNDS = Object.freeze({
-    budget: 'World Info budget',
-    books: 'whole book',
-    none: 'no lorebook',
+  budget: "World Info budget",
+  books: "whole book",
+  none: "no lorebook",
 });
 
 /**
@@ -388,27 +429,39 @@ const LORE_BOUNDS = Object.freeze({
  * way.
  */
 function renderCap(budget, maxPromptTokens) {
-    if (!budget) return '';
+  if (!budget) return "";
 
-    const limit = capLimit(budget, maxPromptTokens);
-    const starved = budget.limitedBy === 'starved'
-        ? `<div class="${SLUG}-warn">This chat's card, lorebook and raw history leave the memory block
+  const limit = capLimit(budget, maxPromptTokens);
+  const starved =
+    budget.limitedBy === "starved"
+      ? `<div class="${SLUG}-warn">This chat's card, lorebook and raw history leave the memory block
             less than ${MIN_CAP_PERCENT}% of the prompt, so it is keeping the minimum and SillyTavern is
             trimming the history to fit.</div>`
-        : '';
+      : "";
 
-    if (budget.limitedBy === 'unknown') return starved + row('Cap from', limit);
+  if (budget.limitedBy === "unknown") return starved + row("Cap from", limit);
 
-    const lore = `${fmt(budget.lore)} <span class="dim">(${LORE_BOUNDS[budget.loreBound] ?? ''}`
-        + `${budget.loreBudget ? `, capped at ${fmt(budget.loreBudget)}` : ''})</span>`;
-    const reserves = [
-        ['card', budget.card], ['lore', lore], ['history', budget.window],
-        ['world state', budget.state], ['margin', budget.margin],
-    ].map(([name, value]) => `${escapeHtml(name)} ${typeof value === 'string' ? value : fmt(value)}`).join(', ');
+  const lore =
+    `${fmt(budget.lore)} <span class="dim">(${LORE_BOUNDS[budget.loreBound] ?? ""}` +
+    `${budget.loreBudget ? `, capped at ${fmt(budget.loreBudget)}` : ""})</span>`;
+  const reserves = [
+    ["card", budget.card],
+    ["lore", lore],
+    ["history", budget.window],
+    ["world state", budget.state],
+    ["margin", budget.margin],
+  ]
+    .map(([name, value]) => `${escapeHtml(name)} ${typeof value === "string" ? value : fmt(value)}`)
+    .join(", ");
 
-    return starved
-        + row('Cap from', `${limit} <span class="dim">(share ${fmt(budget.share)}, room ${fmt(budget.room)})</span>`)
-        + row('Reserved', reserves);
+  return (
+    starved +
+    row(
+      "Cap from",
+      `${limit} <span class="dim">(share ${fmt(budget.share)}, room ${fmt(budget.room)})</span>`,
+    ) +
+    row("Reserved", reserves)
+  );
 }
 
 /**
@@ -418,17 +471,18 @@ function renderCap(budget, maxPromptTokens) {
  * same turn. Nothing is shown before it flips, because until then nothing has changed.
  */
 function renderExamples(memory) {
-    if (!memory.examplesStripped) return '';
+  if (!memory.examplesStripped) return "";
 
-    const latched = memory.examplesLatched
-        ? ` <span class="${SLUG}-fair">\u2014 dropped on this turn, which costs one cache miss</span>`
-        : '';
-    return row('Example dialogue', `dropped \u2014 summaries stand in for it now${latched}`);
+  const latched = memory.examplesLatched
+    ? ` <span class="${SLUG}-fair">\u2014 dropped on this turn, which costs one cache miss</span>`
+    : "";
+  return row("Example dialogue", `dropped \u2014 summaries stand in for it now${latched}`);
 }
 
 function describeSource(memory) {
-    const source = { qvink: 'Qvink', cairn: 'Cairn', mixed: 'Qvink, then Cairn' }[memory.source] ?? '\u2014';
-    return `${source} <span class="dim">(${fmt(memory.cairnScenes)} of Cairn's own in the chat)</span>`;
+  const source =
+    { qvink: "Qvink", cairn: "Cairn", mixed: "Qvink, then Cairn" }[memory.source] ?? "\u2014";
+  return `${source} <span class="dim">(${fmt(memory.cairnScenes)} of Cairn's own in the chat)</span>`;
 }
 
 /**
@@ -437,10 +491,10 @@ function describeSource(memory) {
  * exactly like a gate that is open and working.
  */
 function renderHandover(memory) {
-    if (memory.writing) {
-        return `yes \u2014 ${fmt(memory.blanked)} summarised messages held out of the history`;
-    }
-    return `<span class="${SLUG}-fair">no \u2014 ${escapeHtml(memory.handoverDetail ?? '')}</span>`;
+  if (memory.writing) {
+    return `yes \u2014 ${fmt(memory.blanked)} summarised messages held out of the history`;
+  }
+  return `<span class="${SLUG}-fair">no \u2014 ${escapeHtml(memory.handoverDetail ?? "")}</span>`;
 }
 
 /**
@@ -451,9 +505,9 @@ function renderHandover(memory) {
  * takes a sentence to notice (docs/decisions.md D-0026).
  */
 function renderRecoupled(memory) {
-    if (!memory.recoupled) return '';
+  if (!memory.recoupled) return "";
 
-    return `<div class="${SLUG}-warn">The memory block has ${fmt(memory.slack)} tokens of room before
+  return `<div class="${SLUG}-warn">The memory block has ${fmt(memory.slack)} tokens of room before
         it must evict, but a see-saw step adds about ${fmt(memory.stepTokens)} — so every step also
         rebuilds the block. There is not enough context here to keep the two apart.</div>`;
 }
@@ -464,21 +518,28 @@ function renderRecoupled(memory) {
  * until the raw history is visibly long (docs/decisions.md D-0037).
  */
 export function renderSummaries(status) {
-    if (!status) return '';
+  if (!status) return "";
 
-    const failures = status.failures
-        ? `<span class="${SLUG}-poor">${fmt(status.failures)} failed</span> <span class="dim">(last: ${escapeHtml(status.lastReason)})</span>`
-        : 'none failed';
-    const average = status.calls ? `${fmt(Math.round(status.ms / status.calls))} ms a request` : '\u2014';
+  const failures = status.failures
+    ? `<span class="${SLUG}-poor">${fmt(status.failures)} failed</span> <span class="dim">(last: ${escapeHtml(status.lastReason)})</span>`
+    : "none failed";
+  const average = status.calls
+    ? `${fmt(Math.round(status.ms / status.calls))} ms a request`
+    : "\u2014";
 
-    return renderGivenUp(status.givenUp) + `
+  return (
+    renderGivenUp(status.givenUp) +
+    `
         <details class="${SLUG}-details">
             <summary>Summaries: ${describeWork(status)}</summary>
-            ${row('This chat', `${fmt(status.written)} written from ${fmt(status.calls)} requests, ${failures}`)}
-            ${row('Time', average)}
-            ${row('Tokens', `${fmt(status.tokensIn)} in, ${fmt(status.tokensOut)} out <span class="dim">(estimated)</span>`)}
-            ${row('Prompt', status.promptDefault === false ? 'edited' : 'default')}
-        </details>` + renderIndexQueue(status.index) + renderCompaction(status.canon);
+            ${row("This chat", `${fmt(status.written)} written from ${fmt(status.calls)} requests, ${failures}`)}
+            ${row("Time", average)}
+            ${row("Tokens", `${fmt(status.tokensIn)} in, ${fmt(status.tokensOut)} out <span class="dim">(estimated)</span>`)}
+            ${row("Prompt", status.promptDefault === false ? "edited" : "default")}
+        </details>` +
+    renderIndexQueue(status.index) +
+    renderCompaction(status.canon)
+  );
 }
 
 /**
@@ -491,35 +552,35 @@ export function renderSummaries(status) {
  * (D-0082), a wildly skewed one says the pass is not reading carefully.
  */
 function renderIndexQueue(status) {
-    if (!status) return '';
+  if (!status) return "";
 
-    const failures = status.failures
-        ? `<span class="${SLUG}-poor">${fmt(status.failures)} failed</span> <span class="dim">(last: ${escapeHtml(status.lastReason)})</span>`
-        : 'none failed';
-    const missed = status.missed
-        ? `, ${fmt(status.missed)} unanswered`
-        : '';
-    const dropped = status.dropped ? `, ${fmt(status.dropped)} slots dropped` : '';
+  const failures = status.failures
+    ? `<span class="${SLUG}-poor">${fmt(status.failures)} failed</span> <span class="dim">(last: ${escapeHtml(status.lastReason)})</span>`
+    : "none failed";
+  const missed = status.missed ? `, ${fmt(status.missed)} unanswered` : "";
+  const dropped = status.dropped ? `, ${fmt(status.dropped)} slots dropped` : "";
 
-    return `
+  return `
         <details class="${SLUG}-details">
             <summary>Index: ${describeIndexQueue(status)}</summary>
-            ${row('This chat', `${fmt(status.records)} records from ${fmt(status.calls)} batches, ${failures}${dropped}${missed}`)}
-            ${row('Tokens', `${fmt(status.tokensIn)} in, ${fmt(status.tokensOut)} out <span class="dim">(estimated)</span>`)}
+            ${row("This chat", `${fmt(status.records)} records from ${fmt(status.calls)} batches, ${failures}${dropped}${missed}`)}
+            ${row("Tokens", `${fmt(status.tokensIn)} in, ${fmt(status.tokensOut)} out <span class="dim">(estimated)</span>`)}
         </details>`;
 }
 
 function describeIndexQueue(status) {
-    if (status.inFlight != null) return 'reading summaries into records';
-    if (status.gate === null) return 'not started';
-    if (status.gate === 'not-writing') return 'waiting \u2014 qvink is still writing the block';
-    if (status.gate !== 'ready') return escapeHtml(GATES[status.gate] ?? status.gate);
-    if (status.givenUp) return `<span class="${SLUG}-poor">gave up on a batch</span>`;
-    if (status.pending) {
-        return `${fmt(status.waiting)} summaries waiting `
-            + `<span class="dim">(next: #${status.pending.from}\u2013#${status.pending.to})</span>`;
-    }
-    return 'every summary has a record';
+  if (status.inFlight != null) return "reading summaries into records";
+  if (status.gate === null) return "not started";
+  if (status.gate === "not-writing") return "waiting \u2014 qvink is still writing the block";
+  if (status.gate !== "ready") return escapeHtml(GATES[status.gate] ?? status.gate);
+  if (status.givenUp) return `<span class="${SLUG}-poor">gave up on a batch</span>`;
+  if (status.pending) {
+    return (
+      `${fmt(status.waiting)} summaries waiting ` +
+      `<span class="dim">(next: #${status.pending.from}\u2013#${status.pending.to})</span>`
+    );
+  }
+  return "every summary has a record";
 }
 
 /**
@@ -528,65 +589,71 @@ function describeIndexQueue(status) {
  * what the parser refused (CLAUDE.md §4.18).
  */
 function renderCompaction(status) {
-    if (!status) return '';
+  if (!status) return "";
 
-    const failures = status.failures
-        ? `<span class="${SLUG}-poor">${fmt(status.failures)} failed</span> <span class="dim">(last: ${escapeHtml(status.lastReason)})</span>`
-        : 'none failed';
-    const refused = status.duplicates || status.refused
-        ? `, ${fmt(status.duplicates)} repeated, ${fmt(status.refused)} refused`
-        : '';
-    const average = status.calls ? `${fmt(Math.round(status.ms / status.calls))} ms a pick` : '\u2014';
+  const failures = status.failures
+    ? `<span class="${SLUG}-poor">${fmt(status.failures)} failed</span> <span class="dim">(last: ${escapeHtml(status.lastReason)})</span>`
+    : "none failed";
+  const refused =
+    status.duplicates || status.refused
+      ? `, ${fmt(status.duplicates)} repeated, ${fmt(status.refused)} refused`
+      : "";
+  const average = status.calls
+    ? `${fmt(Math.round(status.ms / status.calls))} ms a pick`
+    : "\u2014";
 
-    return `
+  return `
         <details class="${SLUG}-details">
             <summary>Canon: ${describeCompaction(status)}</summary>
-            ${row('This chat', `${fmt(status.picked)} facts from ${fmt(status.calls)} picks, ${failures}${refused}`)}
-            ${row('Time', average)}
-            ${row('Tokens', `${fmt(status.tokensIn)} in, ${fmt(status.tokensOut)} out <span class="dim">(estimated)</span>`)}
+            ${row("This chat", `${fmt(status.picked)} facts from ${fmt(status.calls)} picks, ${failures}${refused}`)}
+            ${row("Time", average)}
+            ${row("Tokens", `${fmt(status.tokensIn)} in, ${fmt(status.tokensOut)} out <span class="dim">(estimated)</span>`)}
         </details>`;
 }
 
 function describeCompaction(status) {
-    if (status.inFlight != null) return 'choosing the facts the story rests on';
-    if (status.gate === null) return 'not started';
-    if (status.gate === 'off') return 'off';
-    if (status.gate === 'not-writing') return 'waiting \u2014 qvink is still writing the block';
-    if (status.gate !== 'ready') return escapeHtml(GATES[status.gate] ?? status.gate);
-    if (status.givenUp) return `<span class="${SLUG}-poor">gave up</span>`;
-    if (status.pending) {
-        return `a pick is due over ${fmt(status.pending.records)} records `
-            + `(#${status.pending.covers[0]}\u2013#${status.pending.covers[1]}), ${fmt(status.pending.slots)} slots`;
-    }
-    // The reasons a pick is not due, in the queue's own words (pipeline/canon-pick.js).
-    if (status.reason === 'too-few') return 'waiting \u2014 too few records to rank yet';
-    if (status.reason === 'covered') return 'chosen, and up to date with the index';
-    if (status.reason === 'growing') return 'chosen \u2014 picked again once the story has moved on a step';
-    return 'nothing to choose from yet';
+  if (status.inFlight != null) return "choosing the facts the story rests on";
+  if (status.gate === null) return "not started";
+  if (status.gate === "off") return "off";
+  if (status.gate === "not-writing") return "waiting \u2014 qvink is still writing the block";
+  if (status.gate !== "ready") return escapeHtml(GATES[status.gate] ?? status.gate);
+  if (status.givenUp) return `<span class="${SLUG}-poor">gave up</span>`;
+  if (status.pending) {
+    return (
+      `a pick is due over ${fmt(status.pending.records)} records ` +
+      `(#${status.pending.covers[0]}\u2013#${status.pending.covers[1]}), ${fmt(status.pending.slots)} slots`
+    );
+  }
+  // The reasons a pick is not due, in the queue's own words (pipeline/canon-pick.js).
+  if (status.reason === "too-few") return "waiting \u2014 too few records to rank yet";
+  if (status.reason === "covered") return "chosen, and up to date with the index";
+  if (status.reason === "growing")
+    return "chosen \u2014 picked again once the story has moved on a step";
+  return "nothing to choose from yet";
 }
 
 function describeWork(status) {
-    if (status.inFlight != null) return `writing message #${status.inFlight}`;
-    if (status.gate && status.gate !== 'ready') return escapeHtml(GATES[status.gate] ?? status.gate);
-    if (status.gate === null) return 'not started';
-    const waiting = (status.pending ?? 0) - (status.givenUp?.length ?? 0);
-    return waiting > 0 ? `${fmt(waiting)} waiting` : 'up to date';
+  if (status.inFlight != null) return `writing message #${status.inFlight}`;
+  if (status.gate && status.gate !== "ready") return escapeHtml(GATES[status.gate] ?? status.gate);
+  if (status.gate === null) return "not started";
+  const waiting = (status.pending ?? 0) - (status.givenUp?.length ?? 0);
+  return waiting > 0 ? `${fmt(waiting)} waiting` : "up to date";
 }
 
 function renderGivenUp(givenUp) {
-    if (!givenUp?.length) return '';
+  if (!givenUp?.length) return "";
 
-    const which = givenUp.map((index) => `#${index}`).join(', ');
-    const many = givenUp.length > 1;
-    return `<div class="${SLUG}-warn">Cairn gave up summarising message${many ? 's' : ''} ${which} after
-        repeated failures. The memory step waits before ${many ? 'them' : 'it'} until you reload the page
+  const which = givenUp.map((index) => `#${index}`).join(", ");
+  const many = givenUp.length > 1;
+  return `<div class="${SLUG}-warn">Cairn gave up summarising message${many ? "s" : ""} ${which} after
+        repeated failures. The memory step waits before ${many ? "them" : "it"} until you reload the page
         or edit the message.</div>`;
 }
 
 function renderDivergence(stability, divergenceIn) {
-    if (!stability.divergence) return '';
+  if (!stability.divergence) return "";
 
-    return `
+  return `
         <details class="${SLUG}-details">
             <summary>What changed since last turn</summary>
             <div class="${SLUG}-hint">Prompts diverge at character ${fmt(stability.divergence.index)}${describeBreak(divergenceIn)}.</div>
@@ -601,17 +668,17 @@ function renderDivergence(stability, divergenceIn) {
  * it sends tuning after the wrong block.
  */
 function describeBreak(divergenceIn) {
-    if (!divergenceIn) return '';
+  if (!divergenceIn) return "";
 
-    const where = escapeHtml(divergenceIn.label);
-    switch (divergenceIn.precision) {
-        case 'inside':
-            return `, ${fmt(divergenceIn.offsetInEntry)} chars into ${where}`;
-        case 'after':
-            return `, after the end of ${where}`;
-        case 'probe':
-            return `, at or after the start of ${where} <span class="dim">(approximate)</span>`;
-        default:
-            return ', above every injection';
-    }
+  const where = escapeHtml(divergenceIn.label);
+  switch (divergenceIn.precision) {
+    case "inside":
+      return `, ${fmt(divergenceIn.offsetInEntry)} chars into ${where}`;
+    case "after":
+      return `, after the end of ${where}`;
+    case "probe":
+      return `, at or after the start of ${where} <span class="dim">(approximate)</span>`;
+    default:
+      return ", above every injection";
+  }
 }

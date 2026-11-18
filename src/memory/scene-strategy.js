@@ -8,9 +8,9 @@
  *
  * Pure: no ST, no network. ST's macro expansion comes in as `expand`.
  */
-import { looksLikeRefusal, reject, straightQuotes, stripThinking, unfence } from './model-reply.js';
-import { hashString } from '../util/hash.js';
-import { renderTemplate, resolvePrompt } from '../util/template.js';
+import { looksLikeRefusal, reject, straightQuotes, stripThinking, unfence } from "./model-reply.js";
+import { hashString } from "../util/hash.js";
+import { renderTemplate, resolvePrompt } from "../util/template.js";
 
 /**
  * Matt's qvink prompt, verbatim, proven in play on the D-0036 model floor. It
@@ -47,41 +47,48 @@ export const MAX_SUMMARY_CHARS = 1500;
  * @returns {{template: string, edited: boolean, fallback: boolean}}
  */
 export function resolveSummaryPrompt(setting) {
-    return resolvePrompt(setting, DEFAULT_SUMMARY_PROMPT, ['message']);
+  return resolvePrompt(setting, DEFAULT_SUMMARY_PROMPT, ["message"]);
 }
 
 export const perMessage = {
-    id: 'per-message-v1',
+  id: "per-message-v1",
 
-    /**
-     * @param {object} request
-     * @param {object} request.message The chat message to summarise.
-     * @param {Array<string|{text: string}>} request.history The scenes just before it, oldest first.
-     * @param {string} [request.template] The `summaryPrompt` setting, raw.
-     * @param {(text: string) => string} [request.expand] ST's `substituteParams`
-     *        (public/scripts/st-context.js:163), applied to the template only.
-     * @returns {{messages: Array<{role: string, content: string}>, maxTokens: number,
-     *            prompt: string, fallback: boolean}} `prompt` is stored as `scene.prompt`.
-     */
-    build({ message, history = [], template, expand }) {
-        const resolved = resolveSummaryPrompt(template);
-        const content = renderTemplate(resolved.template, {
-            message: `${message?.name ?? ''}: ${message?.mes ?? ''}`,
-            history: history.map((scene) => (typeof scene === 'string' ? scene : scene?.text ?? '')).join('\n'),
-        }, { expand });
+  /**
+   * @param {object} request
+   * @param {object} request.message The chat message to summarise.
+   * @param {Array<string|{text: string}>} request.history The scenes just before it, oldest first.
+   * @param {string} [request.template] The `summaryPrompt` setting, raw.
+   * @param {(text: string) => string} [request.expand] ST's `substituteParams`
+   *        (public/scripts/st-context.js:163), applied to the template only.
+   * @returns {{messages: Array<{role: string, content: string}>, maxTokens: number,
+   *            prompt: string, fallback: boolean}} `prompt` is stored as `scene.prompt`.
+   */
+  build({ message, history = [], template, expand }) {
+    const resolved = resolveSummaryPrompt(template);
+    const content = renderTemplate(
+      resolved.template,
+      {
+        message: `${message?.name ?? ""}: ${message?.mes ?? ""}`,
+        history: history
+          .map((scene) => (typeof scene === "string" ? scene : (scene?.text ?? "")))
+          .join("\n"),
+      },
+      { expand },
+    );
 
-        return {
-            messages: [{ role: 'user', content }],
-            maxTokens: SUMMARY_MAX_TOKENS,
-            prompt: hashString(resolved.template),
-            fallback: resolved.fallback,
-        };
-    },
+    return {
+      messages: [{ role: "user", content }],
+      maxTokens: SUMMARY_MAX_TOKENS,
+      prompt: hashString(resolved.template),
+      fallback: resolved.fallback,
+    };
+  },
 
-    parse: parseSummary,
+  parse: parseSummary,
 };
 
-const SIGN_OFF = /^(?:I hope|Let me know|Feel free|Is there anything|If you(?:'d| would) like|Would you like)/i;
+const SIGN_OFF =
+  /^(?:I hope|Let me know|Feel free|Is there anything|If you(?:'d| would) like|Would you like)/i;
 const LABEL = /^(?:\*\*|__)?summary(?:\*\*|__)?\s*:\s*(?:\*\*|__)?\s*/i;
 const LIST_MARKER = /^(?:[-*•]|\d+[.)])\s+/;
 /** Sentence-ending punctuation, then any closing quotes or brackets. */
@@ -97,27 +104,31 @@ const FINISHED = /[.!?…。！？]["'”’»)\]*]*$/;
  * @returns {{ok: true, text: string} | {ok: false, reason: 'empty'|'refusal'|'format'|'too-long'|'truncated'}}
  */
 export function parseSummary(content) {
-    const thought = stripThinking(content);
-    if (thought.truncated) return reject('truncated');
-    let text = unfence(thought.text);
+  const thought = stripThinking(content);
+  if (thought.truncated) return reject("truncated");
+  let text = unfence(thought.text);
 
-    const paragraphs = text.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
-    if (paragraphs.length > 1 && paragraphs[0].endsWith(':')) paragraphs.shift();
-    if (paragraphs.length > 1 && SIGN_OFF.test(straightQuotes(paragraphs.at(-1)))) paragraphs.pop();
+  const paragraphs = text
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (paragraphs.length > 1 && paragraphs[0].endsWith(":")) paragraphs.shift();
+  if (paragraphs.length > 1 && SIGN_OFF.test(straightQuotes(paragraphs.at(-1)))) paragraphs.pop();
 
-    text = paragraphs.join('\n')
-        .split('\n')
-        .map((line) => line.trim().replace(LIST_MARKER, ''))
-        .filter(Boolean)
-        .join(' ')
-        .replace(LABEL, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+  text = paragraphs
+    .join("\n")
+    .split("\n")
+    .map((line) => line.trim().replace(LIST_MARKER, ""))
+    .filter(Boolean)
+    .join(" ")
+    .replace(LABEL, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-    if (!text) return reject('empty');
-    if (looksLikeRefusal(text)) return reject('refusal');
-    if (/^[{[]/.test(text)) return reject('format');
-    if (text.length > MAX_SUMMARY_CHARS) return reject('too-long');
-    if (!FINISHED.test(text)) return reject('truncated');
-    return { ok: true, text };
+  if (!text) return reject("empty");
+  if (looksLikeRefusal(text)) return reject("refusal");
+  if (/^[{[]/.test(text)) return reject("format");
+  if (text.length > MAX_SUMMARY_CHARS) return reject("too-long");
+  if (!FINISHED.test(text)) return reject("truncated");
+  return { ok: true, text };
 }

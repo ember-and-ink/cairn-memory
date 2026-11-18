@@ -42,7 +42,7 @@ hide that, but it was planned, reviewed, tested and measured. This is ultimately
 a hobby project, but I've tried to hold Cairn to the same bar as a production machine
 learning systems.
 
-It's also fast. Most of the work went into *when* Cairn calls the memory model,
+It's also fast. Most of the work went into _when_ Cairn calls the memory model,
 not just what it asks. Summaries start after a reply is shown and never hold up
 your next message, each call is small, and the prompt only changes every few
 messages. It runs the same on desktop and mobile, and on cheaper model families as
@@ -95,13 +95,13 @@ the prompt and why.
 
 ### The settings you might change
 
-| Setting | When to change it |
-|---|---|
-| **Connection profile** | Always. It's the one required setting. |
+| Setting                                 | When to change it                                                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Connection profile**                  | Always. It's the one required setting.                                                                        |
 | **Replace old messages with summaries** | Turn off if another memory extension should stay in charge of the prompt. Cairn keeps summarising either way. |
-| **Track the world state** | Turn off if you track scene state some other way. Cairn already waits while WTracker is loaded. |
-| **Keep canon** / **Canon entries** | Turn up the count for a very long story with a lot of threads. Default is 10. |
-| **Adopt this chat** | Once, for a chat you started before installing Cairn. |
+| **Track the world state**               | Turn off if you track scene state some other way. Cairn already waits while WTracker is loaded.               |
+| **Keep canon** / **Canon entries**      | Turn up the count for a very long story with a lot of threads. Default is 10.                                 |
+| **Adopt this chat**                     | Once, for a chat you started before installing Cairn.                                                         |
 
 Everything else (budgets, prompts, diagnostics) is in
 **[docs/settings.md](docs/settings.md)**. The defaults work for most chats.

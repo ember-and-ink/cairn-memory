@@ -9,7 +9,7 @@
  *
  * Pure: a chat in, text out. The DOM glue is the caller's.
  */
-import { readCanon } from '../store/chat-store.js';
+import { readCanon } from "../store/chat-store.js";
 
 /**
  * The facts each pick wrote, as a plain list, keyed by the message the batch is stored
@@ -24,11 +24,11 @@ import { readCanon } from '../store/chat-store.js';
  * @returns {Map<number, string>}
  */
 export function canonTexts(chat) {
-    const texts = new Map();
-    (chat ?? []).forEach((message, index) => {
-        const { status, canon } = readCanon(message);
-        if (status !== 'valid' || !canon.facts.length) return;
-        texts.set(index, canon.facts.map((fact) => `• ${fact.text}`).join('\n'));
-    });
-    return texts;
+  const texts = new Map();
+  (chat ?? []).forEach((message, index) => {
+    const { status, canon } = readCanon(message);
+    if (status !== "valid" || !canon.facts.length) return;
+    texts.set(index, canon.facts.map((fact) => `• ${fact.text}`).join("\n"));
+  });
+  return texts;
 }

@@ -20,7 +20,7 @@
  * Pure but for `apply`, which is the only place in Cairn that writes a
  * `power_user` setting.
  */
-import { debug } from '../util/log.js';
+import { debug } from "../util/log.js";
 
 /**
  * Has the chat passed the point where summaries stand in for messages?
@@ -34,8 +34,8 @@ import { debug } from '../util/log.js';
  * @returns {boolean}
  */
 export function examplesSuperseded(scenes, summarisedThrough) {
-    if (!Number.isInteger(summarisedThrough) || summarisedThrough < 0) return false;
-    return (scenes ?? []).some((scene) => scene?.eligible && scene.index <= summarisedThrough);
+  if (!Number.isInteger(summarisedThrough) || summarisedThrough < 0) return false;
+  return (scenes ?? []).some((scene) => scene?.eligible && scene.index <= summarisedThrough);
 }
 
 /**
@@ -61,54 +61,54 @@ export function examplesSuperseded(scenes, summarisedThrough) {
  * @param {() => object} getContext Returns a fresh SillyTavern.getContext().
  */
 export function createExamplesLatch(getContext) {
-    /** The user's own value, kept from the first turn Cairn changed it. */
-    let theirs = null;
-    let applied = false;
+  /** The user's own value, kept from the first turn Cairn changed it. */
+  let theirs = null;
+  let applied = false;
 
-    return {
-        /**
-         * @param {boolean} latched From `examplesSuperseded`.
-         * @returns {{stripped: boolean, changed: boolean}} `changed` is the cache
-         *          miss: true on the turn the flag actually moves, and on no other.
-         */
-        apply(latched) {
-            const powerUser = getContext()?.powerUserSettings;
-            if (!powerUser) return { stripped: false, changed: false };
+  return {
+    /**
+     * @param {boolean} latched From `examplesSuperseded`.
+     * @returns {{stripped: boolean, changed: boolean}} `changed` is the cache
+     *          miss: true on the turn the flag actually moves, and on no other.
+     */
+    apply(latched) {
+      const powerUser = getContext()?.powerUserSettings;
+      if (!powerUser) return { stripped: false, changed: false };
 
-            const want = Boolean(latched);
-            if (want && !applied) {
-                theirs = Boolean(powerUser.strip_examples);
-                applied = true;
-                powerUser.strip_examples = true;
-                debug('Example dialogue is superseded by real messages; stripping it from the prompt.');
-                return { stripped: true, changed: theirs !== true };
-            }
-            if (!want && applied) {
-                applied = false;
-                powerUser.strip_examples = theirs ?? false;
-                const changed = powerUser.strip_examples !== true;
-                theirs = null;
-                return { stripped: Boolean(powerUser.strip_examples), changed };
-            }
+      const want = Boolean(latched);
+      if (want && !applied) {
+        theirs = Boolean(powerUser.strip_examples);
+        applied = true;
+        powerUser.strip_examples = true;
+        debug("Example dialogue is superseded by real messages; stripping it from the prompt.");
+        return { stripped: true, changed: theirs !== true };
+      }
+      if (!want && applied) {
+        applied = false;
+        powerUser.strip_examples = theirs ?? false;
+        const changed = powerUser.strip_examples !== true;
+        theirs = null;
+        return { stripped: Boolean(powerUser.strip_examples), changed };
+      }
 
-            return { stripped: applied || Boolean(powerUser.strip_examples), changed: false };
-        },
+      return { stripped: applied || Boolean(powerUser.strip_examples), changed: false };
+    },
 
-        /**
-         * A new chat is a new latch. The user's value goes back first — a chat
-         * switch must not leave the next chat stripped because this one was.
-         */
-        reset() {
-            if (applied) {
-                const powerUser = getContext()?.powerUserSettings;
-                if (powerUser) powerUser.strip_examples = theirs ?? false;
-            }
-            theirs = null;
-            applied = false;
-        },
+    /**
+     * A new chat is a new latch. The user's value goes back first — a chat
+     * switch must not leave the next chat stripped because this one was.
+     */
+    reset() {
+      if (applied) {
+        const powerUser = getContext()?.powerUserSettings;
+        if (powerUser) powerUser.strip_examples = theirs ?? false;
+      }
+      theirs = null;
+      applied = false;
+    },
 
-        get stripping() {
-            return applied;
-        },
-    };
+    get stripping() {
+      return applied;
+    },
+  };
 }

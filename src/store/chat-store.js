@@ -13,11 +13,11 @@
  * Pure: messages in, a status out. The writers mutate the message they are given
  * and nothing else — never a copy (DESIGN.md §9).
  */
-import { SLUG } from '../constants.js';
-import { STORE_VERSION, migrateStore } from './schema.js';
-import { hashString } from '../util/hash.js';
-import { estimateTokens } from '../util/tokens.js';
-import { isObject } from '../util/values.js';
+import { SLUG } from "../constants.js";
+import { STORE_VERSION, migrateStore } from "./schema.js";
+import { hashString } from "../util/hash.js";
+import { estimateTokens } from "../util/tokens.js";
+import { isObject } from "../util/values.js";
 
 /** Matt's qvink `message_length_threshold` (docs/decisions.md D-0037). */
 export const MIN_SUMMARY_TOKENS = 50;
@@ -34,9 +34,9 @@ export const MIN_SUMMARY_TOKENS = 50;
  * @param {object} message
  */
 export function summarisable(message) {
-    if (!message || typeof message.mes !== 'string') return false;
-    if (message.is_system) return false;
-    return estimateTokens(message.mes) >= MIN_SUMMARY_TOKENS;
+  if (!message || typeof message.mes !== "string") return false;
+  if (message.is_system) return false;
+  return estimateTokens(message.mes) >= MIN_SUMMARY_TOKENS;
 }
 
 /**
@@ -45,21 +45,23 @@ export function summarisable(message) {
  *          `scene` is set only when `valid`.
  */
 export function readScene(message) {
-    const { status, store } = migrateStore(message?.extra?.[SLUG]);
-    if (status !== 'ok') return { status, scene: null };
+  const { status, store } = migrateStore(message?.extra?.[SLUG]);
+  if (status !== "ok") return { status, scene: null };
 
-    const scene = store.scene;
-    // The state tier writes to the newest message before any scene does.
-    if (scene === undefined) return { status: 'none', scene: null };
-    const wellFormed = isObject(scene)
-        && typeof scene.text === 'string' && scene.text !== ''
-        && typeof scene.hash === 'string'
-        && typeof scene.prompt === 'string'
-        && typeof scene.at === 'string';
-    if (!wellFormed) return { status: 'invalid', scene: null };
+  const scene = store.scene;
+  // The state tier writes to the newest message before any scene does.
+  if (scene === undefined) return { status: "none", scene: null };
+  const wellFormed =
+    isObject(scene) &&
+    typeof scene.text === "string" &&
+    scene.text !== "" &&
+    typeof scene.hash === "string" &&
+    typeof scene.prompt === "string" &&
+    typeof scene.at === "string";
+  if (!wellFormed) return { status: "invalid", scene: null };
 
-    if (scene.hash !== hashString(message.mes)) return { status: 'stale', scene: null };
-    return { status: 'valid', scene };
+  if (scene.hash !== hashString(message.mes)) return { status: "stale", scene: null };
+  return { status: "valid", scene };
 }
 
 /**
@@ -72,10 +74,10 @@ export function readScene(message) {
  * @returns {boolean} Whether anything was written.
  */
 export function writeScene(message, { text, prompt, at = new Date().toISOString() }) {
-    if (!message || typeof message.mes !== 'string') return false;
-    if (typeof text !== 'string' || text === '' || typeof prompt !== 'string') return false;
+  if (!message || typeof message.mes !== "string") return false;
+  if (typeof text !== "string" || text === "" || typeof prompt !== "string") return false;
 
-    return writeKey(message, 'scene', { text, hash: hashString(message.mes), prompt, at });
+  return writeKey(message, "scene", { text, hash: hashString(message.mes), prompt, at });
 }
 
 /**
@@ -91,16 +93,16 @@ export function writeScene(message, { text, prompt, at = new Date().toISOString(
  *          before?: number, after?: number}} The lengths, for the log.
  */
 export function editScene(message, text, at = new Date().toISOString()) {
-    const { status, scene } = readScene(message);
-    if (status !== 'valid') return { written: false, reason: 'no-summary' };
-    const next = typeof text === 'string' ? text.trim() : '';
-    if (next === '') return { written: false, reason: 'blank' };
-    if (next === scene.text) return { written: false, reason: 'unchanged' };
+  const { status, scene } = readScene(message);
+  if (status !== "valid") return { written: false, reason: "no-summary" };
+  const next = typeof text === "string" ? text.trim() : "";
+  if (next === "") return { written: false, reason: "blank" };
+  if (next === scene.text) return { written: false, reason: "unchanged" };
 
-    const written = writeKey(message, 'scene', { ...scene, text: next, at, edited: true });
-    return written
-        ? { written: true, before: scene.text.length, after: next.length }
-        : { written: false, reason: 'no-summary' };
+  const written = writeKey(message, "scene", { ...scene, text: next, at, edited: true });
+  return written
+    ? { written: true, before: scene.text.length, after: next.length }
+    : { written: false, reason: "no-summary" };
 }
 
 /**
@@ -116,14 +118,14 @@ export function editScene(message, text, at = new Date().toISOString()) {
  *          there are fewer than `read` visible messages up to it.
  */
 export function readRange(chat, index, read) {
-    const message = chat?.[index];
-    if (!visible(message) || !Number.isInteger(read) || read < 1) return null;
+  const message = chat?.[index];
+  if (!visible(message) || !Number.isInteger(read) || read < 1) return null;
 
-    const range = [];
-    for (let i = index; i >= 0 && range.length < read; i--) {
-        if (visible(chat[i])) range.unshift(chat[i]);
-    }
-    return range.length === read ? range : null;
+  const range = [];
+  for (let i = index; i >= 0 && range.length < read; i--) {
+    if (visible(chat[i])) range.unshift(chat[i]);
+  }
+  return range.length === read ? range : null;
 }
 
 /**
@@ -133,7 +135,7 @@ export function readRange(chat, index, read) {
  * @param {Array<object>} messages
  */
 export function hashRange(messages) {
-    return hashString(messages.map((message) => `${message.name}: ${message.mes}`).join('\n'));
+  return hashString(messages.map((message) => `${message.name}: ${message.mes}`).join("\n"));
 }
 
 /**
@@ -145,24 +147,27 @@ export function hashRange(messages) {
  *          `state` is set only when `valid`.
  */
 export function readState(chat, index) {
-    const message = chat?.[index];
-    const { status, store } = migrateStore(message?.extra?.[SLUG]);
-    if (status !== 'ok') return { status, state: null };
+  const message = chat?.[index];
+  const { status, store } = migrateStore(message?.extra?.[SLUG]);
+  if (status !== "ok") return { status, state: null };
 
-    const state = store.state;
-    if (state === undefined) return { status: 'none', state: null };
-    const wellFormed = isObject(state)
-        && isObject(state.value)
-        && Number.isInteger(state.read) && state.read >= 1
-        && typeof state.hash === 'string'
-        && Array.isArray(state.changed) && state.changed.every((kind) => typeof kind === 'string')
-        && typeof state.prompt === 'string'
-        && typeof state.at === 'string';
-    if (!wellFormed) return { status: 'invalid', state: null };
+  const state = store.state;
+  if (state === undefined) return { status: "none", state: null };
+  const wellFormed =
+    isObject(state) &&
+    isObject(state.value) &&
+    Number.isInteger(state.read) &&
+    state.read >= 1 &&
+    typeof state.hash === "string" &&
+    Array.isArray(state.changed) &&
+    state.changed.every((kind) => typeof kind === "string") &&
+    typeof state.prompt === "string" &&
+    typeof state.at === "string";
+  if (!wellFormed) return { status: "invalid", state: null };
 
-    const range = readRange(chat, index, state.read);
-    if (!range || hashRange(range) !== state.hash) return { status: 'stale', state: null };
-    return { status: 'valid', state };
+  const range = readRange(chat, index, state.read);
+  if (!range || hashRange(range) !== state.hash) return { status: "stale", state: null };
+  return { status: "valid", state };
 }
 
 /**
@@ -175,13 +180,24 @@ export function readState(chat, index) {
  * @param {{value: object, read: number, changed: string[], prompt: string, at?: string}} state
  * @returns {boolean} Whether anything was written.
  */
-export function writeState(chat, index, { value, read, changed, prompt, at = new Date().toISOString() }) {
-    if (!isObject(value) || typeof prompt !== 'string') return false;
-    if (!Array.isArray(changed) || !changed.every((kind) => typeof kind === 'string')) return false;
-    const range = readRange(chat, index, read);
-    if (!range || typeof chat[index].mes !== 'string') return false;
+export function writeState(
+  chat,
+  index,
+  { value, read, changed, prompt, at = new Date().toISOString() },
+) {
+  if (!isObject(value) || typeof prompt !== "string") return false;
+  if (!Array.isArray(changed) || !changed.every((kind) => typeof kind === "string")) return false;
+  const range = readRange(chat, index, read);
+  if (!range || typeof chat[index].mes !== "string") return false;
 
-    return writeKey(chat[index], 'state', { value, read, hash: hashRange(range), changed, prompt, at });
+  return writeKey(chat[index], "state", {
+    value,
+    read,
+    hash: hashRange(range),
+    changed,
+    prompt,
+    at,
+  });
 }
 
 /**
@@ -196,12 +212,14 @@ export function writeState(chat, index, { value, read, changed, prompt, at = new
  * @returns {{written: boolean, reason?: 'no-state'|'unchanged'}}
  */
 export function editState(chat, index, { value, changed, at = new Date().toISOString() }) {
-    const { status, state } = readState(chat, index);
-    if (status !== 'valid' || !isObject(value) || !Array.isArray(changed)) return { written: false, reason: 'no-state' };
-    if (JSON.stringify(value) === JSON.stringify(state.value)) return { written: false, reason: 'unchanged' };
+  const { status, state } = readState(chat, index);
+  if (status !== "valid" || !isObject(value) || !Array.isArray(changed))
+    return { written: false, reason: "no-state" };
+  if (JSON.stringify(value) === JSON.stringify(state.value))
+    return { written: false, reason: "unchanged" };
 
-    const written = writeKey(chat[index], 'state', { ...state, value, changed, at, edited: true });
-    return written ? { written: true } : { written: false, reason: 'no-state' };
+  const written = writeKey(chat[index], "state", { ...state, value, changed, at, edited: true });
+  return written ? { written: true } : { written: false, reason: "no-state" };
 }
 
 /**
@@ -216,18 +234,22 @@ export function editState(chat, index, { value, changed, at = new Date().toISOSt
  *          `canon` is set only when `valid`.
  */
 export function readCanon(message) {
-    const { status, store } = migrateStore(message?.extra?.[SLUG]);
-    if (status !== 'ok') return { status, canon: null };
+  const { status, store } = migrateStore(message?.extra?.[SLUG]);
+  if (status !== "ok") return { status, canon: null };
 
-    const canon = store.canon;
-    if (canon === undefined) return { status: 'none', canon: null };
-    const wellFormed = isObject(canon)
-        && Array.isArray(canon.facts) && canon.facts.every(wellFormedFact)
-        && Array.isArray(canon.covers) && canon.covers.length === 2
-        && canon.covers.every(Number.isInteger) && canon.covers[0] <= canon.covers[1]
-        && typeof canon.prompt === 'string'
-        && typeof canon.at === 'string';
-    return wellFormed ? { status: 'valid', canon } : { status: 'invalid', canon: null };
+  const canon = store.canon;
+  if (canon === undefined) return { status: "none", canon: null };
+  const wellFormed =
+    isObject(canon) &&
+    Array.isArray(canon.facts) &&
+    canon.facts.every(wellFormedFact) &&
+    Array.isArray(canon.covers) &&
+    canon.covers.length === 2 &&
+    canon.covers.every(Number.isInteger) &&
+    canon.covers[0] <= canon.covers[1] &&
+    typeof canon.prompt === "string" &&
+    typeof canon.at === "string";
+  return wellFormed ? { status: "valid", canon } : { status: "invalid", canon: null };
 }
 
 /**
@@ -248,22 +270,33 @@ export function readCanon(message) {
  *          covers: number[], slots?: number, prompt: string, at?: string}} canon
  * @returns {boolean} Whether anything was written.
  */
-export function writeCanon(chat, index, { facts, covers, slots, prompt, at = new Date().toISOString() }) {
-    if (!Array.isArray(facts) || !facts.every(wellFormedFact) || typeof prompt !== 'string') return false;
-    if (!Array.isArray(covers) || covers.length !== 2 || !covers.every(Number.isInteger) || covers[0] > covers[1]) return false;
-    if (typeof chat?.[index]?.mes !== 'string') return false;
+export function writeCanon(
+  chat,
+  index,
+  { facts, covers, slots, prompt, at = new Date().toISOString() },
+) {
+  if (!Array.isArray(facts) || !facts.every(wellFormedFact) || typeof prompt !== "string")
+    return false;
+  if (
+    !Array.isArray(covers) ||
+    covers.length !== 2 ||
+    !covers.every(Number.isInteger) ||
+    covers[0] > covers[1]
+  )
+    return false;
+  if (typeof chat?.[index]?.mes !== "string") return false;
 
-    return writeKey(chat[index], 'canon', {
-        facts: facts.map((fact) => ({
-            text: fact.text,
-            entities: [...fact.entities],
-            from: [...(fact.from ?? [])],
-        })),
-        covers: [...covers],
-        ...(Number.isInteger(slots) ? { slots } : {}),
-        prompt,
-        at,
-    });
+  return writeKey(chat[index], "canon", {
+    facts: facts.map((fact) => ({
+      text: fact.text,
+      entities: [...fact.entities],
+      from: [...(fact.from ?? [])],
+    })),
+    covers: [...covers],
+    ...(Number.isInteger(slots) ? { slots } : {}),
+    prompt,
+    at,
+  });
 }
 
 /**
@@ -278,12 +311,14 @@ export function writeCanon(chat, index, { facts, covers, slots, prompt, at = new
  * field later would cost a store version and a migration.
  */
 function wellFormedFact(fact) {
-    return isObject(fact)
-        && typeof fact.text === 'string' && fact.text !== ''
-        && Array.isArray(fact.entities)
-        && fact.entities.every((entity) => typeof entity === 'string' && entity !== '')
-        && (fact.from === undefined
-            || (Array.isArray(fact.from) && fact.from.every(Number.isInteger)));
+  return (
+    isObject(fact) &&
+    typeof fact.text === "string" &&
+    fact.text !== "" &&
+    Array.isArray(fact.entities) &&
+    fact.entities.every((entity) => typeof entity === "string" && entity !== "") &&
+    (fact.from === undefined || (Array.isArray(fact.from) && fact.from.every(Number.isInteger)))
+  );
 }
 
 /**
@@ -300,22 +335,23 @@ function wellFormedFact(fact) {
  *          `index` is set only when `valid`.
  */
 export function readIndex(message) {
-    const { status, store } = migrateStore(message?.extra?.[SLUG]);
-    if (status !== 'ok') return { status, index: null };
+  const { status, store } = migrateStore(message?.extra?.[SLUG]);
+  if (status !== "ok") return { status, index: null };
 
-    const record = store.index;
-    if (record === undefined) return { status: 'none', index: null };
-    const wellFormed = isObject(record)
-        && wellFormedRecord(record.record)
-        && typeof record.hash === 'string'
-        && typeof record.prompt === 'string'
-        && typeof record.at === 'string';
-    if (!wellFormed) return { status: 'invalid', index: null };
+  const record = store.index;
+  if (record === undefined) return { status: "none", index: null };
+  const wellFormed =
+    isObject(record) &&
+    wellFormedRecord(record.record) &&
+    typeof record.hash === "string" &&
+    typeof record.prompt === "string" &&
+    typeof record.at === "string";
+  if (!wellFormed) return { status: "invalid", index: null };
 
-    const scene = readScene(message);
-    if (scene.status !== 'valid') return { status: 'stale', index: null };
-    if (record.hash !== hashString(scene.scene.text)) return { status: 'stale', index: null };
-    return { status: 'valid', index: record };
+  const scene = readScene(message);
+  if (scene.status !== "valid") return { status: "stale", index: null };
+  if (record.hash !== hashString(scene.scene.text)) return { status: "stale", index: null };
+  return { status: "valid", index: record };
 }
 
 /**
@@ -332,17 +368,17 @@ export function readIndex(message) {
  * @returns {boolean} Whether anything was written.
  */
 export function writeIndex(chat, index, { record, prompt, at = new Date().toISOString() }) {
-    if (!wellFormedRecord(record) || typeof prompt !== 'string') return false;
-    const message = chat?.[index];
-    const scene = readScene(message);
-    if (scene.status !== 'valid') return false;
+  if (!wellFormedRecord(record) || typeof prompt !== "string") return false;
+  const message = chat?.[index];
+  const scene = readScene(message);
+  if (scene.status !== "valid") return false;
 
-    return writeKey(message, 'index', {
-        record: { ...record, who: [...record.who] },
-        hash: hashString(scene.scene.text),
-        prompt,
-        at,
-    });
+  return writeKey(message, "index", {
+    record: { ...record, who: [...record.who] },
+    hash: hashString(scene.scene.text),
+    prompt,
+    at,
+  });
 }
 
 /**
@@ -351,13 +387,17 @@ export function writeIndex(chat, index, { record, prompt, at = new Date().toISOS
  * make store/ depend on memory/, and memory/canon.js already depends on store/.
  */
 function wellFormedRecord(record) {
-    return isObject(record)
-        && typeof record.kind === 'string' && record.kind !== ''
-        && Array.isArray(record.who)
-        && record.who.every((name) => typeof name === 'string' && name !== '')
-        && typeof record.what === 'string' && record.what !== ''
-        && typeof record.changed === 'string'
-        && typeof record.because === 'string';
+  return (
+    isObject(record) &&
+    typeof record.kind === "string" &&
+    record.kind !== "" &&
+    Array.isArray(record.who) &&
+    record.who.every((name) => typeof name === "string" && name !== "") &&
+    typeof record.what === "string" &&
+    record.what !== "" &&
+    typeof record.changed === "string" &&
+    typeof record.because === "string"
+  );
 }
 
 /**
@@ -368,27 +408,27 @@ function wellFormedRecord(record) {
  * @returns {boolean} Whether anything was removed.
  */
 export function clearDerived(message) {
-    const { status, store } = migrateStore(message?.extra?.[SLUG]);
-    if (status !== 'ok' || (store.index === undefined && store.canon === undefined)) return false;
+  const { status, store } = migrateStore(message?.extra?.[SLUG]);
+  if (status !== "ok" || (store.index === undefined && store.canon === undefined)) return false;
 
-    const next = { ...store, v: STORE_VERSION };
-    delete next.index;
-    delete next.canon;
-    message.extra[SLUG] = next;
-    return true;
+  const next = { ...store, v: STORE_VERSION };
+  delete next.index;
+  delete next.canon;
+  message.extra[SLUG] = next;
+  return true;
 }
 
 /** Set one tier's key, keeping the others' and upgrading the envelope to the current version. */
 function writeKey(message, key, entry) {
-    const { status, store } = migrateStore(message.extra?.[SLUG]);
-    if (status === 'future') return false;
+  const { status, store } = migrateStore(message.extra?.[SLUG]);
+  if (status === "future") return false;
 
-    message.extra ??= {};
-    message.extra[SLUG] = { ...(status === 'ok' ? store : {}), v: STORE_VERSION, [key]: entry };
-    return true;
+  message.extra ??= {};
+  message.extra[SLUG] = { ...(status === "ok" ? store : {}), v: STORE_VERSION, [key]: entry };
+  return true;
 }
 
 /** Not hidden: ST hides a message by setting `is_system` (public/scripts/chats.js:157). */
 export function visible(message) {
-    return Boolean(message) && !message.is_system;
+  return Boolean(message) && !message.is_system;
 }

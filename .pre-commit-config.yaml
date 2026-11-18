@@ -51,6 +51,13 @@ repos:
         language: system
         pass_filenames: false
         files: (\.m?js|^\.oxlintrc\.json)$
+      # After lint-check, so a fix that leaves code to reformat gets reformatted.
+      - id: lint-format
+        name: Format with oxfmt
+        entry: npx --no -- task lint-format
+        language: system
+        pass_filenames: false
+        files: (\.(m?js|json|ya?ml|md|html|css)|^\.oxfmtrc\.json)$
       - id: lint-dupes
         name: Check for copy-pasted code with jscpd
         entry: npx --no -- task lint-dupes

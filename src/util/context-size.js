@@ -8,8 +8,8 @@
  * `getContext()` does not expose it (st-context.js:115), so it comes from
  * `script.js` the way every bundled extension imports it (util/st-modules.js).
  */
-import { debug, warn } from './log.js';
-import { loadScript } from './st-modules.js';
+import { debug, warn } from "./log.js";
+import { loadScript } from "./st-modules.js";
 
 /**
  * Reserve when ST's own answer is unavailable. Deliberately generous:
@@ -24,33 +24,37 @@ export const FALLBACK_RESERVE_FRACTION = 0.125;
  * @returns {(context: object) => Promise<number>}
  */
 export function createMaxPromptTokens({ load = loadScript } = {}) {
-    /** undefined = not tried yet, null = tried and unavailable. */
-    let resolved;
+  /** undefined = not tried yet, null = tried and unavailable. */
+  let resolved;
 
-    return async function maxPromptTokens(context) {
-        if (resolved === undefined) {
-            try {
-                const fn = (await load())?.getMaxPromptTokens;
-                resolved = typeof fn === 'function' ? fn : null;
-                debug(resolved ? 'Using ST\'s own prompt budget.' : 'ST exposes no getMaxPromptTokens; estimating.');
-            } catch (err) {
-                resolved = null;
-                warn('Could not read ST\'s prompt budget; estimating from the context window.', err);
-            }
-        }
+  return async function maxPromptTokens(context) {
+    if (resolved === undefined) {
+      try {
+        const fn = (await load())?.getMaxPromptTokens;
+        resolved = typeof fn === "function" ? fn : null;
+        debug(
+          resolved
+            ? "Using ST's own prompt budget."
+            : "ST exposes no getMaxPromptTokens; estimating.",
+        );
+      } catch (err) {
+        resolved = null;
+        warn("Could not read ST's prompt budget; estimating from the context window.", err);
+      }
+    }
 
-        if (resolved) {
-            try {
-                const tokens = Number(resolved());
-                if (Number.isFinite(tokens) && tokens > 0) return Math.floor(tokens);
-            } catch (err) {
-                warn('ST\'s prompt budget threw; estimating from the context window.', err);
-                resolved = null;
-            }
-        }
+    if (resolved) {
+      try {
+        const tokens = Number(resolved());
+        if (Number.isFinite(tokens) && tokens > 0) return Math.floor(tokens);
+      } catch (err) {
+        warn("ST's prompt budget threw; estimating from the context window.", err);
+        resolved = null;
+      }
+    }
 
-        return estimateMaxPromptTokens(context);
-    };
+    return estimateMaxPromptTokens(context);
+  };
 }
 
 /**
@@ -59,8 +63,8 @@ export function createMaxPromptTokens({ load = loadScript } = {}) {
  * overflows the request.
  */
 export function estimateMaxPromptTokens(context) {
-    const maxContext = Number(context?.maxContext) || 0;
-    return Math.max(0, Math.floor(maxContext * (1 - FALLBACK_RESERVE_FRACTION)));
+  const maxContext = Number(context?.maxContext) || 0;
+  return Math.max(0, Math.floor(maxContext * (1 - FALLBACK_RESERVE_FRACTION)));
 }
 
 /**
@@ -78,6 +82,6 @@ export const NEAR_LIMIT_FRACTION = 0.95;
  * @param {number} maxPromptTokens What the assembler planned against.
  */
 export function nearPromptLimit(promptTokens, maxPromptTokens) {
-    if (!(maxPromptTokens > 0) || !Number.isFinite(promptTokens)) return null;
-    return promptTokens >= maxPromptTokens * NEAR_LIMIT_FRACTION;
+  if (!(maxPromptTokens > 0) || !Number.isFinite(promptTokens)) return null;
+  return promptTokens >= maxPromptTokens * NEAR_LIMIT_FRACTION;
 }

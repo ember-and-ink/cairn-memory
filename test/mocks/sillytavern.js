@@ -8,10 +8,10 @@
 
 /** public/script.js:484 */
 export const extension_prompt_types = {
-    NONE: -1,
-    IN_PROMPT: 0,
-    IN_CHAT: 1,
-    BEFORE_PROMPT: 2,
+  NONE: -1,
+  IN_PROMPT: 0,
+  IN_CHAT: 1,
+  BEFORE_PROMPT: 2,
 };
 
 /**
@@ -20,9 +20,9 @@ export const extension_prompt_types = {
  * IN_CHAT per depth (:5647, and public/scripts/openai.js:856). NONE is never asked for.
  */
 export const COLLECTED_POSITIONS = [
-    extension_prompt_types.BEFORE_PROMPT,
-    extension_prompt_types.IN_PROMPT,
-    extension_prompt_types.IN_CHAT,
+  extension_prompt_types.BEFORE_PROMPT,
+  extension_prompt_types.IN_PROMPT,
+  extension_prompt_types.IN_CHAT,
 ];
 
 /**
@@ -31,23 +31,22 @@ export const COLLECTED_POSITIONS = [
  * position it collects. Anything else reaches the prompt only through a macro.
  */
 export function collectedKeys(extensionPrompts) {
-    return Object.keys(extensionPrompts ?? {})
-        .filter((key) => {
-            const prompt = extensionPrompts[key];
-            return prompt.value && COLLECTED_POSITIONS.some((position) => prompt.position == position);
-        });
+  return Object.keys(extensionPrompts ?? {}).filter((key) => {
+    const prompt = extensionPrompts[key];
+    return prompt.value && COLLECTED_POSITIONS.some((position) => prompt.position == position);
+  });
 }
 
 /** public/scripts/world-info.js:863 */
 export const world_info_position = {
-    before: 0,
-    after: 1,
-    ANTop: 2,
-    ANBottom: 3,
-    atDepth: 4,
-    EMTop: 5,
-    EMBottom: 6,
-    outlet: 7,
+  before: 0,
+  after: 1,
+  ANTop: 2,
+  ANBottom: 3,
+  atDepth: 4,
+  EMTop: 5,
+  EMBottom: 6,
+  outlet: 7,
 };
 
 /**
@@ -55,17 +54,17 @@ export const world_info_position = {
  * `extra` is the per-message bag extensions own, and it branches and swipes
  * with the message for free (DESIGN.md §9).
  */
-export function makeMessage({ name = 'Aster', isUser = false, mes = '', extra = {} } = {}) {
-    return {
-        name,
-        is_user: isUser,
-        is_system: false,
-        send_date: '2026-01-01T00:00:00.000Z',
-        mes,
-        extra: { ...extra },
-        swipe_id: 0,
-        swipes: [mes],
-    };
+export function makeMessage({ name = "Aster", isUser = false, mes = "", extra = {} } = {}) {
+  return {
+    name,
+    is_user: isUser,
+    is_system: false,
+    send_date: "2026-01-01T00:00:00.000Z",
+    mes,
+    extra: { ...extra },
+    swipe_id: 0,
+    swipes: [mes],
+  };
 }
 
 /**
@@ -77,21 +76,21 @@ export function makeMessage({ name = 'Aster', isUser = false, mes = '', extra = 
  * Content is invented — no real cards, ever (CLAUDE.md §3.13).
  */
 export function makeCardFields(overrides = {}) {
-    return {
-        system: '',
-        mesExamples: '',
-        description: '',
-        personality: '',
-        persona: '',
-        scenario: '',
-        jailbreak: '',
-        version: '1.0',
-        charDepthPrompt: '',
-        creatorNotes: '',
-        firstMessage: '',
-        alternateGreetings: [],
-        ...overrides,
-    };
+  return {
+    system: "",
+    mesExamples: "",
+    description: "",
+    personality: "",
+    persona: "",
+    scenario: "",
+    jailbreak: "",
+    version: "1.0",
+    charDepthPrompt: "",
+    creatorNotes: "",
+    firstMessage: "",
+    alternateGreetings: [],
+    ...overrides,
+  };
 }
 
 /**
@@ -101,18 +100,18 @@ export function makeCardFields(overrides = {}) {
  * (public/scripts/st-context.js:229).
  */
 export function makePowerUser(overrides = {}) {
-    return {
-        prefer_character_prompt: true,
-        sysprompt: { enabled: true, name: 'Neutral - Chat', content: '', post_history: '' },
-        // Both ship off (public/scripts/power-user.js:121-122) and are the two
-        // halves of one three-way control: `#example_messages_behavior` sets
-        // normal / keep / strip (:3314-3331). `strip_examples` wins, because ST
-        // blanks the array at public/script.js:4738-4739 before it pins anything
-        // at :4861.
-        strip_examples: false,
-        pin_examples: false,
-        ...overrides,
-    };
+  return {
+    prefer_character_prompt: true,
+    sysprompt: { enabled: true, name: "Neutral - Chat", content: "", post_history: "" },
+    // Both ship off (public/scripts/power-user.js:121-122) and are the two
+    // halves of one three-way control: `#example_messages_behavior` sets
+    // normal / keep / strip (:3314-3331). `strip_examples` wins, because ST
+    // blanks the array at public/script.js:4738-4739 before it pins anything
+    // at :4861.
+    strip_examples: false,
+    pin_examples: false,
+    ...overrides,
+  };
 }
 
 /**
@@ -120,18 +119,18 @@ export function makePowerUser(overrides = {}) {
  * (CLAUDE.md §3.13).
  */
 export function makeChat(turns = 6) {
-    const chat = [];
-    for (let i = 0; i < turns; i++) {
-        const isUser = i % 2 === 0;
-        chat.push(makeMessage({
-            name: isUser ? 'Wren' : 'Aster',
-            isUser,
-            mes: isUser
-                ? `Wren says something at turn ${i}.`
-                : `Aster answers at turn ${i}.`,
-        }));
-    }
-    return chat;
+  const chat = [];
+  for (let i = 0; i < turns; i++) {
+    const isUser = i % 2 === 0;
+    chat.push(
+      makeMessage({
+        name: isUser ? "Wren" : "Aster",
+        isUser,
+        mes: isUser ? `Wren says something at turn ${i}.` : `Aster answers at turn ${i}.`,
+      }),
+    );
+  }
+  return chat;
 }
 
 /**
@@ -140,10 +139,10 @@ export function makeChat(turns = 6) {
  * shares `extra` with the live message. Regex scripts and attachments are not
  * modelled, so `mes` comes through unchanged.
  */
-export function makeCoreChat(chat, { type = 'normal' } = {}) {
-    const core = chat.filter((message) => !message.is_system);
-    if (type === 'swipe') core.pop();
-    return core.map((message, index) => ({ ...message, index }));
+export function makeCoreChat(chat, { type = "normal" } = {}) {
+  const core = chat.filter((message) => !message.is_system);
+  if (type === "swipe") core.pop();
+  return core.map((message, index) => ({ ...message, index }));
 }
 
 /**
@@ -152,11 +151,11 @@ export function makeCoreChat(chat, { type = 'normal' } = {}) {
  * `mes` and keeps the same `extra` object (:6671-6684).
  */
 export function newSwipe(message, mes) {
-    saveSwipe(message);
-    message.swipes.push(mes);
-    message.swipe_id = message.swipes.length - 1;
-    message.mes = mes;
-    saveSwipe(message);
+  saveSwipe(message);
+  message.swipes.push(mes);
+  message.swipe_id = message.swipes.length - 1;
+  message.mes = mes;
+  saveSwipe(message);
 }
 
 /**
@@ -164,16 +163,19 @@ export function newSwipe(message, mes) {
  * clone of that swipe's saved `extra` replace the message's own (:7012-7015).
  */
 export function swipeTo(message, swipeId) {
-    saveSwipe(message);
-    message.swipe_id = swipeId;
-    message.mes = message.swipes[swipeId];
-    message.extra = structuredClone(message.swipe_info[swipeId]?.extra) ?? {};
+  saveSwipe(message);
+  message.swipe_id = swipeId;
+  message.mes = message.swipes[swipeId];
+  message.extra = structuredClone(message.swipe_info[swipeId]?.extra) ?? {};
 }
 
 function saveSwipe(message) {
-    message.swipe_info ??= [];
-    message.swipes[message.swipe_id] = message.mes;
-    message.swipe_info[message.swipe_id] = { send_date: message.send_date, extra: structuredClone(message.extra) };
+  message.swipe_info ??= [];
+  message.swipes[message.swipe_id] = message.mes;
+  message.swipe_info[message.swipe_id] = {
+    send_date: message.send_date,
+    extra: structuredClone(message.extra),
+  };
 }
 
 /**
@@ -181,18 +183,25 @@ function saveSwipe(message) {
  * depth and role, each value trimmed, joined, and wrapped in the separator when `wrap`.
  * Macro substitution (:3326) is left out.
  */
-export function getExtensionPrompt(extensionPrompts, position, depth, separator = '\n', role, wrap = true) {
-    let values = Object.keys(extensionPrompts)
-        .sort()
-        .map((key) => extensionPrompts[key])
-        .filter((x) => x.position == position && x.value)
-        .filter((x) => depth === undefined || x.depth === undefined || x.depth === depth)
-        .filter((x) => role === undefined || x.role === undefined || x.role === role)
-        .map((x) => x.value.trim())
-        .join(separator);
-    if (wrap && values.length && !values.startsWith(separator)) values = separator + values;
-    if (wrap && values.length && !values.endsWith(separator)) values = values + separator;
-    return values;
+export function getExtensionPrompt(
+  extensionPrompts,
+  position,
+  depth,
+  separator = "\n",
+  role,
+  wrap = true,
+) {
+  let values = Object.keys(extensionPrompts)
+    .sort()
+    .map((key) => extensionPrompts[key])
+    .filter((x) => x.position == position && x.value)
+    .filter((x) => depth === undefined || x.depth === undefined || x.depth === depth)
+    .filter((x) => role === undefined || x.role === undefined || x.role === role)
+    .map((x) => x.value.trim())
+    .join(separator);
+  if (wrap && values.length && !values.startsWith(separator)) values = separator + values;
+  if (wrap && values.length && !values.endsWith(separator)) values = values + separator;
+  return values;
 }
 
 /**
@@ -203,70 +212,87 @@ export function getExtensionPrompt(extensionPrompts, position, depth, separator 
  * interceptor's `coreChat` is copied first, since ST splices into its own. Trimming to
  * the context is not modelled.
  */
-export function assembleTextPrompt(context, coreChat, { isContinue = false, storyString = 'Story string.\n' } = {}) {
-    const prompts = context.extensionPrompts;
-    const messages = [...coreChat].reverse();
-    let inserted = 0;
-    // getExtensionPromptMaxDepth is MAX_INJECTION_DEPTH (:3281); nothing here goes deeper than the chat.
-    for (let i = 0; i <= messages.length; i++) {
-        const roleMessages = [];
-        for (const role of [0, 1, 2]) {
-            const text = getExtensionPrompt(prompts, extension_prompt_types.IN_CHAT, i, '\n', role, false).trimStart();
-            if (text) {
-                roleMessages.push({
-                    name: ['', context.name1, context.name2][role], is_user: role === 1, mes: text,
-                    extra: { type: role === 0 ? 'narrator' : null },
-                });
-            }
-        }
-        if (roleMessages.length) {
-            const depth = isContinue && i === 0 ? 1 : i;
-            messages.splice(Math.min(depth + inserted, messages.length), 0, ...roleMessages);
-            inserted += roleMessages.length;
-        }
+export function assembleTextPrompt(
+  context,
+  coreChat,
+  { isContinue = false, storyString = "Story string.\n" } = {},
+) {
+  const prompts = context.extensionPrompts;
+  const messages = [...coreChat].reverse();
+  let inserted = 0;
+  // getExtensionPromptMaxDepth is MAX_INJECTION_DEPTH (:3281); nothing here goes deeper than the chat.
+  for (let i = 0; i <= messages.length; i++) {
+    const roleMessages = [];
+    for (const role of [0, 1, 2]) {
+      const text = getExtensionPrompt(
+        prompts,
+        extension_prompt_types.IN_CHAT,
+        i,
+        "\n",
+        role,
+        false,
+      ).trimStart();
+      if (text) {
+        roleMessages.push({
+          name: ["", context.name1, context.name2][role],
+          is_user: role === 1,
+          mes: text,
+          extra: { type: role === 0 ? "narrator" : null },
+        });
+      }
     }
-    messages.reverse();
+    if (roleMessages.length) {
+      const depth = isContinue && i === 0 ? 1 : i;
+      messages.splice(Math.min(depth + inserted, messages.length), 0, ...roleMessages);
+      inserted += roleMessages.length;
+    }
+  }
+  messages.reverse();
 
-    const history = messages.map((item) => {
-        if (item.extra?.[Symbol.for('ignore')]) return '';
-        const prependName = item.name && item.extra?.type !== 'narrator';
-        return prependName ? `${item.name}: ${item.mes}\n` : `${item.mes}\n`;
-    }).join('');
+  const history = messages
+    .map((item) => {
+      if (item.extra?.[Symbol.for("ignore")]) return "";
+      const prependName = item.name && item.extra?.type !== "narrator";
+      return prependName ? `${item.name}: ${item.mes}\n` : `${item.mes}\n`;
+    })
+    .join("");
 
-    return getExtensionPrompt(prompts, extension_prompt_types.BEFORE_PROMPT)
-        + storyString
-        + getExtensionPrompt(prompts, extension_prompt_types.IN_PROMPT)
-        + history;
+  return (
+    getExtensionPrompt(prompts, extension_prompt_types.BEFORE_PROMPT) +
+    storyString +
+    getExtensionPrompt(prompts, extension_prompt_types.IN_PROMPT) +
+    history
+  );
 }
 
 /** Minimal eventSource: registration plus await-all emit, as ST's does. */
 function makeEventSource() {
-    const handlers = new Map();
-    return {
-        on(type, fn) {
-            if (!handlers.has(type)) handlers.set(type, []);
-            handlers.get(type).push(fn);
-        },
-        /** public/lib/eventemitter.js:90 */
-        makeFirst(type, fn) {
-            if (!handlers.has(type)) handlers.set(type, []);
-            handlers.get(type).unshift(fn);
-        },
-        removeListener(type, fn) {
-            const list = handlers.get(type) ?? [];
-            const at = list.indexOf(fn);
-            if (at >= 0) list.splice(at, 1);
-        },
-        async emit(type, ...args) {
-            for (const fn of handlers.get(type) ?? []) {
-                await fn(...args);
-            }
-        },
-        /** Test helper, not part of ST's surface. */
-        listenerCount(type) {
-            return (handlers.get(type) ?? []).length;
-        },
-    };
+  const handlers = new Map();
+  return {
+    on(type, fn) {
+      if (!handlers.has(type)) handlers.set(type, []);
+      handlers.get(type).push(fn);
+    },
+    /** public/lib/eventemitter.js:90 */
+    makeFirst(type, fn) {
+      if (!handlers.has(type)) handlers.set(type, []);
+      handlers.get(type).unshift(fn);
+    },
+    removeListener(type, fn) {
+      const list = handlers.get(type) ?? [];
+      const at = list.indexOf(fn);
+      if (at >= 0) list.splice(at, 1);
+    },
+    async emit(type, ...args) {
+      for (const fn of handlers.get(type) ?? []) {
+        await fn(...args);
+      }
+    },
+    /** Test helper, not part of ST's surface. */
+    listenerCount(type) {
+      return (handlers.get(type) ?? []).length;
+    },
+  };
 }
 
 /**
@@ -275,146 +301,152 @@ function makeEventSource() {
  * not declared that dependency in docs/st-api-surface.md yet.
  */
 export function createContext({
-    chat = makeChat(),
-    chatMetadata = {},
-    profiles = [],
-    selectedProfile = null,
-    requestService = null,
-    extensions = [],
-    cardFields = makeCardFields(),
-    powerUser = makePowerUser(),
+  chat = makeChat(),
+  chatMetadata = {},
+  profiles = [],
+  selectedProfile = null,
+  requestService = null,
+  extensions = [],
+  cardFields = makeCardFields(),
+  powerUser = makePowerUser(),
 } = {}) {
-    const extensionPrompts = {};
-    const context = {
-        chat,
-        chatMetadata,
-        name1: 'Wren',
-        name2: 'Aster',
-        characterId: 0,
-        groupId: null,
-        chatId: 'synthetic-chat',
-        maxContext: 8192,
-        mainApi: 'textgenerationwebui',
+  const extensionPrompts = {};
+  const context = {
+    chat,
+    chatMetadata,
+    name1: "Wren",
+    name2: "Aster",
+    characterId: 0,
+    groupId: null,
+    chatId: "synthetic-chat",
+    maxContext: 8192,
+    mainApi: "textgenerationwebui",
 
-        eventSource: makeEventSource(),
-        /** public/scripts/st-context.js:137; null between streams (public/script.js:456, :5441). */
-        streamingProcessor: null,
-        /** public/scripts/st-context.js:139 — context exposes event_types as eventTypes. */
-        eventTypes: {
-            CHAT_COMPLETION_PROMPT_READY: 'chat_completion_prompt_ready',
-            GENERATE_AFTER_COMBINE_PROMPTS: 'generate_after_combine_prompts',
-            WORLD_INFO_ACTIVATED: 'world_info_activated',
-            WORLDINFO_FORCE_ACTIVATE: 'worldinfo_force_activate',
-            WORLDINFO_UPDATED: 'worldinfo_updated',
-            /** public/scripts/events.js:8-10 */
-            MESSAGE_SENT: 'message_sent',
-            MESSAGE_RECEIVED: 'message_received',
-            MESSAGE_EDITED: 'message_edited',
-            /** public/scripts/events.js:12, :49 */
-            MESSAGE_UPDATED: 'message_updated',
-            CHARACTER_MESSAGE_RENDERED: 'character_message_rendered',
-            /** public/scripts/events.js:23; emitted with (type, params, dryRun), public/script.js:4299 */
-            GENERATION_STARTED: 'generation_started',
-            CHAT_CHANGED: 'chat_id_changed',
-            /** public/scripts/events.js:81 */
-            CONNECTION_PROFILE_LOADED: 'connection_profile_loaded',
-        },
+    eventSource: makeEventSource(),
+    /** public/scripts/st-context.js:137; null between streams (public/script.js:456, :5441). */
+    streamingProcessor: null,
+    /** public/scripts/st-context.js:139 — context exposes event_types as eventTypes. */
+    eventTypes: {
+      CHAT_COMPLETION_PROMPT_READY: "chat_completion_prompt_ready",
+      GENERATE_AFTER_COMBINE_PROMPTS: "generate_after_combine_prompts",
+      WORLD_INFO_ACTIVATED: "world_info_activated",
+      WORLDINFO_FORCE_ACTIVATE: "worldinfo_force_activate",
+      WORLDINFO_UPDATED: "worldinfo_updated",
+      /** public/scripts/events.js:8-10 */
+      MESSAGE_SENT: "message_sent",
+      MESSAGE_RECEIVED: "message_received",
+      MESSAGE_EDITED: "message_edited",
+      /** public/scripts/events.js:12, :49 */
+      MESSAGE_UPDATED: "message_updated",
+      CHARACTER_MESSAGE_RENDERED: "character_message_rendered",
+      /** public/scripts/events.js:23; emitted with (type, params, dryRun), public/script.js:4299 */
+      GENERATION_STARTED: "generation_started",
+      CHAT_CHANGED: "chat_id_changed",
+      /** public/scripts/events.js:81 */
+      CONNECTION_PROFILE_LOADED: "connection_profile_loaded",
+    },
 
-        /** public/scripts/extensions.js:141 */
-        extensionSettings: {
-            disabledExtensions: [],
-            /** public/scripts/extensions/connection-manager/index.js:28-29 */
-            connectionManager: { profiles, selectedProfile },
-        },
+    /** public/scripts/extensions.js:141 */
+    extensionSettings: {
+      disabledExtensions: [],
+      /** public/scripts/extensions/connection-manager/index.js:28-29 */
+      connectionManager: { profiles, selectedProfile },
+    },
 
-        /**
-         * public/scripts/extensions.js:524, exposed at public/scripts/st-context.js:300.
-         * `extensions` holds internal names, `third-party/<folder>` for a user install
-         * (src/endpoints/extensions.js:518); the prefix may be left off, as ST allows.
-         */
-        getExtensionManifest(name) {
-            const found = extensions.find((id) => id === name || id === `third-party/${name}`);
-            return found ? { display_name: found } : null;
-        },
+    /**
+     * public/scripts/extensions.js:524, exposed at public/scripts/st-context.js:300.
+     * `extensions` holds internal names, `third-party/<folder>` for a user install
+     * (src/endpoints/extensions.js:518); the prefix may be left off, as ST allows.
+     */
+    getExtensionManifest(name) {
+      const found = extensions.find((id) => id === name || id === `third-party/${name}`);
+      return found ? { display_name: found } : null;
+    },
 
-        /** public/scripts/st-context.js:294 — a class with a static `sendRequest`. */
-        ConnectionManagerRequestService: requestService,
+    /** public/scripts/st-context.js:294 — a class with a static `sendRequest`. */
+    ConnectionManagerRequestService: requestService,
 
-        /**
-         * public/scripts/slash-commands.js:142, exposed at public/scripts/st-context.js:285.
-         * A profile's `api` names an entry; OpenRouter's is special-cased (:191) and every
-         * other chat completion source maps to itself (:213-220). A subset.
-         */
-        CONNECT_API_MAP: {
-            openrouter: { selected: 'openai', source: 'openrouter' },
-            'openrouter-text': { selected: 'textgenerationwebui', type: 'openrouter' },
-            custom: { selected: 'openai', source: 'custom' },
-            openai: { selected: 'openai', source: 'openai' },
-            generic: { selected: 'textgenerationwebui', type: 'generic' },
-        },
+    /**
+     * public/scripts/slash-commands.js:142, exposed at public/scripts/st-context.js:285.
+     * A profile's `api` names an entry; OpenRouter's is special-cased (:191) and every
+     * other chat completion source maps to itself (:213-220). A subset.
+     */
+    CONNECT_API_MAP: {
+      openrouter: { selected: "openai", source: "openrouter" },
+      "openrouter-text": { selected: "textgenerationwebui", type: "openrouter" },
+      custom: { selected: "openai", source: "custom" },
+      openai: { selected: "openai", source: "openai" },
+      generic: { selected: "textgenerationwebui", type: "generic" },
+    },
 
-        extensionPrompts,
-        /** public/script.js — setExtensionPrompt(key, value, position, depth, scan, role, filter) */
-        setExtensionPrompt(key, value, position, depth, scan = false, role = 0, filter = null) {
-            extensionPrompts[key] = {
-                value: String(value),
-                position: Number(position),
-                depth: Number(depth),
-                scan: Boolean(scan),
-                role: Number(role),
-                filter,
-            };
-        },
+    extensionPrompts,
+    /** public/script.js — setExtensionPrompt(key, value, position, depth, scan, role, filter) */
+    setExtensionPrompt(key, value, position, depth, scan = false, role = 0, filter = null) {
+      extensionPrompts[key] = {
+        value: String(value),
+        position: Number(position),
+        depth: Number(depth),
+        scan: Boolean(scan),
+        role: Number(role),
+        filter,
+      };
+    },
 
-        /**
-         * public/script.js:2815. Only the two macros anything here uses:
-         * `environment.user` is name1 and `environment.char` is name2
-         * (public/script.js:2949-2950). Enough to prove we resolve a template
-         * before comparing it; not a macro engine.
-         */
-        substituteParamsExtended(content, additionalMacro = {}) {
-            let text = String(content)
-                .replace(/\{\{user\}\}/gi, context.name1)
-                .replace(/\{\{char\}\}/gi, context.name2);
-            for (const [name, value] of Object.entries(additionalMacro)) {
-                text = text.replace(new RegExp(`\\{\\{${name}\\}\\}`, 'gi'), String(value));
-            }
-            return text;
-        },
+    /**
+     * public/script.js:2815. Only the two macros anything here uses:
+     * `environment.user` is name1 and `environment.char` is name2
+     * (public/script.js:2949-2950). Enough to prove we resolve a template
+     * before comparing it; not a macro engine.
+     */
+    substituteParamsExtended(content, additionalMacro = {}) {
+      let text = String(content)
+        .replace(/\{\{user\}\}/gi, context.name1)
+        .replace(/\{\{char\}\}/gi, context.name2);
+      for (const [name, value] of Object.entries(additionalMacro)) {
+        text = text.replace(new RegExp(`\\{\\{${name}\\}\\}`, "gi"), String(value));
+      }
+      return text;
+    },
 
-        /**
-         * public/script.js:2981, exposed at public/scripts/st-context.js:163. The
-         * same two macros as above. An unknown `{{macro}}` is left as it is: the
-         * legacy engine (the default, public/script.js:2997) replaces a fixed list
-         * of named patterns (public/scripts/macros.js:610).
-         */
-        substituteParams(content) {
-            return context.substituteParamsExtended(content);
-        },
+    /**
+     * public/script.js:2981, exposed at public/scripts/st-context.js:163. The
+     * same two macros as above. An unknown `{{macro}}` is left as it is: the
+     * legacy engine (the default, public/script.js:2997) replaces a fixed list
+     * of named patterns (public/scripts/macros.js:610).
+     */
+    substituteParams(content) {
+      return context.substituteParamsExtended(content);
+    },
 
-        /** public/scripts/st-context.js:302 — the ignore flag's home. */
-        symbols: { ignore: Symbol.for('ignore') },
+    /** public/scripts/st-context.js:302 — the ignore flag's home. */
+    symbols: { ignore: Symbol.for("ignore") },
 
-        /** public/scripts/st-context.js:232 — the card as the story string gets it. */
-        getCharacterCardFields: () => cardFields,
+    /** public/scripts/st-context.js:232 — the card as the story string gets it. */
+    getCharacterCardFields: () => cardFields,
 
-        /** public/scripts/st-context.js:229 — `power_user` itself, not a copy. */
-        powerUserSettings: powerUser,
+    /** public/scripts/st-context.js:229 — `power_user` itself, not a copy. */
+    powerUserSettings: powerUser,
 
-        saveSettingsDebounced: () => { context.saved.settings++; },
-        saveMetadataDebounced: () => { context.saved.metadata++; },
-        /** public/scripts/st-context.js:155 — saveChatConditional, which saves the *current* chat. */
-        saveChat: async () => { context.saved.chat++; },
+    saveSettingsDebounced: () => {
+      context.saved.settings++;
+    },
+    saveMetadataDebounced: () => {
+      context.saved.metadata++;
+    },
+    /** public/scripts/st-context.js:155 — saveChatConditional, which saves the *current* chat. */
+    saveChat: async () => {
+      context.saved.chat++;
+    },
 
-        /** Rough but monotonic — enough for budget arithmetic in tests. */
-        getTokenCountAsync: async (text) => Math.ceil(String(text).length / 4),
+    /** Rough but monotonic — enough for budget arithmetic in tests. */
+    getTokenCountAsync: async (text) => Math.ceil(String(text).length / 4),
 
-        renderExtensionTemplateAsync: async () => '<div class="cairn-settings"></div>',
+    renderExtensionTemplateAsync: async () => '<div class="cairn-settings"></div>',
 
-        /** Test-only bookkeeping, not part of ST's surface. */
-        saved: { settings: 0, metadata: 0, chat: 0 },
-    };
-    return context;
+    /** Test-only bookkeeping, not part of ST's surface. */
+    saved: { settings: 0, metadata: 0, chat: 0 },
+  };
+  return context;
 }
 
 /**
@@ -423,15 +455,15 @@ export function createContext({
  * rendered, the same again as CHARACTER_MESSAGE_RENDERED (public/script.js:6781-6783,
  * streamed :3799-3800; public/lib/eventemitter.js:146).
  */
-export async function receiveMessage(context, message, type = 'normal') {
-    context.chat.push(message);
-    await received(context, type);
+export async function receiveMessage(context, message, type = "normal") {
+  context.chat.push(message);
+  await received(context, type);
 }
 
 async function received(context, type) {
-    const { eventSource, eventTypes, chat } = context;
-    await eventSource.emit(eventTypes.MESSAGE_RECEIVED, chat.length - 1, type);
-    await eventSource.emit(eventTypes.CHARACTER_MESSAGE_RENDERED, chat.length - 1, type);
+  const { eventSource, eventTypes, chat } = context;
+  await eventSource.emit(eventTypes.MESSAGE_RECEIVED, chat.length - 1, type);
+  await eventSource.emit(eventTypes.CHARACTER_MESSAGE_RENDERED, chat.length - 1, type);
 }
 
 /**
@@ -440,15 +472,15 @@ async function received(context, type) {
  * the usual events (:3799-3800) and drops the stream (:5441). Returns that ending.
  */
 export function startStream(context, message) {
-    context.chat.push(message);
-    const stream = { isFinished: false };
-    context.streamingProcessor = stream;
-    return async (mes) => {
-        message.mes = mes;
-        stream.isFinished = true;
-        await received(context, 'normal');
-        context.streamingProcessor = null;
-    };
+  context.chat.push(message);
+  const stream = { isFinished: false };
+  context.streamingProcessor = stream;
+  return async (mes) => {
+    message.mes = mes;
+    stream.isFinished = true;
+    await received(context, "normal");
+    context.streamingProcessor = null;
+  };
 }
 
 /**
@@ -456,8 +488,8 @@ export function startStream(context, message) {
  * (public/script.js:5914-5917) before it is rendered.
  */
 export async function sendMessage(context, message) {
-    context.chat.push(message);
-    await context.eventSource.emit(context.eventTypes.MESSAGE_SENT, context.chat.length - 1);
+  context.chat.push(message);
+  await context.eventSource.emit(context.eventTypes.MESSAGE_SENT, context.chat.length - 1);
 }
 
 /**
@@ -466,8 +498,8 @@ export async function sendMessage(context, message) {
  * `swipe` (:6691).
  */
 export async function swipeReply(context, mes) {
-    newSwipe(context.chat.at(-1), mes);
-    await received(context, 'swipe');
+  newSwipe(context.chat.at(-1), mes);
+  await received(context, "swipe");
 }
 
 /**
@@ -475,8 +507,8 @@ export async function swipeReply(context, mes) {
  * then MESSAGE_RECEIVED fires with type `continue` (:6716).
  */
 export async function continueReply(context, text) {
-    context.chat.at(-1).mes += text;
-    await received(context, 'continue');
+  context.chat.at(-1).mes += text;
+  await received(context, "continue");
 }
 
 /**
@@ -486,11 +518,11 @@ export async function continueReply(context, text) {
  * MESSAGE_UPDATED once it is re-rendered (:8431).
  */
 export async function editMessage(context, index, mes) {
-    const message = context.chat[index];
-    message.mes = mes;
-    if (message.swipe_id !== undefined) message.swipes[message.swipe_id] = mes;
-    await context.eventSource.emit(context.eventTypes.MESSAGE_EDITED, index);
-    await context.eventSource.emit(context.eventTypes.MESSAGE_UPDATED, index);
+  const message = context.chat[index];
+  message.mes = mes;
+  if (message.swipe_id !== undefined) message.swipes[message.swipe_id] = mes;
+  await context.eventSource.emit(context.eventTypes.MESSAGE_EDITED, index);
+  await context.eventSource.emit(context.eventTypes.MESSAGE_UPDATED, index);
 }
 
 /**
@@ -499,17 +531,17 @@ export async function editMessage(context, index, mes) {
  * it rewrites `mes` in place, saves, and emits nothing. `format` is its rewrite.
  */
 export function installFormatter(context, format) {
-    const rewrite = async (index) => {
-        const message = context.chat[index];
-        const next = message ? format(message.mes) : undefined;
-        if (next !== undefined && next !== message.mes) {
-            message.mes = next;
-            await context.saveChat();
-        }
-    };
-    const { eventSource, eventTypes } = context;
-    eventSource.on(eventTypes.MESSAGE_UPDATED, rewrite);
-    eventSource.makeFirst(eventTypes.CHARACTER_MESSAGE_RENDERED, rewrite);
+  const rewrite = async (index) => {
+    const message = context.chat[index];
+    const next = message ? format(message.mes) : undefined;
+    if (next !== undefined && next !== message.mes) {
+      message.mes = next;
+      await context.saveChat();
+    }
+  };
+  const { eventSource, eventTypes } = context;
+  eventSource.on(eventTypes.MESSAGE_UPDATED, rewrite);
+  eventSource.makeFirst(eventTypes.CHARACTER_MESSAGE_RENDERED, rewrite);
 }
 
 /**
@@ -521,8 +553,8 @@ export function installFormatter(context, format) {
  * The user starts a generation — a send, swipe, continue or impersonate. ST emits it
  * with the type, the params and whether it is a dry run (public/script.js:4299).
  */
-export function startGeneration(context, { type = 'normal', dryRun = false } = {}) {
-    return context.eventSource.emit(context.eventTypes.GENERATION_STARTED, type, {}, dryRun);
+export function startGeneration(context, { type = "normal", dryRun = false } = {}) {
+  return context.eventSource.emit(context.eventTypes.GENERATION_STARTED, type, {}, dryRun);
 }
 
 /**
@@ -531,17 +563,17 @@ export function startGeneration(context, { type = 'normal', dryRun = false } = {
  * which unlocks the queue, and a run, as the reply landing would start.
  */
 export function startActive(summarizer, context) {
-    const start = summarizer.start;
-    summarizer.start = () => {
-        start();
-        startGeneration(context);
-        summarizer.drain('the test');
-    };
-    return summarizer;
+  const start = summarizer.start;
+  summarizer.start = () => {
+    start();
+    startGeneration(context);
+    summarizer.drain("the test");
+  };
+  return summarizer;
 }
 
 export async function openChat(context, { chatId, messages }) {
-    context.chatId = chatId;
-    context.chat.splice(0, context.chat.length, ...messages);
-    await context.eventSource.emit(context.eventTypes.CHAT_CHANGED, chatId);
+  context.chatId = chatId;
+  context.chat.splice(0, context.chat.length, ...messages);
+  await context.eventSource.emit(context.eventTypes.CHAT_CHANGED, chatId);
 }

@@ -2,180 +2,191 @@
  * SillyTavern entry point. Bootstrap and wiring only — no logic lives here
  * (CLAUDE.md §1.1). Everything real is a module under src/.
  */
-import { DISPLAY_NAME, SLUG } from './src/constants.js';
-import { createDiskLog } from './src/util/disk-log.js';
-import { createAssembler } from './src/prompt/assembler.js';
-import { createInjector } from './src/prompt/injector.js';
-import { createLoreCap } from './src/prompt/lore-cap.js';
-import { createObserver } from './src/prompt/observer.js';
-import { createStatePlacement } from './src/prompt/state-placement.js';
-import { createSummarizer } from './src/pipeline/summarizer.js';
-import { migrateSettings } from './src/settings.js';
-import { createChatMarks } from './src/ui/chat-marks.js';
-import { createInspector } from './src/ui/inspector.js';
-import { noteSharedProfile, refreshBudget, renderSettingsPanel } from './src/ui/panel.js';
-import { installResummariseButton } from './src/ui/resummarise-button.js';
-import { installAdoptControls } from './src/ui/adopt-panel.js';
-import { installCanonCard } from './src/ui/canon-card.js';
-import { installEditPopup } from './src/ui/edit-popup.js';
-import { error, info, setDebugEnabled, warn } from './src/util/log.js';
+import { DISPLAY_NAME, SLUG } from "./src/constants.js";
+import { createDiskLog } from "./src/util/disk-log.js";
+import { createAssembler } from "./src/prompt/assembler.js";
+import { createInjector } from "./src/prompt/injector.js";
+import { createLoreCap } from "./src/prompt/lore-cap.js";
+import { createObserver } from "./src/prompt/observer.js";
+import { createStatePlacement } from "./src/prompt/state-placement.js";
+import { createSummarizer } from "./src/pipeline/summarizer.js";
+import { migrateSettings } from "./src/settings.js";
+import { createChatMarks } from "./src/ui/chat-marks.js";
+import { createInspector } from "./src/ui/inspector.js";
+import { noteSharedProfile, refreshBudget, renderSettingsPanel } from "./src/ui/panel.js";
+import { installResummariseButton } from "./src/ui/resummarise-button.js";
+import { installAdoptControls } from "./src/ui/adopt-panel.js";
+import { installCanonCard } from "./src/ui/canon-card.js";
+import { installEditPopup } from "./src/ui/edit-popup.js";
+import { error, info, setDebugEnabled, warn } from "./src/util/log.js";
 
 (async function init() {
-    try {
-        const context = SillyTavern.getContext();
+  try {
+    const context = SillyTavern.getContext();
 
-        // Settings are migrated on every load, so an old install lands on the
-        // current shape before anything reads it.
-        const settings = migrateSettings(context.extensionSettings[SLUG]);
-        context.extensionSettings[SLUG] = settings;
-        context.saveSettingsDebounced();
-        setDebugEnabled(settings.debugLogging);
+    // Settings are migrated on every load, so an old install lands on the
+    // current shape before anything reads it.
+    const settings = migrateSettings(context.extensionSettings[SLUG]);
+    context.extensionSettings[SLUG] = settings;
+    context.saveSettingsDebounced();
+    setDebugEnabled(settings.debugLogging);
 
-        const getContext = () => SillyTavern.getContext();
+    const getContext = () => SillyTavern.getContext();
 
-        const diskLog = createDiskLog();
-        diskLog.setEnabled(settings.logToDisk);
+    const diskLog = createDiskLog();
+    diskLog.setEnabled(settings.logToDisk);
 
-        // The lorebook's ceiling, which is ST's own setting and ships at no cap
-        // (src/prompt/lore-cap.js, D-0069, D-0098). Synced before the first plan and
-        // every generation, so the reserve and ST's scan read the same number.
-        const loreCap = createLoreCap({ settings: () => settings, save: () => context.saveSettingsDebounced() });
-        await loreCap.sync(context);
+    // The lorebook's ceiling, which is ST's own setting and ships at no cap
+    // (src/prompt/lore-cap.js, D-0069, D-0098). Synced before the first plan and
+    // every generation, so the reserve and ST's scan read the same number.
+    const loreCap = createLoreCap({
+      settings: () => settings,
+      save: () => context.saveSettingsDebounced(),
+    });
+    await loreCap.sync(context);
 
-        // Plans the memory block every turn. Whether the plan is written is the
-        // handover gate's call (src/prompt/handover.js, docs/decisions.md D-0027).
-        // `settings` is read for the world state's reserve, which is 0 while the
-        // state is off (src/prompt/reserves.js).
-        const assembler = createAssembler(getContext, {
-            own: settings.ownMemoryBlock,
-            settings: () => settings,
-        });
+    // Plans the memory block every turn. Whether the plan is written is the
+    // handover gate's call (src/prompt/handover.js, docs/decisions.md D-0027).
+    // `settings` is read for the world state's reserve, which is 0 while the
+    // state is off (src/prompt/reserves.js).
+    const assembler = createAssembler(getContext, {
+      own: settings.ownMemoryBlock,
+      settings: () => settings,
+    });
 
-        // ST resolves the manifest's `generate_interceptor` off globalThis
-        // (extensions.js:2035), so the name here must match manifest.json. It is
-        // the only hook still ahead of prompt assembly, so every write happens in
-        // it: the World Info hold, the memory block and the world state.
-        const statePlacement = createStatePlacement(getContext, { settings: () => settings });
-        const injector = createInjector(getContext, { memory: assembler, state: statePlacement });
-        injector.setHoldEnabled(settings.holdWorldInfo);
-        globalThis.cairn_intercept = injector.intercept;
+    // ST resolves the manifest's `generate_interceptor` off globalThis
+    // (extensions.js:2035), so the name here must match manifest.json. It is
+    // the only hook still ahead of prompt assembly, so every write happens in
+    // it: the World Info hold, the memory block and the world state.
+    const statePlacement = createStatePlacement(getContext, { settings: () => settings });
+    const injector = createInjector(getContext, { memory: assembler, state: statePlacement });
+    injector.setHoldEnabled(settings.holdWorldInfo);
+    globalThis.cairn_intercept = injector.intercept;
 
-        // Writes Cairn's own summaries and world state after each reply. Each kind gates
-        // itself (src/pipeline/gates.js), so only `enabled` starts and stops it here.
-        let inspector;
-        let canonCard;
-        const summarizer = createSummarizer(getContext, {
-            settings: () => settings,
-            // The budget a compaction pass needs lives in the assembler, so the pass it
-            // works out each turn comes through rather than being derived twice
-            // (docs/decisions.md D-0057).
-            memory: () => assembler.pendingPass,
-            // Every memory call gets its own line, adoptions included (D-0093).
-            onCall: (entry) => diskLog.appendCall(entry, getContext),
-            onUpdate: () => {
-                inspector?.summaries(summarizer.status);
-                marks.refresh();
-                canonCard?.refresh();
-            },
-        });
-        // The summaries and states under their messages, and the only in-chat sign one is being written.
-        const marks = createChatMarks(getContext, { status: () => summarizer.status, settings: () => settings });
-        installResummariseButton(summarizer);
-        installEditPopup(getContext, summarizer);
+    // Writes Cairn's own summaries and world state after each reply. Each kind gates
+    // itself (src/pipeline/gates.js), so only `enabled` starts and stops it here.
+    let inspector;
+    let canonCard;
+    const summarizer = createSummarizer(getContext, {
+      settings: () => settings,
+      // The budget a compaction pass needs lives in the assembler, so the pass it
+      // works out each turn comes through rather than being derived twice
+      // (docs/decisions.md D-0057).
+      memory: () => assembler.pendingPass,
+      // Every memory call gets its own line, adoptions included (D-0093).
+      onCall: (entry) => diskLog.appendCall(entry, getContext),
+      onUpdate: () => {
+        inspector?.summaries(summarizer.status);
+        marks.refresh();
+        canonCard?.refresh();
+      },
+    });
+    // The summaries and states under their messages, and the only in-chat sign one is being written.
+    const marks = createChatMarks(getContext, {
+      status: () => summarizer.status,
+      settings: () => settings,
+    });
+    installResummariseButton(summarizer);
+    installEditPopup(getContext, summarizer);
 
-        const observer = createObserver(getContext, {
-            onSnapshot: (snapshot) => {
-                inspector?.render(snapshot);
-                canonCard?.refresh();
-                diskLog.append(snapshot, getContext);
-            },
-            holding: () => (settings.holdWorldInfo ? injector.remembered.size : null),
-            trimmed: () => injector.lastTrim,
-            // The plan the interceptor already acted on. Nothing measured here
-            // flows back into the next plan (docs/decisions.md D-0033).
-            memory: () => assembler.latest,
-            summaries: () => summarizer.status,
-            state: () => statePlacement.latest,
-        });
+    const observer = createObserver(getContext, {
+      onSnapshot: (snapshot) => {
+        inspector?.render(snapshot);
+        canonCard?.refresh();
+        diskLog.append(snapshot, getContext);
+      },
+      holding: () => (settings.holdWorldInfo ? injector.remembered.size : null),
+      trimmed: () => injector.lastTrim,
+      // The plan the interceptor already acted on. Nothing measured here
+      // flows back into the next plan (docs/decisions.md D-0033).
+      memory: () => assembler.latest,
+      summaries: () => summarizer.status,
+      state: () => statePlacement.latest,
+    });
 
-        inspector = createInspector(await renderSettingsPanel(context, {
-            onEnabledChange: (enabled) => {
-                loreCap.sync(getContext());
-                if (enabled) {
-                    observer.start();
-                    injector.start();
-                    summarizer.start();
-                    marks.start();
-                } else {
-                    observer.stop();
-                    injector.stop();
-                    summarizer.stop();
-                    marks.stop();
-                }
-            },
-            onCollapseSummariesChange: () => marks.refresh(),
-            onLogToDiskChange: (enabled) => diskLog.setEnabled(enabled),
-            onHoldWorldInfoChange: (enabled) => injector.setHoldEnabled(enabled),
-            onLoreFractionChange: () => loreCap.sync(getContext()),
-            onOwnMemoryBlockChange: (enabled) => assembler.setOwnEnabled(enabled),
-            // Off takes effect at the next generation; on may have a state to bring up to date.
-            onWorldStateChange: () => {
-                summarizer.drain('the world state setting');
-                marks.refresh();
-            },
-            // Off takes effect at the next generation; on waits for the next pressure.
-            onKeepCanonChange: () => {
-                summarizer.drain('the keep canon setting');
-                canonCard?.refresh();
-            },
-            onCanonSlotsChange: () => canonCard?.refresh(),
-            // A newly chosen profile may have a backlog waiting for it.
-            onMemoryProfileChange: () => summarizer.drain('the memory profile setting'),
-        }), { canon: () => assembler.canonView });
-        inspector.render(observer.latest);
-        inspector.summaries(summarizer.status);
-        // An adopted chat has new memory throughout, so the next prompt is a rebuild (D-0090).
-        installAdoptControls(context, summarizer, { onAdopted: () => assembler.reset() });
-        canonCard = installCanonCard(getContext, summarizer, assembler, { settings: () => settings });
-
-        // Both follow `enabled` alone: observing is free, and holding degrades
-        // to ST's own scan rather than to a broken prompt (CLAUDE.md §4.17).
-        if (settings.enabled) {
+    inspector = createInspector(
+      await renderSettingsPanel(context, {
+        onEnabledChange: (enabled) => {
+          loreCap.sync(getContext());
+          if (enabled) {
             observer.start();
             injector.start();
             summarizer.start();
             marks.start();
-        }
+          } else {
+            observer.stop();
+            injector.stop();
+            summarizer.stop();
+            marks.stop();
+          }
+        },
+        onCollapseSummariesChange: () => marks.refresh(),
+        onLogToDiskChange: (enabled) => diskLog.setEnabled(enabled),
+        onHoldWorldInfoChange: (enabled) => injector.setHoldEnabled(enabled),
+        onLoreFractionChange: () => loreCap.sync(getContext()),
+        onOwnMemoryBlockChange: (enabled) => assembler.setOwnEnabled(enabled),
+        // Off takes effect at the next generation; on may have a state to bring up to date.
+        onWorldStateChange: () => {
+          summarizer.drain("the world state setting");
+          marks.refresh();
+        },
+        // Off takes effect at the next generation; on waits for the next pressure.
+        onKeepCanonChange: () => {
+          summarizer.drain("the keep canon setting");
+          canonCard?.refresh();
+        },
+        onCanonSlotsChange: () => canonCard?.refresh(),
+        // A newly chosen profile may have a backlog waiting for it.
+        onMemoryProfileChange: () => summarizer.drain("the memory profile setting"),
+      }),
+      { canon: () => assembler.canonView },
+    );
+    inspector.render(observer.latest);
+    inspector.summaries(summarizer.status);
+    // An adopted chat has new memory throughout, so the next prompt is a rebuild (D-0090).
+    installAdoptControls(context, summarizer, { onAdopted: () => assembler.reset() });
+    canonCard = installCanonCard(getContext, summarizer, assembler, { settings: () => settings });
 
-        // A new chat is a new baseline — stability across chats is meaningless.
-        context.eventSource.on(context.eventTypes.CHAT_CHANGED, () => {
-            observer.resetBaseline();
-            injector.reset();
-            assembler.reset();
-            statePlacement.reset();
-            inspector.render(null);
-            inspector.summaries(summarizer.status);
-            canonCard.reset();
-        });
-        // Switching the chat's profile can make Cairn's the same one, or change the context size.
-        context.eventSource.on(context.eventTypes.CONNECTION_PROFILE_LOADED, () => {
-            noteSharedProfile(context);
-            refreshBudget(getContext()).catch((err) => warn('Could not refresh the memory budget table.', err));
-        });
-        // Ahead of ST's World Info scan (script.js:4299, :4635), so a new context size reaches the cap first.
-        context.eventSource.on(context.eventTypes.GENERATION_STARTED, async () => {
-            try {
-                await loreCap.sync(getContext());
-                await refreshBudget(getContext());
-            } catch (err) {
-                warn('Could not update the lorebook cap; the lorebook keeps its budget.', err);
-            }
-        });
-
-        info(`${DISPLAY_NAME} loaded.`);
-    } catch (err) {
-        // Cairn never breaks the chat (CLAUDE.md §4.17): fail loudly in the
-        // console, quietly everywhere else.
-        error('Failed to initialise.', err);
+    // Both follow `enabled` alone: observing is free, and holding degrades
+    // to ST's own scan rather than to a broken prompt (CLAUDE.md §4.17).
+    if (settings.enabled) {
+      observer.start();
+      injector.start();
+      summarizer.start();
+      marks.start();
     }
+
+    // A new chat is a new baseline — stability across chats is meaningless.
+    context.eventSource.on(context.eventTypes.CHAT_CHANGED, () => {
+      observer.resetBaseline();
+      injector.reset();
+      assembler.reset();
+      statePlacement.reset();
+      inspector.render(null);
+      inspector.summaries(summarizer.status);
+      canonCard.reset();
+    });
+    // Switching the chat's profile can make Cairn's the same one, or change the context size.
+    context.eventSource.on(context.eventTypes.CONNECTION_PROFILE_LOADED, () => {
+      noteSharedProfile(context);
+      refreshBudget(getContext()).catch((err) =>
+        warn("Could not refresh the memory budget table.", err),
+      );
+    });
+    // Ahead of ST's World Info scan (script.js:4299, :4635), so a new context size reaches the cap first.
+    context.eventSource.on(context.eventTypes.GENERATION_STARTED, async () => {
+      try {
+        await loreCap.sync(getContext());
+        await refreshBudget(getContext());
+      } catch (err) {
+        warn("Could not update the lorebook cap; the lorebook keeps its budget.", err);
+      }
+    });
+
+    info(`${DISPLAY_NAME} loaded.`);
+  } catch (err) {
+    // Cairn never breaks the chat (CLAUDE.md §4.17): fail loudly in the
+    // console, quietly everywhere else.
+    error("Failed to initialise.", err);
+  }
 })();

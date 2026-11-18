@@ -12,16 +12,16 @@
  * WTrackerLite's manifest.json, and WTracker's at github.com/bmen25124/SillyTavern-WTracker.
  */
 export const WTRACKERS = Object.freeze([
-    Object.freeze({
-        name: 'WTrackerLite',
-        extension: 'third-party/SillyTavern-WTrackerLite',
-        interceptor: 'wtrackerliteGenerateInterceptor',
-    }),
-    Object.freeze({
-        name: 'WTracker',
-        extension: 'third-party/SillyTavern-WTracker',
-        interceptor: 'wtrackerGenerateInterceptor',
-    }),
+  Object.freeze({
+    name: "WTrackerLite",
+    extension: "third-party/SillyTavern-WTrackerLite",
+    interceptor: "wtrackerliteGenerateInterceptor",
+  }),
+  Object.freeze({
+    name: "WTracker",
+    extension: "third-party/SillyTavern-WTracker",
+    interceptor: "wtrackerGenerateInterceptor",
+  }),
 ]);
 
 /**
@@ -36,9 +36,12 @@ export const WTRACKERS = Object.freeze([
  * @returns {string|null} Its display name.
  */
 export function wtrackerLoaded(context, { scope = globalThis } = {}) {
-    const { extensionSettings, getExtensionManifest } = context ?? {};
-    const disabled = extensionSettings?.disabledExtensions ?? [];
-    const loaded = WTRACKERS.find((tracker) => typeof scope?.[tracker.interceptor] === 'function'
-        || (Boolean(getExtensionManifest?.(tracker.extension)) && !disabled.includes(tracker.extension)));
-    return loaded?.name ?? null;
+  const { extensionSettings, getExtensionManifest } = context ?? {};
+  const disabled = extensionSettings?.disabledExtensions ?? [];
+  const loaded = WTRACKERS.find(
+    (tracker) =>
+      typeof scope?.[tracker.interceptor] === "function" ||
+      (Boolean(getExtensionManifest?.(tracker.extension)) && !disabled.includes(tracker.extension)),
+  );
+  return loaded?.name ?? null;
 }
