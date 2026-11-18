@@ -370,7 +370,7 @@ describe('the two fidelities', () => {
         // Contiguous and ordered: every compact summary is older than every full one.
         const tiers = fit.kept.map((item) => item.tier);
         expect(tiers.indexOf('full')).toBeGreaterThan(tiers.lastIndexOf('compact'));
-        expect(fit.kept.map((item) => item.index)).toEqual([...fit.kept.map((item) => item.index)].sort((a, b) => a - b));
+        expect(fit.kept.map((item) => item.index)).toEqual(fit.kept.map((item) => item.index).sort((a, b) => a - b));
         // A demoted summary keeps its place and changes only its text.
         const demoted = fit.kept.find((item) => item.tier === 'compact');
         expect(demoted.text).toBe(`line ${demoted.index}`);

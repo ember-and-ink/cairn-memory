@@ -8,6 +8,38 @@ what we believed and why it changed.
 
 ---
 
+## D-0107 — Tooling moves to the cbz-tagger shape: Task, prek, oxlint, jscpd
+**2026-11-18.** Cairn ran on a Makefile and ESLint while cbz-tagger, aspect-archive and the
+other main repos had moved to Task, prek, Rust-based linters and jscpd. One shape across them
+means one set of habits; Matt wanted Cairn to carry the full setup.
+
+**Decided.**
+1. **`Taskfile.yml` replaces the Makefile**, same task names, so CLAUDE.md §9.34 holds as before.
+   Task and prek are npm dev dependencies, so the lockfile pins them as `uv.lock` does elsewhere.
+2. **Oxlint replaces ESLint**, with the same rules: no `structuredClone` in shipped code, the store
+   layer importing only downward (D-0079), console only through `util/log.js`, `no-undef` against
+   the browser and ST globals. Oxlint has no lint-a-string API, so `test/lint-rules.test.js` writes
+   each probe beside a copy of the config in a temp directory and runs the binary.
+3. **jscpd gates `src/`, `scripts/` and `index.js`**; tests are left out, as in cbz-tagger, since
+   their setup repeats on purpose. The first run found four clones: the corpus path and the
+   outside-the-repo guard were defined four and two times over in the scripts, and now live once
+   in `tier-client.mjs`. The fourth, `repairJson` and `closingIndex`, share a bracket step but not
+   a job, and is fenced with `jscpd:ignore` and a reason.
+4. **prek runs on commit** the whitespace and data-file checks, gitleaks over what is staged, and
+   the lint, dupes, test, verify-rules and version tasks the staged files touch (about 4s in all).
+5. CI keeps its job names, so the `main` ruleset is unchanged.
+
+**A trap that cost time:** `npx task` before `npm ci` silently downloads npm's unrelated `task`
+package. Every call that a machine makes is `npx --no -- task`, which fails instead.
+
+**Next, each its own PR:** oxfmt, black-style, with no hand style kept (a whole-tree reformat plus
+`.git-blame-ignore-revs`); then TypeScript 7 `checkJs` over the existing JSDoc.
+
+**Would reopen it:** an oxlint release that drops one of the guarded rules, or jscpd flagging
+twins that are deliberate more often than it finds real copies.
+
+---
+
 ## D-0106 — Canon keeps a changed relationship and where the story moved to, and states a thing as it stands now
 **2026-11-17.** An 89-message hand-written test chat is a story whose heart is two people learning
 to trust each other, far from where they started, and whose character card still describes the

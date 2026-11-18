@@ -3,7 +3,7 @@
  *
  * Mirrors the real shapes rather than inventing convenient ones (CLAUDE.md §3.11).
  * Every field below is cited against the pinned checkout — ST 1.19.0 (06bde939f).
- * When ST moves, `make verify-st` tells us, and this file is updated with it.
+ * When ST moves, `task verify-st` tells us, and this file is updated with it.
  */
 
 /** public/script.js:484 */

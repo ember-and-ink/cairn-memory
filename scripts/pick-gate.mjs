@@ -15,29 +15,18 @@
  * `yardstick.md`, which was frozen in the corpus before any of this ran; whether a spine
  * line is present is a judgment made against that file and written into the decision log.
  *
- * Local only, like `make verify-st`: CI has no corpus.
+ * Local only, like `task verify-st`: CI has no corpus.
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { corpusDir } from './tier-client.mjs';
 import { canonPick, parseCanonReply } from '../src/memory/canon-strategy.js';
 import { applyPick } from '../src/pipeline/canon-pick.js';
 import { DEFAULT_SLOTS } from '../src/memory/canon.js';
 import { renderBlock, CANON_RENDERING } from '../src/prompt/assembler.js';
 import { estimateTokens } from '../src/util/tokens.js';
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DEFAULT_OUT = path.join(homedir(), 'workspaces', 'cairn-corpus', 'p5-stage0');
 
-function outDir(given) {
-    const dir = path.resolve(given ?? DEFAULT_OUT);
-    if (dir === REPO || dir.startsWith(REPO + path.sep)) {
-        throw new Error(`refusing to write corpus content inside the repo: ${dir} (CLAUDE.md §3.13)`);
-    }
-    mkdirSync(dir, { recursive: true });
-    return dir;
-}
 
 const stemOf = (name) => name.replace(/\.json$/, '').replace(/^records-?/, '') || 'reference';
 
@@ -48,7 +37,7 @@ function load(dir, name) {
 }
 
 function prompt(given, name = 'records.json', slots = DEFAULT_SLOTS) {
-    const dir = outDir(given);
+    const dir = corpusDir(given);
     const records = load(dir, name);
     const request = canonPick.build({
         records: records.map((entry) => entry.record),
@@ -64,7 +53,7 @@ function prompt(given, name = 'records.json', slots = DEFAULT_SLOTS) {
 }
 
 function score(given, reply = 'pick-reply.json', name = 'records.json', slots = DEFAULT_SLOTS) {
-    const dir = outDir(given);
+    const dir = corpusDir(given);
     const records = load(dir, name);
     const raw = readFileSync(path.join(dir, reply), 'utf8');
     const summaries = load(dir, 'summaries.json');

@@ -62,7 +62,7 @@ describe('what is waiting to be indexed', () => {
         const waiting = pendingIndex(chat, { readScene, readIndex });
 
         expect(waiting.length).toBeGreaterThan(0);
-        expect(waiting.map((entry) => entry.index)).toEqual([...waiting.map((entry) => entry.index)].sort((a, b) => a - b));
+        expect(waiting.map((entry) => entry.index)).toEqual(waiting.map((entry) => entry.index).sort((a, b) => a - b));
         expect(waiting.every((entry) => readScene(chat[entry.index]).status === 'valid')).toBe(true);
         expect(waiting[0].text).toBe(readScene(chat[waiting[0].index]).scene.text);
     });

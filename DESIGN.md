@@ -349,8 +349,9 @@ inspector early or tune blind.
 ## 11. Module layout
 
 House style: raw browser ES modules, **no build step**, `manifest.json` lists what loads. Tooling
-copied verbatim from `SillyTavern-Character-Tools` — `Makefile` (`make install` / `make check`),
-flat `eslint.config.mjs` with browser + `SillyTavern`/`toastr` globals, `vitest` on
+first copied from `SillyTavern-Character-Tools`, now on the cbz-tagger shape (D-0107) —
+`Taskfile.yml` (`task install` / `task check`), `.oxlintrc.json` with browser +
+`SillyTavern`/`toastr` globals, `vitest` on
 `test/**/*.test.js`, `package.json` `private` + `type: module`. CSS classes take a short
 per-extension slug; style against `--SmartTheme*` variables.
 
@@ -409,7 +410,7 @@ test/
   mocks/                  ST + memory-model mocks, each citing the shape it mirrors
 ```
 
-Tooling around it: `Makefile` (`make check` is the gate), flat `eslint.config.mjs`, `vitest`,
+Tooling around it: `Taskfile.yml` (`task check` is the gate), oxlint, jscpd, prek, `vitest`,
 `scripts/verify-st.mjs` (re-checks `docs/st-api-surface.md` against a local ST checkout), and
 GitHub Actions for lint / tests on Node 20-24 / secret scan / version check / CodeQL.
 

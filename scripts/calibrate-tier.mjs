@@ -22,18 +22,15 @@
  * It imports the shipped `renderRecord` and `estimateTokens` rather than reimplementing
  * them, so the number it reports is the number the block would actually cost.
  *
- * Local only, like `make verify-st`: CI has neither a corpus nor a chat.
+ * Local only, like `task verify-st`: CI has neither a corpus nor a chat.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { corpusDir } from './tier-client.mjs';
 import { renderRecord, renderIndex, validRecord } from '../src/memory/index-record.js';
 import { indexBatch, parseIndexReply, MAX_BATCH } from '../src/memory/index-strategy.js';
 import { estimateTokens } from '../src/util/tokens.js';
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DEFAULT_OUT = path.join(homedir(), 'workspaces', 'cairn-corpus', 'p5-stage0');
 
 /** Messages 1–85 are the real story; past ~85 is filler generated to pad tokens. */
 const REAL_THROUGH = 85;
@@ -41,14 +38,6 @@ const REAL_THROUGH = 85;
 /** The post-reclaim scene budget the horizon is priced against (docs/decisions.md D-0075). */
 const SCENE_CAP = 6362;
 
-function outDir(given) {
-    const dir = path.resolve(given ?? DEFAULT_OUT);
-    if (dir === REPO || dir.startsWith(REPO + path.sep)) {
-        throw new Error(`refusing to write corpus content inside the repo: ${dir} (CLAUDE.md §3.13)`);
-    }
-    mkdirSync(dir, { recursive: true });
-    return dir;
-}
 
 function readChat(file) {
     return readFileSync(file, 'utf8')
@@ -67,7 +56,7 @@ function summaryOf(message) {
 }
 
 function extract(file, given) {
-    const dir = outDir(given);
+    const dir = corpusDir(given);
     const lines = readChat(file);
     // Line 0 is chat metadata, so message n is line n. The window is over messages.
     const summaries = [];
@@ -106,7 +95,7 @@ function extract(file, given) {
  * them, `assemble`, `measure`. The prompt is `indexBatch.build`'s, not a copy of it.
  */
 function batches(given) {
-    const dir = outDir(given);
+    const dir = corpusDir(given);
     const summaries = JSON.parse(readFileSync(path.join(dir, 'summaries.json'), 'utf8'));
     const written = [];
 
@@ -132,7 +121,7 @@ function batches(given) {
  * owns in play (memory/index-strategy.js).
  */
 function assemble(given, name = 'records.json') {
-    const dir = outDir(given);
+    const dir = corpusDir(given);
     if (existsSync(path.join(dir, name))) {
         throw new Error(`${name} already exists in ${dir} — nothing in the corpus is overwritten (CLAUDE.md §3.14)`);
     }
@@ -166,7 +155,7 @@ function assemble(given, name = 'records.json') {
 }
 
 function measure(given, name = 'records.json', { sceneCap = SCENE_CAP } = {}) {
-    const dir = outDir(given);
+    const dir = corpusDir(given);
     const summaries = JSON.parse(readFileSync(path.join(dir, 'summaries.json'), 'utf8'));
     const recordsFile = path.join(dir, name);
     if (!existsSync(recordsFile)) throw new Error(`no ${name} in ${dir} — the labelling pass writes it`);

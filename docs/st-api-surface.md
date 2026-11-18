@@ -1,7 +1,7 @@
 # SillyTavern API surface
 
 Every ST API Cairn depends on, and the `file:line` it was verified against
-(CLAUDE.md §2.6–2.7). `make verify-st` re-checks this file against a local
+(CLAUDE.md §2.6–2.7). `task verify-st` re-checks this file against a local
 checkout and reports anything that moved.
 
 **Pinned: ST 1.19.0 (`06bde939f`)**

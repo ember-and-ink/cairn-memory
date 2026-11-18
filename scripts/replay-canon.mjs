@@ -21,19 +21,17 @@
  */
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { homedir } from 'node:os';
 import path from 'node:path';
-import { REPO, complete, freshDir, loadKey, log, outsideRepo, pad, say, slugOf } from './tier-client.mjs';
+import { REPO, STAGE0, complete, freshDir, loadKey, log, outsideRepo, pad, readSummaries, say, slugOf } from './tier-client.mjs';
 import { indexBatch, parseIndexReply } from '../src/memory/index-strategy.js';
 import { canonPick, parseCanonReply } from '../src/memory/canon-strategy.js';
 import { DEFAULT_SLOTS } from '../src/memory/canon.js';
 import { applyPick } from '../src/pipeline/canon-pick.js';
 
-const DEFAULT_DIR = path.join(homedir(), 'workspaces', 'cairn-corpus', 'p5-stage0');
 const RECORDS = 'records-replay.json';
 
 function parseArgs(argv) {
-    const args = { model: 'z-ai/glm-5.3', every: 8, slots: DEFAULT_SLOTS, dir: DEFAULT_DIR, records: null, prompt: null };
+    const args = { model: 'z-ai/glm-5.3', every: 8, slots: DEFAULT_SLOTS, dir: STAGE0, records: null, prompt: null };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--every') args.every = Number(argv[++i]);
@@ -58,7 +56,7 @@ function carried(facts, records) {
 async function main() {
     const args = parseArgs(process.argv.slice(2));
     const key = loadKey();
-    const summaries = JSON.parse(readFileSync(path.join(args.dir, 'summaries.json'), 'utf8'));
+    const summaries = readSummaries(args.dir);
     const fixed = args.records ? JSON.parse(readFileSync(args.records, 'utf8')) : null;
     const template = args.prompt ? readFileSync(args.prompt, 'utf8') : undefined;
     if (template !== undefined && !template.includes('{{index}}')) throw new Error('--prompt must keep {{index}}');

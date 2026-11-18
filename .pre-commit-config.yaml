@@ -1,0 +1,78 @@
+---
+# Run by prek (https://prek.j178.dev/), a Rust drop-in for pre-commit that reads
+# this file unchanged. `npx --no -- task pre-commit-install` installs the hooks once per
+# checkout; `npx --no -- task pre-commit` runs every hook against the whole tree. Mirrors
+# the CI gate, so a commit that would fail CI fails here first.
+
+# Old-shape store fixtures stay byte-exact (CLAUDE.md §8.32).
+exclude: ^test/fixtures/
+
+repos:
+  # prek runs these with its own built-in Rust implementations rather than
+  # cloning the repo and building a Python environment for them.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: check-added-large-files
+      - id: check-json
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Staged changes only; CI scans the whole history.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # Validate Taskfile.yml against Task's own JSON schema, so a misspelled key or
+  # a wrong type fails here rather than at run time.
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.39.0
+    hooks:
+      - id: check-taskfile
+
+  # These invoke tasks that operate on the whole tree, so filenames must not be
+  # appended — `task lint-check foo.js` would read foo.js as a second task name.
+  # `npx --no -- task` runs the Task in package-lock.json and fails, rather than
+  # fetching npm's unrelated `task` package, before `npm ci`. Each task runs the tool
+  # version locked there, so a local pass matches CI.
+  #
+  # The `files` filters decide whether a hook runs at all: it runs once, over the
+  # whole tree, when any staged file matches.
+  - repo: local
+    hooks:
+      - id: lint-check
+        name: Check code for lint errors with oxlint
+        entry: npx --no -- task lint-check
+        language: system
+        pass_filenames: false
+        files: (\.m?js|^\.oxlintrc\.json)$
+      - id: lint-dupes
+        name: Check for copy-pasted code with jscpd
+        entry: npx --no -- task lint-dupes
+        language: system
+        pass_filenames: false
+        files: ^(src/|scripts/|index\.js$|\.jscpd\.json$)
+      - id: test
+        name: Run the unit tests
+        entry: npx --no -- task test
+        language: system
+        pass_filenames: false
+        files: (\.m?js|^\.oxlintrc\.json|^package-lock\.json)$
+      # Rule, doc, decision and source-path references live in prose and code alike.
+      - id: verify-rules
+        name: Check rule, doc and decision references resolve
+        entry: npx --no -- task verify-rules
+        language: system
+        pass_filenames: false
+        files: (\.md|\.m?js)$
+      - id: version-check
+        name: manifest.json and package.json versions agree
+        entry: npx --no -- task version-check
+        language: system
+        pass_filenames: false
+        files: ^(manifest|package)\.json$

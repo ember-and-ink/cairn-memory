@@ -305,6 +305,6 @@ describe('parsing an index reply — the mess suite (CLAUDE.md §3.12)', () => {
             'overlong', 'manyNames', 'whoAsString', 'judged', 'mood', 'empty',
             'fullwidthComma', 'cutAfterRecord',
         ]);
-        expect([...Object.keys(badIndexOutputs)].filter((shape) => !covered.has(shape))).toEqual([]);
+        expect(Object.keys(badIndexOutputs).filter((shape) => !covered.has(shape))).toEqual([]);
     });
 });
