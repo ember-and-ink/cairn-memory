@@ -7,6 +7,12 @@
  * each over the story so far and starting from the last answer.
  *
  *   node scripts/replay-canon.mjs [model] [--every N] [--slots N] [--dir corpusDir]
+ *                                 [--records records.json] [--prompt template.md]
+ *
+ * `--records` reads the index from a file (`[{n, record}]`, the shape this script writes as
+ * `records-replay.json`) instead of indexing, so two runs that differ only in the canon prompt
+ * read the same rows. `--prompt` is a canon template to try in place of the shipped one; it
+ * must keep `{{index}}`, as the settings field must.
  *
  * Writes a fresh `replay/<model>/run-N/` under the corpus and refuses one that exists
  * (CLAUDE.md §3.14): every step's prompt, reply and canon, `evolution.md` showing how the
@@ -27,12 +33,14 @@ const DEFAULT_DIR = path.join(homedir(), 'workspaces', 'cairn-corpus', 'p5-stage
 const RECORDS = 'records-replay.json';
 
 function parseArgs(argv) {
-    const args = { model: 'z-ai/glm-5.3', every: 8, slots: DEFAULT_SLOTS, dir: DEFAULT_DIR };
+    const args = { model: 'z-ai/glm-5.3', every: 8, slots: DEFAULT_SLOTS, dir: DEFAULT_DIR, records: null, prompt: null };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--every') args.every = Number(argv[++i]);
         else if (a === '--slots') args.slots = Number(argv[++i]);
         else if (a === '--dir') args.dir = path.resolve(argv[++i]);
+        else if (a === '--records') args.records = path.resolve(argv[++i]);
+        else if (a === '--prompt') args.prompt = path.resolve(argv[++i]);
         else if (!a.startsWith('--')) args.model = a;
         else throw new Error(`unknown argument: ${a}`);
     }
@@ -51,6 +59,9 @@ async function main() {
     const args = parseArgs(process.argv.slice(2));
     const key = loadKey();
     const summaries = JSON.parse(readFileSync(path.join(args.dir, 'summaries.json'), 'utf8'));
+    const fixed = args.records ? JSON.parse(readFileSync(args.records, 'utf8')) : null;
+    const template = args.prompt ? readFileSync(args.prompt, 'utf8') : undefined;
+    if (template !== undefined && !template.includes('{{index}}')) throw new Error('--prompt must keep {{index}}');
 
     let n = 1;
     while (existsSync(path.join(args.dir, 'replay', slugOf(args.model), `run-${n}`))) n++;
@@ -60,28 +71,37 @@ async function main() {
 
     const records = [];
     let facts = [];
-    const evolution = ['# Canon at the pace of the story', '', `${args.model}, a pick every ${args.every} summaries, ${args.slots} slots.`, ''];
+    const evolution = ['# Canon at the pace of the story', '', `${args.model}, a pick every ${args.every} summaries, ${args.slots} slots`
+        + `${fixed ? `, index from ${path.basename(args.records)}` : ''}${template !== undefined ? `, prompt ${path.basename(args.prompt)}` : ''}.`, ''];
+    if (template !== undefined) copyFileSync(args.prompt, path.join(dir, 'canon-prompt.md'));
     let lastReply = null;
 
     for (let start = 0, step = 1; start < summaries.length; start += args.every, step++) {
         const batch = summaries.slice(start, start + args.every);
-        const indexRequest = indexBatch.build({ summaries: batch.map((s) => ({ text: s.text })) });
-        const indexReply = await complete(args.model, indexRequest, key);
-        writeFileSync(path.join(dir, `index-reply-${pad(step)}.json`), indexReply.content);
-        log(dir, { kind: 'index', step, model: args.model, ...indexReply });
-        say('index', `step ${pad(step)}`, indexReply);
-        const parsed = parseIndexReply(indexReply.content, { count: batch.length });
-        if (parsed.ok) {
-            for (const { n: within, ...record } of parsed.records) records.push({ n: batch[within - 1].n, record });
+        if (fixed) {
+            const last = batch[batch.length - 1].n;
+            const known = new Set(records.map((entry) => entry.n));
+            for (const entry of fixed) if (entry.n <= last && !known.has(entry.n)) records.push(entry);
             records.sort((a, b) => a.n - b.n);
         } else {
-            console.log(`  index step ${step} rejected (${parsed.reason}); those summaries have no records`);
+            const indexRequest = indexBatch.build({ summaries: batch.map((s) => ({ text: s.text })) });
+            const indexReply = await complete(args.model, indexRequest, key);
+            writeFileSync(path.join(dir, `index-reply-${pad(step)}.json`), indexReply.content);
+            log(dir, { kind: 'index', step, model: args.model, ...indexReply });
+            say('index', `step ${pad(step)}`, indexReply);
+            const parsed = parseIndexReply(indexReply.content, { count: batch.length });
+            if (parsed.ok) {
+                for (const { n: within, ...record } of parsed.records) records.push({ n: batch[within - 1].n, record });
+                records.sort((a, b) => a.n - b.n);
+            } else {
+                console.log(`  index step ${step} rejected (${parsed.reason}); those summaries have no records`);
+            }
         }
 
         const through = batch[batch.length - 1].n;
         if (!records.length) continue;
         const previous = carried(facts, records);
-        const pickRequest = canonPick.build({ records: records.map((entry) => entry.record), slots: args.slots, previous });
+        const pickRequest = canonPick.build({ records: records.map((entry) => entry.record), slots: args.slots, previous, template });
         writeFileSync(path.join(dir, `pick-prompt-${pad(step)}.md`), pickRequest.messages[0].content + '\n');
         const pickReply = await complete(args.model, pickRequest, key);
         writeFileSync(path.join(dir, `pick-reply-${pad(step)}.json`), pickReply.content);

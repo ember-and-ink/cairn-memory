@@ -51,6 +51,11 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Changed
 
+- **Canon keeps what a story turns on.** The canon prompt now keeps a relationship that has
+  changed for good and where the story has moved to, gives one thing one fact, and states it
+  as it stands now — "the boat sank", never "she owns a boat" once it has sunk. If you have
+  edited the canon prompt, yours is kept; **Reset to default** takes the new one.
+
 - **Canon keeps up with the story.** Canon is picked again about once a step, each pick
   starting from the canon so far, and a newer pick reaches the prompt at the next step
   instead of waiting for a page reload or for the memory block to fill. In a roomy chat
