@@ -35,6 +35,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
     indexPrompt: '',
     canonPrompt: '',
     statePrompt: '',
+    /** Start each summary under its message folded. Display only; it can always be opened or folded. */
+    collapseSummaries: false,
     /** Show the prompt inspector panel (DESIGN.md §10). */
     showInspector: true,
     /** Verbose console output. */

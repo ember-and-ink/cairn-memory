@@ -287,10 +287,6 @@
     opacity: 0.85;
 }
 
-.cairn-scene-label {
-    font-weight: bold;
-}
-
 /* The pencils after Cairn's summary and world state: the text's own size and colour, no box (D-0099, D-0100). */
 .cairn-scene-edit,
 .cairn-state-edit,
@@ -331,7 +327,7 @@
     opacity: 0.5;
 }
 
-/* The world state and Established facts on their messages, collapsed (src/ui/chat-marks.js). */
+/* The summary, world state and Established facts on their messages, as sections that fold (src/ui/chat-marks.js). */
 
 .cairn-state,
 .cairn-canon {
@@ -340,12 +336,14 @@
     opacity: 0.85;
 }
 
+.cairn-scene > summary,
 .cairn-state > summary,
 .cairn-canon > summary {
     cursor: pointer;
     font-weight: bold;
 }
 
+.cairn-scene > pre,
 .cairn-state > pre,
 .cairn-canon > pre {
     margin: 4px 0 0 0;

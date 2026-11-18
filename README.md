@@ -81,7 +81,8 @@ is on by default. Until you pick a profile, Cairn does nothing.
 ## Using it
 
 Cairn runs in the background and never blocks sending. Each message gets a
-summary, with a collapsed **World state** under it. In a message's actions menu:
+summary, with a collapsed **World state** under it. Either one folds with a click,
+and **Collapse Cairn summaries automatically** starts the summaries folded. In a message's actions menu:
 
 - **Summarise with Cairn** (stacked cubes) redoes that message's summary.
 - **Rebuild the world state** (stacked boxes) redoes the world state on that message.
