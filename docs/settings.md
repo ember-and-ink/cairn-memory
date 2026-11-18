@@ -7,6 +7,7 @@ Every setting has a default that works, and the only one you have to set is
 | Setting | Default | What it does |
 |---|---|---|
 | Enabled | On | Turns Cairn off without uninstalling it. Memory already written is kept. |
+| Collapse Cairn summaries automatically | Off | Starts each summary under its message folded, like the World state. Any summary can be opened or folded by clicking it either way; this only picks how they start. |
 
 ## Memory model
 

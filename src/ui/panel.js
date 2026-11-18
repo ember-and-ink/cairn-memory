@@ -18,6 +18,7 @@ import { escapeHtml } from './html.js';
  * Render the panel into ST's extension settings column and bind its controls.
  * @param {object} context SillyTavern.getContext()
  * @param {{onEnabledChange?: (enabled: boolean) => void,
+ *           onCollapseSummariesChange?: (collapsed: boolean) => void,
  *           onLogToDiskChange?: (enabled: boolean) => void,
  *           onHoldWorldInfoChange?: (enabled: boolean) => void,
  *           onLoreFractionChange?: (fraction: number) => void,
@@ -35,6 +36,7 @@ export async function renderSettingsPanel(context, handlers = {}) {
 
     // The panel reports the change; index.js decides what it means.
     bind(context, 'enabled', CHECKBOX, (value) => handlers.onEnabledChange?.(value));
+    bind(context, 'collapseSummaries', CHECKBOX, (value) => handlers.onCollapseSummariesChange?.(value));
     bind(context, 'showInspector', CHECKBOX, (value) => toggleInspector(value));
     bind(context, 'logToDisk', CHECKBOX, (value) => handlers.onLogToDiskChange?.(value));
     bind(context, 'holdWorldInfo', CHECKBOX, (value) => handlers.onHoldWorldInfoChange?.(value));

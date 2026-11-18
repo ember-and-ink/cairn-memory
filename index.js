@@ -113,6 +113,7 @@ import { error, info, setDebugEnabled, warn } from './src/util/log.js';
                     marks.stop();
                 }
             },
+            onCollapseSummariesChange: () => marks.refresh(),
             onLogToDiskChange: (enabled) => diskLog.setEnabled(enabled),
             onHoldWorldInfoChange: (enabled) => injector.setHoldEnabled(enabled),
             onLoreFractionChange: () => loreCap.sync(getContext()),

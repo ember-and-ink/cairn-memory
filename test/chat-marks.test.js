@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    EDIT_HTML, STATE_WRITING_HTML, markMessages, renderMark, renderStateBody, renderStateTitle, stateMarks, stateWriting,
+    EDIT_HTML, STATE_WRITING_HTML, markMessages, renderMark, renderSceneTitle, renderStateBody, renderStateTitle, stateMarks, stateWriting,
 } from '../src/ui/chat-marks.js';
 import { QVINK_EXTENSION, qvinkDisplaying } from '../src/interop/qvink.js';
 import { STATE_HEADER, renderState } from '../src/memory/state-schema.js';
@@ -38,7 +38,7 @@ describe('what each message shows', () => {
         expect(marks.get(3)).toMatchObject({ state: 'qvink', excluded: false });
         expect(marks.get(3).text).toBe(chat()[3].extra.qvink_memory.memory);
         expect(marks.get(10).state).toBe('written');
-        expect(renderMark(marks.get(3))).toContain('Qvink:</span>');
+        expect(renderSceneTitle(marks.get(3))).toBe('Qvink summary');
     });
 
     it('marks a qvink summary the block leaves out, unless it is remembered', () => {
@@ -49,7 +49,7 @@ describe('what each message shows', () => {
         const marks = markMessages(excluded, null, { showQvink: true });
 
         expect(marks.get(3).excluded).toBe(true);
-        expect(renderMark(marks.get(3))).toContain('Qvink (excluded):');
+        expect(renderSceneTitle(marks.get(3))).toBe('Qvink summary (excluded)');
         expect(marks.get(4).excluded).toBe(false);
     });
 
@@ -188,12 +188,20 @@ describe('how a mark reads', () => {
     it('ends Cairn\'s own summary with the pencil, joined to the last word', () => {
         const html = renderMark({ state: 'written', text: 'Fog arrived.' });
 
-        expect(html.endsWith(`Fog arrived.&nbsp;${EDIT_HTML}`)).toBe(true);
+        expect(html).toBe(`Fog arrived.&nbsp;${EDIT_HTML}`);
         expect(html).not.toContain('(edited)');
     });
 
     it('says an edited summary was edited, after the pencil', () => {
         expect(renderMark({ state: 'written', text: 'Fog arrived.', edited: true }).endsWith(`${EDIT_HTML} (edited)`)).toBe(true);
+    });
+
+    it('folds a summary under a line naming whose it is, and leaves a status line unfolded', () => {
+        expect(renderSceneTitle({ state: 'written', text: 'Fog arrived.' })).toBe('Cairn summary');
+        expect(renderSceneTitle({ state: 'qvink', text: 'Q.', excluded: false })).toBe('Qvink summary');
+        for (const state of ['writing', 'waiting', 'failed', 'given-up']) {
+            expect(renderSceneTitle({ state, reason: 'empty', attempts: 1 })).toBeNull();
+        }
     });
 
     it('has no pencil on anything else: there is nothing of Cairn\'s to edit (D-0099)', () => {

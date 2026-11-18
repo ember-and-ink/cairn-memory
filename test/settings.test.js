@@ -16,6 +16,12 @@ describe('migrateSettings', () => {
         expect(migrateSettings({ version: SETTINGS_VERSION, worldState: false }).worldState).toBe(false);
     });
 
+    it('starts summaries open: folding them is the reader\'s choice', () => {
+        expect(DEFAULT_SETTINGS.collapseSummaries).toBe(false);
+        expect(migrateSettings({ version: SETTINGS_VERSION }).collapseSummaries).toBe(false);
+        expect(migrateSettings({ version: SETTINGS_VERSION, collapseSummaries: true }).collapseSummaries).toBe(true);
+    });
+
     it('defaults the budget to the constants it replaced, and the prompts to the built-in ones (D-0085)', () => {
         expect(DEFAULT_SETTINGS).toMatchObject({
             memoryFraction: 0.35, canonFraction: 0.20, compactFraction: 0.20, rawWindow: 8, step: 8,

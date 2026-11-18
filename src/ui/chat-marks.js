@@ -8,7 +8,7 @@
  * is being written for, whether the queue or the rebuild button asked (D-0089). Nothing here waits on it, and
  * nothing here blocks the chat (docs/how-it-works.md, "Writing summaries").
  *
- * `markMessages` and `renderMark` are pure. `createChatMarks` is the DOM glue.
+ * `markMessages`, `renderMark` and `renderSceneTitle` are pure. `createChatMarks` is the DOM glue.
  */
 import { SLUG } from '../constants.js';
 import { pendingScenes, readScenes } from '../memory/scenes.js';
@@ -110,16 +110,25 @@ export const STATE_WRITING_HTML = '<i class="fa-solid fa-spinner fa-spin"></i> C
  */
 export const EDIT_HTML = `<i class="${SLUG}-scene-edit fa-solid fa-pen" role="button" tabindex="0" title="Edit this summary"></i>`;
 
+/**
+ * The line a summary folds under, or null for a mark that is only a status line: there
+ * is nothing behind "writing" or a failure to fold away.
+ */
+export function renderSceneTitle(mark) {
+    if (mark.state === 'written') return 'Cairn summary';
+    // Excluded in qvink, so the block leaves it out.
+    if (mark.state === 'qvink') return mark.excluded ? 'Qvink summary (excluded)' : 'Qvink summary';
+    return null;
+}
+
 /** @returns {string} The mark's inner HTML. Scene text is escaped, never formatted. */
 export function renderMark(mark) {
     switch (mark.state) {
         case 'written':
             // A no-break space, so the pencil wraps with the last word rather than alone.
-            return `<span class="${SLUG}-scene-label">Cairn:</span> ${escapeHtml(mark.text)}&nbsp;${EDIT_HTML}`
-                + (mark.edited ? ' (edited)' : '');
+            return `${escapeHtml(mark.text)}&nbsp;${EDIT_HTML}` + (mark.edited ? ' (edited)' : '');
         case 'qvink':
-            // Excluded in qvink, so the block leaves it out.
-            return `<span class="${SLUG}-scene-label">${mark.excluded ? 'Qvink (excluded):' : 'Qvink:'}</span> ${escapeHtml(mark.text)}`;
+            return escapeHtml(mark.text);
         case 'writing':
             return `<i class="fa-solid fa-spinner fa-spin"></i> Cairn is summarising this message…`;
         case 'waiting':
@@ -137,12 +146,14 @@ export function renderMark(mark) {
 /**
  * @param {() => object} getContext
  * @param {{status: () => (object|null),
- *          settings?: () => {worldState?: boolean, keepCanon?: boolean}}} options
+ *          settings?: () => {worldState?: boolean, keepCanon?: boolean, collapseSummaries?: boolean}}} options
  */
 export function createChatMarks(getContext, { status, settings }) {
     let running = false;
     /** What each mark element last drew, so an unchanged mark is not rewritten. */
     const drawn = new WeakMap();
+    /** The fold the summaries were last given, so a change of setting reaches those already drawn. */
+    let folded = null;
 
     /** Never throws: a mark that cannot be drawn costs the mark (CLAUDE.md §4.17). */
     function refresh() {
@@ -163,6 +174,11 @@ export function createChatMarks(getContext, { status, settings }) {
             // fact cannot be taken back, so seeing it is the only check there is.
             const showCanon = running && settings?.()?.keepCanon !== false;
             const facts = showCanon ? canonTexts(context.chat) : new Map();
+            const fold = settings?.()?.collapseSummaries === true;
+            if (folded !== null && folded !== fold) {
+                for (const node of root.querySelectorAll(`details.${SLUG}-scene`)) node.open = !fold;
+            }
+            folded = fold;
             for (const element of root.querySelectorAll('.mes[mesid]')) {
                 const index = Number(element.getAttribute('mesid'));
                 draw(element, marks.get(index));
@@ -177,8 +193,16 @@ export function createChatMarks(getContext, { status, settings }) {
 
     function draw(element, mark) {
         let node = element.querySelector(`.${SLUG}-scene`);
-        if (!mark) {
+        const title = mark ? renderSceneTitle(mark) : null;
+        // A summary folds and a status line does not, so going from one to the other is a new node.
+        if (!mark || (node && (node.tagName === 'DETAILS') !== (title !== null))) {
             node?.remove();
+            node = null;
+        }
+        if (!mark) return;
+        const className = `${SLUG}-scene ${SLUG}-scene-${mark.state}${mark.excluded ? ` ${SLUG}-scene-excluded` : ''}`;
+        if (title !== null) {
+            drawDetails(element, 'scene', { title, body: renderMark(mark) }, [], { className, open: !folded });
             return;
         }
         const html = renderMark(mark);
@@ -189,7 +213,7 @@ export function createChatMarks(getContext, { status, settings }) {
             node = document.createElement('div');
             body.after(node);
         }
-        node.className = `${SLUG}-scene ${SLUG}-scene-${mark.state}${mark.excluded ? ` ${SLUG}-scene-excluded` : ''}`;
+        node.className = className;
         node.innerHTML = html;
         drawn.set(node, html);
     }
@@ -229,11 +253,11 @@ export function createChatMarks(getContext, { status, settings }) {
     }
 
     /**
-     * A collapsed section under a message, placed after the first of `after` it has, else
-     * after the body. Only its two parts are rewritten, and only when they change, so an
-     * open section stays open.
+     * A section under a message, placed after the first of `after` it has, else after the
+     * body, and collapsed unless `open`. Only its two parts are rewritten, and only when
+     * they change, so a section the reader opened or folded stays that way.
      */
-    function drawDetails(element, kind, html, after) {
+    function drawDetails(element, kind, html, after, { className = `${SLUG}-${kind}`, open = false } = {}) {
         let node = element.querySelector(`.${SLUG}-${kind}`);
         if (!html) {
             node?.remove();
@@ -243,11 +267,13 @@ export function createChatMarks(getContext, { status, settings }) {
             const body = element.querySelector('.mes_text');
             if (!body) return;
             node = document.createElement('details');
-            node.className = `${SLUG}-${kind}`;
             node.innerHTML = '<summary></summary><pre></pre>';
+            node.open = open;
             const anchor = after.map((name) => element.querySelector(`.${SLUG}-${name}`)).find(Boolean);
             (anchor ?? body).after(node);
         }
+        // A qvink summary can become excluded, or stop being, while its section is open.
+        if (node.className !== className) node.className = className;
         for (const [selector, part] of [['summary', html.title], ['pre', html.body]]) {
             const child = node.querySelector(selector);
             if (drawn.get(child) !== part) {

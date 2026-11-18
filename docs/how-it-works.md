@@ -278,10 +278,11 @@ The message you send is the newest, so it's summarised after the next reply. If
 summaries fall behind, the memory step waits for them instead of moving past.
 
 **In the chat**, each summary appears under its message, where Qvink shows its
-own. While a request is out, the message being summarised says so, and the ones
+own, in a section that folds. They start open; **Collapse Cairn summaries
+automatically** starts them folded. While a request is out, the message being summarised says so, and the ones
 behind it say they're waiting. A failure shows its reason under the message and
 says whether Cairn will retry after the next reply or has given up. Qvink's
-summaries are shown too, as `Qvink:`, while Qvink isn't loaded or has its own
+summaries are shown too, as **Qvink summary**, while Qvink isn't loaded or has its own
 display turned off, and one excluded in Qvink is dimmed. The chat shows what the
 block reads: a message whose Cairn summary went stale after an edit shows neither.
 

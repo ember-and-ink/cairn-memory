@@ -11,6 +11,10 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Added
 
+- **Summaries fold**, like the World state: each one sits under a **Cairn summary**
+  line that opens and closes it. **Collapse Cairn summaries automatically**, at the
+  top of the settings, starts them folded; off by default.
+
 - **A Canon card** in the settings, between What Cairn keeps and Advanced settings. It
   holds Keep canon and Canon entries, shows the open chat's canon, and has **Rebuild
   canon**: one fresh pick from the whole story, which goes in on your next message.
