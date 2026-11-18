@@ -17,18 +17,16 @@
  */
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { homedir } from 'node:os';
 import path from 'node:path';
-import { REPO, complete, freshDir, loadKey, log, outsideRepo, pad, say, slugOf } from './tier-client.mjs';
+import { REPO, STAGE0, complete, freshDir, loadKey, log, outsideRepo, pad, readSummaries, say, slugOf } from './tier-client.mjs';
 import { indexBatch, parseIndexReply, MAX_BATCH } from '../src/memory/index-strategy.js';
 import { canonPick } from '../src/memory/canon-strategy.js';
 import { DEFAULT_SLOTS } from '../src/memory/canon.js';
 
-const DEFAULT_DIR = path.join(homedir(), 'workspaces', 'cairn-corpus', 'p5-stage0');
 const RECORDS = 'records-0d.json';
 
 function parseArgs(argv) {
-    const args = { models: [], runs: 1, slots: DEFAULT_SLOTS, dir: DEFAULT_DIR, smoke: false };
+    const args = { models: [], runs: 1, slots: DEFAULT_SLOTS, dir: STAGE0, smoke: false };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--runs') args.runs = Number(argv[++i]);
@@ -106,7 +104,7 @@ async function run(args, key, summaries, n) {
 async function main() {
     const args = parseArgs(process.argv.slice(2));
     const key = loadKey();
-    const summaries = JSON.parse(readFileSync(path.join(args.dir, 'summaries.json'), 'utf8'));
+    const summaries = readSummaries(args.dir);
 
     // One model failing (a bad id, a refusal to route) does not stop the others.
     const failed = [];

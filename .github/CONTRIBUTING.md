@@ -38,13 +38,16 @@ the decision log that supersedes the old one.
 ## Before you open a PR
 
 ```sh
-make install   # npm ci
-make check     # lint, version check, rule references, tests, secret scan, verify-st
+npm ci                               # dev tooling, including Task and prek
+npx --no -- task pre-commit-install  # hooks, once per checkout
+npx --no -- task check               # lint, duplication, version, rule references, tests, secrets, verify-st
 ```
+
+Keep the `--no --`: a bare `npx task` before `npm ci` fetches npm's unrelated `task` package.
 
 `verify-st` needs a local SillyTavern checkout; CI runs everything else.
 
-- Bump the version in both `manifest.json` and `package.json` (`make bump`) —
+- Bump the version in both `manifest.json` and `package.json` (`npx --no -- task bump`) —
   CI fails a PR that doesn't. Dependabot PRs are exempt, and merge themselves
   once CI is green.
 - Add a `CHANGELOG.md` line for anything a user would notice.

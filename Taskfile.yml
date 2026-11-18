@@ -1,0 +1,176 @@
+---
+# Task runner for local development and CI (https://taskfile.dev).
+# `task` with no arguments lists everything.
+#
+# Task and prek are dev dependencies (@go-task/cli, @j178/prek), so `npx --no -- task <name>`
+# runs the version in package-lock.json. Keep the `--no --`: a bare `npx task` before
+# `npm ci` downloads npm's unrelated `task` package instead. A global `task` works too.
+#
+# Tools are called as {{.BIN}}/<tool>, not by bare name: Task resolves a command against
+# the PATH it was started with, so an `env: PATH` override never reaches the lookup.
+#
+# The extension ships as raw browser ES modules; all of this is dev-only tooling.
+# Everything CI runs is here under the same task name (CLAUDE.md §9.34).
+#
+# Tasks that run vitest forward anything after `--`:
+#   task test -- test/canon.test.js -t carry
+version: '3'
+
+set: [errexit, nounset, pipefail]
+
+vars:
+  BIN: '{{.ROOT_DIR}}/node_modules/.bin'
+  # Local SillyTavern checkout for verify-st. Override: task verify-st ST_PATH=...
+  ST_PATH: '{{.ST_PATH | default (printf "%s/workspaces/SillyTavern" .HOME)}}'
+
+tasks:
+  default:
+    desc: List every task
+    silent: true
+    cmds:
+      - '{{.TASK_EXE}} --list --sort none'
+
+  # ---- Setup ----
+
+  install:
+    desc: Install dev dependencies (reproducible, from package-lock.json)
+    cmds:
+      - npm ci
+
+  # --force replaces a hook script left by the old pre-commit, which prek would
+  # otherwise keep chaining to.
+  pre-commit-install:
+    desc: Install the git pre-commit hooks (prek)
+    cmds:
+      - '{{.BIN}}/prek install --force'
+
+  pre-commit:
+    desc: Run every pre-commit hook against all files, not just staged ones
+    cmds:
+      - '{{.BIN}}/prek run --all-files'
+
+  # ---- Linting ----
+
+  lint-check:
+    desc: Run oxlint and auto-fix what it can
+    cmds:
+      - '{{.BIN}}/oxlint --fix --deny-warnings'
+
+  # A clone of an unstaged file is still a clone, so this scans everything in scope.
+  lint-dupes:
+    desc: Check shipped code and scripts for copy-pasted logic (jscpd)
+    cmds:
+      - '{{.BIN}}/jscpd --no-tips --config .jscpd.json'
+
+  # Sequential on purpose: a fixer and a checker reading the same files at once is a race.
+  lint:
+    desc: Run all linters and auto-fix issues
+    cmds:
+      - task: lint-check
+      - task: lint-dupes
+
+  test-lint:
+    desc: Check lint and duplication without modifying files (CI mode)
+    cmds:
+      - '{{.BIN}}/oxlint --deny-warnings'
+      - '{{.BIN}}/jscpd --no-tips --config .jscpd.json'
+
+  # ---- Testing ----
+
+  test:
+    desc: Run the unit tests once
+    cmds:
+      - '{{.BIN}}/vitest run {{.CLI_ARGS}}'
+
+  test-watch:
+    desc: Run the unit tests in watch mode
+    cmds:
+      - '{{.BIN}}/vitest {{.CLI_ARGS}}'
+
+  # ---- Checks ----
+
+  version-check:
+    desc: Assert manifest.json and package.json versions match
+    silent: true
+    cmds:
+      - |
+        m=$(node -p "require('./manifest.json').version")
+        p=$(node -p "require('./package.json').version")
+        if [ "$m" != "$p" ]; then
+          echo "✗ version mismatch: manifest.json $m != package.json $p"
+          exit 1
+        fi
+        echo "✓ version $m"
+
+  verify-rules:
+    desc: Check every rule, docs page, decision and source-path reference still resolves
+    cmds:
+      - node scripts/verify-rules.mjs
+
+  verify-st:
+    desc: Re-check docs/st-api-surface.md against a local SillyTavern checkout
+    env:
+      ST_PATH: '{{.ST_PATH}}'
+    cmds:
+      - node scripts/verify-st.mjs
+
+  secrets:
+    desc: Scan history for leaked secrets (needs gitleaks on PATH)
+    preconditions:
+      - sh: command -v gitleaks
+        msg: gitleaks not installed — brew install gitleaks
+    cmds:
+      - gitleaks detect --config .gitleaks.toml --redact --no-banner -v
+
+  check:
+    desc: Full local gate (CI runs all but verify-st)
+    cmds:
+      - task: test-lint
+      - task: version-check
+      - task: verify-rules
+      - task: test
+      - task: secrets
+      - task: verify-st
+
+  # ---- Release ----
+
+  # npm keeps package-lock.json in step; manifest.json is rewritten to match.
+  bump:
+    desc: Bump the version in manifest.json and package.json (minor; PART=patch|major)
+    silent: true
+    vars:
+      PART: '{{.PART | default "minor"}}'
+    cmds:
+      - |
+        v=$(npm version {{.PART}} --no-git-tag-version | tr -d v)
+        node -e "const f='manifest.json',fs=require('fs'),m=JSON.parse(fs.readFileSync(f)); m.version='$v'; fs.writeFileSync(f, JSON.stringify(m, null, 4) + '\n')"
+        echo "✓ version $v"
+
+  # ---- Dependencies ----
+
+  update:
+    desc: Upgrade locked dependencies within the declared ranges (quick CVE fix)
+    cmds:
+      - npm update
+      - task: audit
+
+  update-latest:
+    desc: Bump the declared ranges in package.json to the latest releases
+    cmds:
+      - npx --yes npm-check-updates -u
+      - npm install
+      - task: audit
+
+  # Reports rather than fails: a finding here is something to read, not a broken build.
+  audit:
+    desc: Report known vulnerabilities in dev dependencies
+    cmds:
+      - cmd: npm audit
+        ignore_error: true
+
+  # ---- Maintenance ----
+
+  clean:
+    desc: Remove installed dependencies and coverage output
+    cmds:
+      - rm -rf node_modules coverage

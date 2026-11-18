@@ -99,7 +99,7 @@ export function createSummarizer(getContext, {
     function latchRefusal(context, config, key, refused) {
         refusedEfforts.set(key, refused);
         try {
-            config.reasoningRefused = { ...(config.reasoningRefused ?? {}), [key]: [...refused] };
+            config.reasoningRefused = { ...config.reasoningRefused, [key]: [...refused] };
             context.saveSettingsDebounced?.();
         } catch (err) {
             warn('Could not save the refused reasoning effort.', err);

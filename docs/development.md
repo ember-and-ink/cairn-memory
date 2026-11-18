@@ -7,29 +7,44 @@ browser.
 ## Setup
 
 ```sh
-make install     # npm ci
-make help        # every target
+npm ci                               # dev tooling, from package-lock.json
+npx --no -- task pre-commit-install  # prek hooks, once per checkout
+npx --no -- task                     # every task
 ```
+
+Task and prek are dev dependencies, so `npx --no -- task` runs the locked version.
+Keep the `--no --`: without it, `npx task` before `npm ci` downloads npm's unrelated
+`task` package. For a bare `task`, `brew install go-task`; the commands below assume one.
 
 ## The gate
 
 ```sh
-make check       # lint + version-check + verify-rules + tests + secrets + verify-st
+task check       # test-lint + version-check + verify-rules + test + secrets + verify-st
 ```
 
 CI runs all of it except `verify-st`, which needs a SillyTavern checkout that CI
-does not have. Every CI step exists here under the same target name — if you can
-run `make check`, you know what CI will say.
+does not have. Every CI step exists here under the same task name — if you can
+run `task check`, you know what CI will say. On each commit, prek runs the
+whitespace and JSON/YAML checks, gitleaks over what is staged, and whichever of
+the tasks below the staged files touch.
 
-| Target | |
+| Task | |
 |---|---|
-| `make lint` | ESLint over the browser modules |
-| `make test` | Vitest, once |
-| `make test-watch` | Vitest, watching |
-| `make version-check` | `manifest.json` and `package.json` versions agree |
-| `make bump` | Minor bump in `manifest.json` and `package.json`; `PART=patch` or `PART=major` to override |
-| `make verify-st` | Re-check `docs/st-api-surface.md` against a local ST |
-| `make verify-rules` | Every `CLAUDE.md §N.M`, `docs/<page>.md`, `D-NNNN` and cited source path (`pipeline/budgeter.js`) still resolves |
+| `task lint` | oxlint with `--fix`, then jscpd |
+| `task test-lint` | The same, check-only — what CI runs |
+| `task lint-dupes` | jscpd over `src/`, `scripts/` and `index.js` (`.jscpd.json`); a deliberate twin is fenced with `jscpd:ignore-start` / `-end` and a reason |
+| `task test` | Vitest, once; `task test -- <file> -t <name>` narrows it |
+| `task test-watch` | Vitest, watching |
+| `task version-check` | `manifest.json` and `package.json` versions agree |
+| `task bump` | Minor bump in `manifest.json` and `package.json`; `PART=patch` or `PART=major` to override |
+| `task verify-st` | Re-check `docs/st-api-surface.md` against a local ST |
+| `task verify-rules` | Every `CLAUDE.md §N.M`, `docs/<page>.md`, `D-NNNN` and cited source path (`pipeline/budgeter.js`) still resolves |
+| `task pre-commit` | Every prek hook over the whole tree |
+| `task update` / `task audit` | `npm update` within the declared ranges, then `npm audit` |
+
+The lint rules that guard a `DESIGN.md` invariant (no `structuredClone` in shipped code, the
+store layer importing only downward, console only through `util/log.js`) are tested as rules in
+`test/lint-rules.test.js`, so dropping one from `.oxlintrc.json` fails the gate.
 
 ## Dependency updates
 
@@ -66,8 +81,8 @@ ln -s ~/workspaces/cairn-memory \
 The folder name matters — it is the template path in
 `src/constants.js` (`third-party/cairn-memory`).
 
-`make verify-st` defaults to `~/workspaces/SillyTavern`; override with
-`make verify-st ST_PATH=/path/to/SillyTavern`.
+`task verify-st` defaults to `~/workspaces/SillyTavern`; override with
+`task verify-st ST_PATH=/path/to/SillyTavern`.
 
 ## Testing
 
@@ -100,7 +115,7 @@ a calibration pass may add derived files under a directory of its own (below).
 1. Find it in the checkout and read it. Do not assume a signature.
 2. Add a row to `docs/st-api-surface.md` with the `file:line`.
 3. Mirror the shape in `test/mocks/sillytavern.js`, citing the same line.
-4. `make verify-st`.
+4. `task verify-st`.
 
 ## Changing a stored shape
 

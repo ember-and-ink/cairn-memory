@@ -12,7 +12,7 @@ Keep it light — this is a single-maintainer repo. Delete sections that don't a
 
 ## Checklist
 
-- [ ] `make check` passes (CI runs all of it except `verify-st`)
+- [ ] `task check` passes (CI runs all of it except `verify-st`)
 - [ ] Version bumped in both `manifest.json` and `package.json` (CI enforces this)
 - [ ] `CHANGELOG.md` has a line for anything user-visible
 - [ ] Docs that describe the changed behaviour are updated in this PR

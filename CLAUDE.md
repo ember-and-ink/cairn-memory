@@ -31,7 +31,7 @@ edit — do not quietly work around it.**
 3. Pure logic must be importable and runnable without a browser, without ST, and without a
    network. If a module cannot be tested that way, the ST coupling is in the wrong place.
 4. **Zero runtime dependencies.** ST loads our files directly. Dev dependencies only
-   (eslint, vitest), and each one earns its place.
+   (oxlint, vitest, jscpd; Task and prek to run them), and each one earns its place.
 
 ## 2. SillyTavern first
 
@@ -44,14 +44,14 @@ edit — do not quietly work around it.**
    comment or the doc that relies on it. An uncited claim about an ST API is an unverified
    claim. DESIGN.md §7 is the format to follow.
 7. When we depend on an ST API, it goes in `docs/st-api-surface.md` — what we call, from where,
-   and the `file:line` it was verified against. `make verify-st` re-checks that table against a
+   and the `file:line` it was verified against. `task verify-st` re-checks that table against a
    local checkout (local gate only; CI has no ST).
 8. Never clone chat messages in an interceptor (`DESIGN.md` §9). Mutate in place; collect
    indexes first; splice highest-to-lowest.
 
 ## 3. Testing
 
-9. Code ships with tests. The gate is `make check` (lint + tests) and it is what CI runs.
+9. Code ships with tests. The gate is `task check` (lint + tests) and it is what CI runs.
 10. **Every architectural invariant in `DESIGN.md` gets a test that fails when it is violated** —
     single writer to the prompt, monotonic volatility ordering (§6), no-clone (§9), branch and
     swipe rollback (§9). These are the failures that are invisible in play; they cannot be
@@ -134,7 +134,8 @@ edit — do not quietly work around it.**
 
 33. GitHub Actions, following `cbz-tagger` / `memory-echo`: lint, unit tests on Node 20/22/24,
     secret scan (gitleaks), version-bump check, CodeQL. Actions pinned by SHA.
-34. Everything CI runs is runnable locally through the `Makefile`, with the same target name.
-    `make help` lists them. `make check` is the full local gate.
+34. Everything CI runs is runnable locally through `Taskfile.yml`, with the same task name.
+    `task` lists them. `task check` is the full local gate; prek runs the relevant part of it
+    on every commit (`task pre-commit-install`).
 35. If a mistake can be caught mechanically, catch it mechanically. A rule in this file that
     could have been a lint rule or a test should become one.

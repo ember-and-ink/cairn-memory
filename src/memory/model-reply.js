@@ -163,6 +163,8 @@ export function readJsonReply(content) {
 const UNCLOSED = -1;
 const MISMATCHED = -2;
 
+// jscpd:ignore-start — the same bracket step as repairJson, but that one rewrites what it
+// reads first; sharing it would couple the scan to the mending.
 /**
  * Where the bracket at `start` closes, skipping brackets inside JSON strings: UNCLOSED if
  * it never does, MISMATCHED at a `}` that meets an open `[` or the other way round.
@@ -186,6 +188,7 @@ function closingIndex(text, start) {
     }
     return UNCLOSED;
 }
+// jscpd:ignore-end
 
 /**
  * Where a reply stopped being JSON, for the log of a failed call (docs/decisions.md

@@ -28,9 +28,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: make lint
+      # oxlint and jscpd, check-only (Taskfile.yml).
+      - run: npx --no -- task test-lint
       # verify-st needs a SillyTavern checkout and stays local; this one does not.
-      - run: make verify-rules
+      - run: npx --no -- task verify-rules
 
   # SillyTavern declares engines.node ">= 20"; 22 is its Docker LTS and 24 its
   # CI runtime, so we cover the range a user could plausibly be on.
@@ -48,7 +49,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
-      - run: make test
+      - run: npx --no -- task test
 
   version:
     name: Version
@@ -57,8 +58,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - name: manifest.json and package.json agree
-        run: make version-check
+        run: npx --no -- task version-check
       # Dependabot bumps dev tooling only — nothing it touches ships, so no release.
       # The step is skipped, not the job: `Version` still reports for the ruleset.
       - name: Version bumped since the base branch

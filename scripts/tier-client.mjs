@@ -1,17 +1,20 @@
 /**
- * The pieces the offline model harnesses share: one chat completion against an
- * OpenAI-compatible endpoint, a fresh output directory, and the per-call log.
+ * The pieces the offline harnesses share: one chat completion against an
+ * OpenAI-compatible endpoint, the corpus directories they write to, and the per-call log.
  * `run-tier.mjs` (0d) and `replay-canon.mjs` call the model the same way through this,
  * so their numbers are comparable.
  *
  * NANOGPT_API_KEY is read from the environment or the repo's gitignored `.env`, and never
  * written; NANOGPT_BASE_URL overrides the endpoint. Local only.
  */
-import { appendFileSync, mkdirSync, existsSync } from 'node:fs';
+import { appendFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+/** Where every harness reads and writes unless told otherwise. */
+export const STAGE0 = path.join(homedir(), 'workspaces', 'cairn-corpus', 'p5-stage0');
 export const BASE_URL = (process.env.NANOGPT_BASE_URL ?? 'https://nano-gpt.com/api/v1').replace(/\/$/, '');
 const TIMEOUT_MS = 300_000;
 const ATTEMPTS = 3;
@@ -31,6 +34,18 @@ export function outsideRepo(dir) {
         throw new Error(`refusing to write corpus content inside the repo: ${dir} (CLAUDE.md §3.13)`);
     }
     return dir;
+}
+
+/** An output directory outside the repo (STAGE0 by default), created if it is missing. */
+export function corpusDir(given) {
+    const dir = outsideRepo(path.resolve(given ?? STAGE0));
+    mkdirSync(dir, { recursive: true });
+    return dir;
+}
+
+/** The extracted summaries a run starts from: `summaries.json` in `dir`. */
+export function readSummaries(dir) {
+    return JSON.parse(readFileSync(path.join(dir, 'summaries.json'), 'utf8'));
 }
 
 /** A directory per run that did not exist before — nothing in the corpus is overwritten. */
