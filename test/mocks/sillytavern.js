@@ -297,6 +297,8 @@ export function createContext({
         mainApi: 'textgenerationwebui',
 
         eventSource: makeEventSource(),
+        /** public/scripts/st-context.js:137; null between streams (public/script.js:456, :5441). */
+        streamingProcessor: null,
         /** public/scripts/st-context.js:139 — context exposes event_types as eventTypes. */
         eventTypes: {
             CHAT_COMPLETION_PROMPT_READY: 'chat_completion_prompt_ready',
@@ -430,6 +432,23 @@ async function received(context, type) {
     const { eventSource, eventTypes, chat } = context;
     await eventSource.emit(eventTypes.MESSAGE_RECEIVED, chat.length - 1, type);
     await eventSource.emit(eventTypes.CHARACTER_MESSAGE_RENDERED, chat.length - 1, type);
+}
+
+/**
+ * A streamed reply: ST pushes the message before the first token (public/script.js:3633,
+ * :6744) while its stream is unfinished, then marks it finished (:3909), renders it with
+ * the usual events (:3799-3800) and drops the stream (:5441). Returns that ending.
+ */
+export function startStream(context, message) {
+    context.chat.push(message);
+    const stream = { isFinished: false };
+    context.streamingProcessor = stream;
+    return async (mes) => {
+        message.mes = mes;
+        stream.isFinished = true;
+        await received(context, 'normal');
+        context.streamingProcessor = null;
+    };
 }
 
 /**

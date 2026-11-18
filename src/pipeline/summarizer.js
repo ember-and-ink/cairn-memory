@@ -44,6 +44,12 @@ const EFFORT_REFUSED = (effort) => `The memory model's provider refused reasonin
     + 'less from now on. Changing Cairn\'s reasoning setting tries again.';
 
 /**
+ * A streamed reply is still filling the newest message: ST pushes it before the first token
+ * (public/script.js:3860-3861) and marks the stream finished (:3909) before it renders (:3800).
+ */
+const replyStreaming = (context) => Boolean(context.streamingProcessor && !context.streamingProcessor.isFinished);
+
+/**
  * @param {() => object} getContext Returns a fresh SillyTavern.getContext()
  * @param {{settings: () => {memoryProfileId?: string, summaryPrompt?: string,
  *              worldState?: boolean, keepCanon?: boolean},
@@ -215,7 +221,8 @@ export function createSummarizer(getContext, {
                 }
                 continue;
             }
-            if (!stateTried) {
+            // Not on a half-streamed reply (issue #39): its render wakes the queue again.
+            if (!stateTried && !replyStreaming(context)) {
                 stateTried = true;
                 const job = gates.state.ready ? state.pending(chat) : null;
                 // Whatever becomes of it, summaries still run: a state that keeps failing must not starve them.

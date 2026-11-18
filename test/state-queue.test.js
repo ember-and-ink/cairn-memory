@@ -12,7 +12,7 @@ import { restateRefusalMessage } from '../src/ui/resummarise-button.js';
 import { badStateOutputs, createRequestService, deferred } from './mocks/llm.js';
 import { makeMixedChat } from './mocks/cairn.js';
 import {
-    continueReply, createContext, editMessage, installFormatter, makeChat, makeMessage, openChat, receiveMessage, sendMessage, swipeReply, swipeTo, startGeneration,
+    continueReply, createContext, editMessage, installFormatter, makeChat, makeMessage, openChat, receiveMessage, sendMessage, startStream, swipeReply, swipeTo, startGeneration,
 } from './mocks/sillytavern.js';
 import { MEMORY, ROLEPLAY, queueHarness } from './helpers/summarizer.js';
 import { stubToastr } from './helpers/toastr.js';
@@ -525,6 +525,25 @@ describe('with a formatter that rewrites replies', () => {
         expect(service.calls).toHaveLength(3);
         expect([7, 9, 11].map((index) => readState(context.chat, index).status)).toEqual(['valid', 'valid', 'valid']);
         expect(summarizer.status.state.discarded).toBe(0);
+    });
+
+    it('waits for a streaming reply to finish when an edit wakes the queue mid-stream (issue #39)', async () => {
+        const { context, service, summarizer } = harness({ chat: playedChat(), responses: [reply(TO_PIER)] });
+        summarizer.start();
+        await summarizer.idle();
+
+        await sendMessage(context, makeMessage({ name: 'Wren', isUser: true, mes: 'Wren says something at turn 6.' }));
+        const finish = startStream(context, makeMessage({ mes: 'Aster ans' }));
+        await editMessage(context, 6, 'Wren says something else at turn 6.');
+        await summarizer.idle();
+        expect(service.calls).toHaveLength(0);
+
+        await finish('Aster answers at turn 7.');
+        await summarizer.idle();
+
+        expect(service.calls).toHaveLength(1);
+        expect(service.calls[0].prompt[0].content).toContain('Wren: Wren says something else at turn 6.\n\nAster: Aster answers at turn 7.');
+        expect(stateOf(context.chat, 7).value.location).toBe(TO_PIER.location);
     });
 
     it('reads an edit again after the formatter rewrites it, with no turn in between', async () => {
