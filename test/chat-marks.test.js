@@ -325,3 +325,21 @@ describe('while a world state is being written', () => {
         expect(stateWriting(summarizer.status)).toBeNull();
     });
 });
+
+describe('collapsed sections are styled', () => {
+    // A section with no rule falls back to a bare <pre>: monospace, no wrap (issue #34).
+    it('gives every drawDetails kind a wrapping, inherited-font <pre>', async () => {
+        const { readFile } = await import('node:fs/promises');
+        const source = await readFile(new URL('../src/ui/chat-marks.js', import.meta.url), 'utf8');
+        const css = await readFile(new URL('../style.css', import.meta.url), 'utf8');
+        const kinds = [...source.matchAll(/drawDetails\(element, '(\w+)'/g)].map((match) => match[1]);
+        expect(kinds).toEqual(expect.arrayContaining(['state', 'canon']));
+        for (const kind of kinds) {
+            const rule = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+                .find(([, selectors]) => selectors.split(',').some((s) => s.trim() === `.cairn-${kind} > pre`));
+            expect(rule, kind).toBeDefined();
+            expect(rule[2]).toMatch(/white-space:\s*pre-wrap/);
+            expect(rule[2]).toMatch(/font-family:\s*inherit/);
+        }
+    });
+});

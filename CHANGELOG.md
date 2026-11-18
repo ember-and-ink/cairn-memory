@@ -129,6 +129,10 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Fixed
 
+- **Established facts under a message wrap and match the world state.** They were drawn
+  in a large monospace font that didn't wrap, so on a narrow screen most of each line was
+  cut off (#34).
+
 - **A character who leaves and comes back keeps their hair and outfit.** They start from
   how they were last seen instead of from nothing.
 
