@@ -9,7 +9,7 @@ import { wtrackerLoaded } from "../interop/wtracker.js";
 /**
  * Whether Cairn may summarise in this chat now, and if not, why.
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  * @param {{memoryProfileId?: string}} settings
  * @returns {{ready: boolean, reason: string}}
  */
@@ -26,11 +26,12 @@ export function assessSummarizing(context, { memoryProfileId } = {}) {
  * qvink keeps no state, so it has no say here; a loaded WTracker does, and
  * `tracker` names it (docs/decisions.md D-0046).
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  * @param {{memoryProfileId?: string, worldState?: boolean}} settings
  * @returns {{ready: boolean, reason: string, tracker: string|null}}
  */
 export function assessStateUpdates(context, { memoryProfileId, worldState } = {}) {
+  /** @param {string} reason @param {string|null} [tracker] */
   const blocked = (reason, tracker = null) => ({ ready: false, reason, tracker });
   // The switch first: when the user turned it off, that is the reason worth showing.
   if (worldState === false) return blocked("off");
@@ -50,7 +51,7 @@ export function assessStateUpdates(context, { memoryProfileId, worldState } = {}
  * D-0020, D-0027), and a canon section would put bytes in the block that qvink's own
  * render has no counterpart for.
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  * @param {{memoryProfileId?: string, keepCanon?: boolean}} settings
  * @param {{writing?: boolean}} [handover] The assembler's gate verdict this turn.
  * @returns {{ready: boolean, reason: string}}
@@ -77,7 +78,7 @@ export function assessCompaction(context, { memoryProfileId, keepCanon } = {}, {
  * well as canon, so a user who turned canon off still gets the longer horizon the records
  * pay for. Turning the memory block off stops it, because then `writing` is false.
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  * @param {{memoryProfileId?: string}} settings
  * @param {{writing?: boolean}} [handover] The assembler's gate verdict this turn.
  * @returns {{ready: boolean, reason: string}}
@@ -116,7 +117,7 @@ function memoryCallsBlocked(context, memoryProfileId) {
  * Whether Cairn's memory profile is the one the chat is using. Allowed, and only
  * worth a note in the panel: the risk is a roleplay finetune, not sharing (D-0097).
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  * @param {string} [memoryProfileId]
  */
 export function sharesChatProfile(context, memoryProfileId) {

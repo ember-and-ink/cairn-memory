@@ -140,7 +140,7 @@ export const canonPick = {
 
   /**
    * @param {object} request
-   * @param {Array<object>} request.records Every valid index record in the chat,
+   * @param {IndexRecord[]} request.records Every valid index record in the chat,
    *        oldest first. Numbered from 1 in the prompt; mapping those positions back
    *        to chat indexes is the caller's, as it is for a batch (index-strategy.js).
    * @param {number} request.slots How many facts to ask for, MIN_SLOTS to MAX_SLOTS.
@@ -201,7 +201,7 @@ export const canonPick = {
  * `from` is read as written — row numbers in the rendered index. Mapping them back to
  * chat indexes is the caller's, because only it knows which records it sent.
  *
- * @param {string} content
+ * @param {unknown} content The reply's `content`, as the model sent it.
  * @param {{slots?: number, records?: number}} [limits] What `build` was given.
  * @returns {{ok: true, picked: Array<{text: string, entities: string[], from: number[],
  *            clipped?: true}>,

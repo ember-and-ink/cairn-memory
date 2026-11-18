@@ -36,9 +36,9 @@ export function effortsFor(setting = NO_REASONING) {
 }
 
 /**
- * @param {object} context `SillyTavern.getContext()`
+ * @param {StContext} context `SillyTavern.getContext()`
  * @param {string} [memoryProfileId]
- * @returns {object|null} The Connection Manager profile, or null.
+ * @returns {StConnectionProfile|null} The Connection Manager profile, or null.
  */
 export function memoryProfile(context, memoryProfileId) {
   if (!memoryProfileId) return null;

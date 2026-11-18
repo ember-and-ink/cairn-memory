@@ -61,9 +61,10 @@ export const MEMORY_INJECTION = `${SLUG}_memory`;
  * Takes a *getter*, not a context — `SillyTavern.getContext()` is a snapshot
  * (docs/st-api-surface.md, Hazards).
  *
- * @param {() => object} getContext Returns a fresh SillyTavern.getContext()
- * @param {{remembered?: object, memory?: {plan: () => Promise<object>},
- *          state?: {plan: (chat: Array<object>, step: object) => Promise<object>}}} [options]
+ * @param {() => StContext} getContext Returns a fresh SillyTavern.getContext()
+ * @param {{remembered?: ReturnType<typeof createRememberedSet>,
+ *          memory?: Pick<ReturnType<typeof import("./assembler.js").createAssembler>, "plan">|null,
+ *          state?: Pick<ReturnType<typeof import("./state-placement.js").createStatePlacement>, "plan">|null}} [options]
  *        `memory` is the assembler. It is asked for a plan every turn and the
  *        plan says whether Cairn may write it (prompt/handover.js). `state` is the
  *        world state's placement (prompt/state-placement.js).
@@ -83,7 +84,10 @@ export function createInjector(
    * different from clearing everyone's.
    */
   let flagged = new Set();
-  /** This turn's lore trim, for the log. Null on every turn that is not a rebuild. */
+  /**
+   * This turn's lore trim, for the log. Null on every turn that is not a rebuild.
+   * @type {{dropped: number, kept: number, tokens: number, budget: number}|null}
+   */
   let lastTrim = null;
 
   /** Add-only: learn every entry ST activated, including ones we forced. */
@@ -193,7 +197,8 @@ export function createInjector(
    * would be a prompt that says the model has not seen messages it is also not
    * being shown (CLAUDE.md §4.17).
    *
-   * @returns {Promise<object|null>} The plan, written or not; null when there is none.
+   * @returns {Promise<Awaited<ReturnType<NonNullable<typeof memory>["plan"]>>|null>} The plan,
+   *          written or not; null when there is none.
    */
   async function applyMemory() {
     if (!memory) return null;
@@ -240,7 +245,8 @@ export function createInjector(
         STATE_INJECTION,
         placed.text,
         position,
-        placed.depth,
+        // Text comes only from a state that was found, and a found state has a depth.
+        /** @type {number} */ (placed.depth),
         scan,
         role,
       );

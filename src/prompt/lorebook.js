@@ -22,7 +22,7 @@
  * Measured on Esin: 29 of 31 entries tied at `order: 10`, same set every turn,
  * different order every turn, prefix stability 14-16% (docs/decisions.md D-0022).
  *
- * @param {Array<{order?: number}>} entries From WORLD_INFO_ACTIVATED.
+ * @param {StWorldInfoEntry[]} entries From WORLD_INFO_ACTIVATED.
  * @returns {Array<{order: number, count: number, uids: Array<*>}>} Ties, largest first.
  */
 export function findOrderTies(entries) {
@@ -48,7 +48,7 @@ export function findOrderTies(entries) {
  * `tiedEntries` is the count that can move, not the number of ties: one tie of
  * 29 is a rewritten block, twenty-nine ties of one are nothing.
  *
- * @param {Array<object>} entries From WORLD_INFO_ACTIVATED.
+ * @param {StWorldInfoEntry[]} entries From WORLD_INFO_ACTIVATED.
  */
 export function assessOrdering(entries) {
   const activated = (entries ?? []).length;
@@ -70,7 +70,7 @@ export function assessOrdering(entries) {
  * :1025) and ignores outright any entry missing either field (:1022). Using the
  * same key means a held entry round-trips through force-activate unchanged.
  *
- * @param {object} entry
+ * @param {StWorldInfoEntry|null|undefined} entry
  * @returns {string|null} null when the entry could never be forced.
  */
 export function entryKey(entry) {
@@ -114,9 +114,9 @@ export function entryKey(entry) {
  *
  * Pure: `sizeOf` is injected.
  *
- * @param {{entries: Array<object>, budget: number,
+ * @param {{entries: StWorldInfoEntry[], budget: number,
  *          sizeOf: (text: string) => Promise<number>}} input
- * @returns {Promise<{kept: Array<object>, dropped: Array<object>, tokens: number}>}
+ * @returns {Promise<{kept: StWorldInfoEntry[], dropped: StWorldInfoEntry[], tokens: number}>}
  *          `kept` stays in the order it arrived in, which is the order it is forced in.
  */
 export async function trimToBudget({ entries, budget, sizeOf }) {
@@ -188,7 +188,7 @@ export function createRememberedSet() {
      * keeps the object it was first seen with, so the rendered block stays
      * byte-identical across turns.
      *
-     * @param {Array<object>} entries From WORLD_INFO_ACTIVATED.
+     * @param {StWorldInfoEntry[]} entries From WORLD_INFO_ACTIVATED.
      * @returns {{added: string[], size: number}}
      */
     observe(entries) {

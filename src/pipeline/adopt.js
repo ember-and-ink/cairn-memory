@@ -33,7 +33,7 @@ const readers = { readCanon, readIndex };
  * What an adoption would do to this chat, before it does any of it: what it can import,
  * how many messages it must summarise, and how many index and canon calls the replay makes.
  *
- * @param {Array<object>} chat
+ * @param {StMessage[]} chat
  * @param {{every: number, pending: number[], redo?: boolean}} options `pending` is
  *        `pendingScenes(chat)`, or `redoScenes(chat)` for a redo.
  * @returns {{imports: number[], summaries: number, steps: number, calls: number, redo: boolean}}
@@ -72,7 +72,9 @@ function importable(chat) {
 }
 
 /**
- * @param {{getContext: () => object, summarise: Function, indexer: object, canon: object,
+ * @param {{getContext: () => StContext, summarise: Function,
+ *          indexer: ReturnType<typeof import("./index-job.js").createIndexJob>,
+ *          canon: ReturnType<typeof import("./canon-job.js").createCanonJob>,
  *          save: Function, clock: () => number}} machinery The summarizer's jobs and helpers.
  */
 export function createAdoption({ getContext, summarise, indexer, canon, save, clock }) {

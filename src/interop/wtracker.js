@@ -31,7 +31,7 @@ export const WTRACKERS = Object.freeze([
  * or its manifest is installed and not disabled (:524, :626). Its settings are
  * never read: they outlive it (docs/decisions.md D-0040).
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  * @param {{scope?: object}} [options] Where interceptors are defined; `globalThis` in ST.
  * @returns {string|null} Its display name.
  */

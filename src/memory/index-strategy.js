@@ -157,7 +157,7 @@ export const indexBatch = {
  * decides whether a partial batch is enough to write — the parser only says what came
  * back and how much of it was usable.
  *
- * @param {string} content
+ * @param {unknown} content The reply's `content`, as the model sent it.
  * @param {{count?: number}} [limits] `count` is the batch size `build` was given.
  * @returns {{ok: true, records: Array<{n: number, kind: string, who: string[],
  *            what: string, changed: string, because: string, background: string,

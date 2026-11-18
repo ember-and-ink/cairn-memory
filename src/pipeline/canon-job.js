@@ -27,14 +27,15 @@ import { MAX_ATTEMPTS } from "./tally.js";
 const over = (work) => `records #${work.covers[0]}–#${work.covers[1]}`;
 
 /**
- * @param {{getContext: () => object, send: Function, save: Function, clock: () => number,
- *          pending: () => object|null, strategy?: object}} machinery
+ * @param {{getContext: () => StContext, send: SendMemory, save: Function, clock: () => number,
+ *          pending?: () => PendingPass|null,
+ *          strategy?: typeof canonPick}} machinery
  *        `pending` returns the assembler's pending pick for the turn just planned, or
  *        null. It carries the chat's own records, so it never reaches the log.
  */
 export function createCanonJob({ getContext, send, save, clock, pending, strategy = canonPick }) {
   const job = createJob(
-    {
+    /** @type {JobKind<CanonPickWork, {picked: number, duplicates: number, refused: number, clipped: number}>} */ ({
       log: "canon",
       name: "canon pick",
       article: "a canon pick",
@@ -44,7 +45,7 @@ export function createCanonJob({ getContext, send, save, clock, pending, strateg
       failed: (work) => `The canon pick over ${over(work)}`,
       gaveUp: (work, _at, count) =>
         `Gave up on picking canon over ${over(work)} after ${count} failures. The block keeps the canon it has.`,
-    },
+    }),
     { send },
   );
   const picks = job.tally;
@@ -64,6 +65,9 @@ export function createCanonJob({ getContext, send, save, clock, pending, strateg
     /**
      * One pick. The batch lands on the newest record it read — behind the raw
      * window by construction, so it is written where swipes never reach.
+     *
+     * @param {StContext} context
+     * @param {Partial<CairnSettings>} settings
      */
     async run(context, { memoryProfileId, canonPrompt }, work) {
       const { chatId } = context;
@@ -134,7 +138,7 @@ export function createCanonJob({ getContext, send, save, clock, pending, strateg
             ? { covers: due.covers, records: due.records.length, slots: due.slots }
             : null;
           const record = due?.due ? job.record(chatId, due) : undefined;
-          if (record) {
+          if (record && due?.due) {
             status.failed = { covers: due.covers, attempts: record.count, reason: record.reason };
             status.givenUp = record.count >= MAX_ATTEMPTS;
           }

@@ -58,10 +58,11 @@ export function examplesSuperseded(scenes, summarisedThrough) {
  * dropdown will still read whatever the user chose while Cairn is stripping. The
  * inspector says so in words instead (`ui/inspector.js`).
  *
- * @param {() => object} getContext Returns a fresh SillyTavern.getContext().
+ * @param {() => StContext} getContext Returns a fresh SillyTavern.getContext().
  */
 export function createExamplesLatch(getContext) {
   /** The user's own value, kept from the first turn Cairn changed it. */
+  /** @type {boolean|null} */
   let theirs = null;
   let applied = false;
 

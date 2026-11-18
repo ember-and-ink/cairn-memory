@@ -86,7 +86,7 @@ export const stateRecord = {
   /**
    * @param {object} request
    * @param {object} [request.state] The current state's value; `{}` on a cold start.
-   * @param {Array<object>} request.messages The visible messages to read, oldest first,
+   * @param {StMessage[]} request.messages The visible messages to read, oldest first,
    *        at most STATE_MAX_MESSAGES.
    * @param {Array<string|{text: string}>} [request.earlier] Scenes before those messages,
    *        oldest first, at most STATE_MAX_EARLIER.
@@ -138,8 +138,8 @@ export const stateRecord = {
  * reply ends is a cut-off reply: ST returns no finish reason
  * (public/scripts/custom-request.js:60).
  *
- * @param {string} content
- * @returns {{ok: true, record: object} | {ok: false, reason: 'empty'|'refusal'|'format'|'truncated'}}
+ * @param {unknown} content The reply's `content`, as the model sent it.
+ * @returns {{ok: true, record: Record<string, any>} | {ok: false, reason: 'empty'|'refusal'|'format'|'truncated'}}
  */
 export function parseStateReply(content) {
   const found = readJsonReply(content);

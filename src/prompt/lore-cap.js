@@ -44,8 +44,9 @@ export function loreCapTokens(maxPromptTokens, fraction) {
 }
 
 /**
- * @param {{load?: () => Promise<object>, doc?: object, maxPromptTokens?: Function,
- *          settings?: () => object, save?: () => void}} [options]
+ * @param {{load?: () => Promise<StWorldInfoModule>, doc?: Document,
+ *          maxPromptTokens?: ReturnType<typeof createMaxPromptTokens>,
+ *          settings?: () => Partial<CairnSettings>, save?: () => void}} [options]
  *        `load` is injected in tests; there is no `/scripts/world-info.js`
  *        outside the browser. `settings` is Cairn's live settings object, which
  *        holds `loreFraction`, `enabled` and `loreCapBefore`.
@@ -57,10 +58,11 @@ export function createLoreCap({
   settings = () => ({}),
   save = () => {},
 } = {}) {
+  /** @type {number|null} */
   let applied = null;
 
   /**
-   * @param {number} cap Tokens; 0 leaves ST's own budget alone, as ST's own 0 does.
+   * @param {number|string|null|undefined} cap Tokens; 0 leaves ST's own budget alone, as ST's own 0 does.
    * @returns {Promise<number|null>} What was applied, or null when nothing was.
    */
   async function apply(cap) {
@@ -83,9 +85,13 @@ export function createLoreCap({
       // ST's own field would otherwise read whatever it last loaded
       // (world-info.js:989). Written, not triggered — `updateWorldInfoSettings`
       // has already saved, and the field's own handler would save again.
-      const input = doc?.getElementById?.("world_info_budget_cap");
+      const input = /** @type {HTMLInputElement|null} */ (
+        doc?.getElementById?.("world_info_budget_cap")
+      );
       if (input) input.value = String(floored);
-      const counter = doc?.getElementById?.("world_info_budget_cap_counter");
+      const counter = /** @type {HTMLInputElement|null} */ (
+        doc?.getElementById?.("world_info_budget_cap_counter")
+      );
       if (counter) counter.value = String(floored);
       applied = floored;
     } catch (err) {

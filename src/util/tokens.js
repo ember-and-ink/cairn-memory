@@ -11,7 +11,7 @@ export function estimateTokens(text) {
 /**
  * Count with ST's tokenizer, falling back to the estimate if it is unavailable
  * or throws. A token count is diagnostic; it must never break a generation.
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  */
 export async function countTokens(context, text) {
   try {

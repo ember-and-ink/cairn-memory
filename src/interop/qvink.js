@@ -60,7 +60,7 @@ export function qvinkInjecting(extensionPrompts) {
  *
  * Its settings outlive it, so they say nothing on their own about whether it runs.
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  */
 export function qvinkRunning(context) {
   const { extensionSettings, extensionPrompts, getExtensionManifest } = context ?? {};
@@ -82,7 +82,7 @@ export function qvinkRunning(context) {
  * `exclude_messages_after_threshold` (its index.js:136, :3980). Two extensions
  * writing the same ignore flag from different thresholds is D-0020's whole point.
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  */
 export function qvinkExcluding(context, { key = QVINK_KEY } = {}) {
   if (!qvinkRunning(context)) return false;
@@ -97,7 +97,7 @@ export function qvinkExcluding(context, { key = QVINK_KEY } = {}) {
  * reads it (its index.js:655). Cairn summarising the same messages would pay for
  * each twice and race qvink to the store (docs/how-it-works.md, "Writing summaries").
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  */
 export function qvinkSummarising(context, { key = QVINK_KEY } = {}) {
   if (!qvinkRunning(context)) return false;
@@ -110,7 +110,7 @@ export function qvinkSummarising(context, { key = QVINK_KEY } = {}) {
  * (its index.js:160, :1460), read the way `qvinkSummarising` reads its switch.
  * Cairn shows qvink's summaries only when qvink doesn't, so none shows twice.
  *
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  */
 export function qvinkDisplaying(context, { key = QVINK_KEY } = {}) {
   if (!qvinkRunning(context)) return false;

@@ -27,10 +27,11 @@ const DEFAULT_HISTORY = 20;
  * across turns silently goes stale — which is exactly how the inspector came to
  * report zero injections while qvink was visibly injecting.
  *
- * @param {() => object} getContext Returns a fresh SillyTavern.getContext()
+ * @param {() => StContext} getContext Returns a fresh SillyTavern.getContext()
  * @param {{limit?: number, onSnapshot?: (snapshot: object) => void,
  *           holding?: () => (number|null), trimmed?: () => (object|null),
- *           memory?: (turn: {promptTokens: number}) => Promise<object|null>,
+ *           memory?: (turn: {promptTokens: number}) =>
+ *             Record<string, any>|null|Promise<Record<string, any>|null>,
  *           summaries?: () => (object|null), state?: () => (object|null)}} [options]
  *        `holding` reports how many World Info entries the holder is keeping in,
  *        so a logged run says whether the fix was on (docs/decisions.md D-0024).

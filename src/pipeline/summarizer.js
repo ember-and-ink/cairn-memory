@@ -58,6 +58,7 @@ const NO_CONNECTION_MANAGER =
 const PROFILE_MISSING =
   "Cairn's memory connection profile no longer exists. Choose another in Cairn's settings.";
 /** Reasons a reply arrived and could not be read, as against a transport or write failure. */
+/** @type {Set<string|null>} */
 const READ_FAILURES = new Set(["empty", "refusal", "format", "truncated", "no-facts"]);
 const EFFORT_REFUSED = (effort) =>
   `The memory model's provider refused reasoning effort "${effort}", so Cairn asks it for ` +
@@ -71,11 +72,10 @@ const replyStreaming = (context) =>
   Boolean(context.streamingProcessor && !context.streamingProcessor.isFinished);
 
 /**
- * @param {() => object} getContext Returns a fresh SillyTavern.getContext()
- * @param {{settings: () => {memoryProfileId?: string, summaryPrompt?: string,
- *              worldState?: boolean, keepCanon?: boolean},
- *          strategy?: object, stateStrategy?: object, canonStrategy?: object,
- *          clock?: () => number, onUpdate?: () => void, memory?: () => object|null,
+ * @param {() => StContext} getContext Returns a fresh SillyTavern.getContext()
+ * @param {{settings?: () => CairnSettings,
+ *          strategy?: object, stateStrategy?: object, canonStrategy?: object, indexStrategy?: object,
+ *          clock?: () => number, onUpdate?: () => void, memory?: () => PendingPass|null,
  *          onCall?: (entry: object) => void}} options
  *        `strategy` is the summary strategy; `indexStrategy` is the index batch's.
  *        `onUpdate` fires when a request goes out
@@ -100,22 +100,33 @@ export function createSummarizer(
     onCall,
   } = {},
 ) {
-  /** The settings as they are now: read at the point of use, since the panel changes them live. */
+  /**
+   * The settings as they are now: read at the point of use, since the panel changes them live.
+   * @type {() => Partial<CairnSettings>}
+   */
   const readSettings = () => settings?.() ?? {};
   /** The chat the tallies count for. A reload of the same chat keeps them. */
+  /** @type {string|null|undefined} */
   let statsChat = null;
+  /** @type {string|null} */
   let summaryGate = null;
+  /** @type {{reason: string|null, tracker: string|null}} */
   let stateGate = { reason: null, tracker: null };
+  /** @type {{reason: string|null}} */
   let canonGate = { reason: null };
+  /** @type {{reason: string|null}} */
   let indexGate = { reason: null };
   let running = false;
+  /** @type {AbortController|null} */
   let controller = null;
+  /** @type {Promise<void>|null} */
   let active = null;
   let again = false;
   /**
    * The chat the user has acted in since it was opened. Opening a chat, or loading the
    * page on one, makes no memory call: the queue waits for a send, a generation, an
    * edit or a resummarise there, so a chat opened by mistake costs nothing (D-0088).
+   * @type {string|null|undefined}
    */
   let activeIn = null;
   /** Profile and model → reasoning efforts refused, alongside the saved latch (D-0086, D-0088). */
@@ -140,7 +151,10 @@ export function createSummarizer(
   const asked = [];
   /** Messages the user asked to have their world state rebuilt on, likewise (D-0089). */
   const askedStates = [];
-  /** The message a rebuild is out for, so a second click while it is out changes nothing. */
+  /**
+   * The message a rebuild is out for, so a second click while it is out changes nothing.
+   * @type {StMessage|null}
+   */
   let restating = null;
 
   // Each kind takes the queue's transport and owns nothing else (pipeline/*-job.js).
@@ -158,9 +172,17 @@ export function createSummarizer(
   for (const kind of kinds) {
     kind.tally.onOutcome = (outcome) => logCall(kind.job, outcome);
   }
-  /** The call out or just back, until its job says how it ended (D-0093). */
+  /**
+   * The call out or just back, until its job says how it ended (D-0093).
+   * @type {{job: {kind: {log: string}}, chatId: string|undefined, at: string, message: number|undefined,
+   *         model: string|null, tokensIn: number|null, tokensOut: number|null,
+   *         replyChars: number|null, reply: unknown, error: string|null, ms: number|null}|null}
+   */
   let call = null;
-  /** The adoption under way, or null. The queue holds while it runs (D-0090). */
+  /**
+   * The adoption under way, or null. The queue holds while it runs (D-0090).
+   * @type {{cancelled: boolean, chatId: string|undefined, redo: boolean}|null}
+   */
   let adopting = null;
   /** A canon pick the user asked for is out (D-0104). The queue holds while it is. */
   let rebuildingCanon = false;
@@ -416,6 +438,9 @@ export function createSummarizer(
   /**
    * One line for the chat's log: the call and how its job ended. A failure before any
    * call (a prompt that would not build) gets a line too, with no call fields.
+   *
+   * @param {{kind: {log: string}}} job
+   * @param {{outcome: string, reason?: string|null, attempt?: number|null}} result
    */
   function logCall(job, { outcome, reason = null, attempt = null }) {
     const sent = call?.job === job ? call : null;
@@ -611,10 +636,10 @@ export function createSummarizer(
    * no connection gate; only what hides the state from the chat.
    *
    * @param {number} index
-   * @returns {{ok: true, state: object} | {ok: false, reason: string}}
+   * @returns {{ok: true, state: CairnState} | {ok: false, reason: string}}
    */
   function stateEditable(index) {
-    const refused = (reason) => ({ ok: false, reason });
+    const refused = (reason) => /** @type {const} */ ({ ok: false, reason });
     if (!running) return refused("disabled");
     const context = getContext();
     if (readSettings().worldState === false) return refused("off");
@@ -632,7 +657,7 @@ export function createSummarizer(
    * kinds that changed, never the values (D-0093).
    *
    * @param {number} index
-   * @param {object} value
+   * @param {WorldState} value
    * @param {string} at The edited state's `at` when the editor opened.
    * @returns {Promise<{written: boolean, reason?: string}>}
    */
@@ -693,7 +718,13 @@ export function createSummarizer(
     return { queued: true };
   }
 
-  /** What adopting (or redoing, D-0092) the open chat would take, or why it can't be (D-0090). */
+  /**
+   * What adopting (or redoing, D-0092) the open chat would take, or why it can't be (D-0090).
+   *
+   * @param {{redo?: boolean}} [options]
+   * @returns {{ok: false, reason: string} |
+   *           ({ok: true, every: number} & ReturnType<typeof adoptionPlan>)}
+   */
   function adoptionPreview({ redo = false } = {}) {
     if (!running) return { ok: false, reason: "disabled" };
     if (adopting) return { ok: false, reason: "adopting" };
@@ -824,6 +855,7 @@ export function createSummarizer(
     drain("a chat change");
   }
 
+  /** @type {Array<[string, (...args: any[]) => unknown]>} */
   const listeners = [
     ["CHARACTER_MESSAGE_RENDERED", onMessageRendered],
     ["GENERATION_STARTED", onGenerationStarted],

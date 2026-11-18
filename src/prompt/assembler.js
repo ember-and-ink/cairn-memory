@@ -86,7 +86,7 @@ export const BLOCK_PLACEMENT = Object.freeze({ position: 0, depth: 2, role: 0, s
  *
  * Oldest first. That is the load-bearing choice — see the file header.
  *
- * @param {Array<{text: string}>} scenes Chronological.
+ * @param {Array<{text: string}>} items Chronological.
  * @param {{template: string, separator: string, macro: string}} [rendering]
  * @returns {string}
  */
@@ -116,7 +116,9 @@ export function renderMemory(canonText, sceneText) {
  * dropped summary while it is finding the floor, which is the one place the
  * arithmetic is worth having.
  *
- * @returns {number} Exactly `renderBlock(scenes, rendering).length`.
+ * @param {Array<{chars: number}>} items
+ * @param {{template: string, separator: string, macro: string}} [rendering]
+ * @returns {number} Exactly `renderBlock(items, rendering).length`.
  */
 export function blockChars(items, { template, separator, macro } = BLOCK_RENDERING) {
   if (!items?.length) return 0;
@@ -132,10 +134,12 @@ export function blockChars(items, { template, separator, macro } = BLOCK_RENDERI
  *
  * Takes a *getter*, not a context (docs/st-api-surface.md, Hazards).
  *
- * @param {() => object} getContext Returns a fresh SillyTavern.getContext()
- * @param {{seeSaw?: object, budget?: object, maxPromptTokens?: Function,
- *          reserves?: object, settings?: () => object, own?: boolean,
- *          examplesLatch?: object}} [options]
+ * @param {() => StContext} getContext Returns a fresh SillyTavern.getContext()
+ * @param {{seeSaw?: ReturnType<typeof createSeeSaw>, budget?: ReturnType<typeof createBudget>,
+ *          maxPromptTokens?: ReturnType<typeof createMaxPromptTokens>,
+ *          reserves?: ReturnType<typeof createReserves>,
+ *          settings?: (() => Partial<CairnSettings>)|null, own?: boolean,
+ *          examplesLatch?: ReturnType<typeof createExamplesLatch>}} [options]
  */
 export function createAssembler(
   getContext,
@@ -149,11 +153,18 @@ export function createAssembler(
     own = false,
   } = {},
 ) {
+  /** @type {string|null} */
   let previousBlock = null;
-  /** Last turn's cap, so a change is logged once rather than every turn. */
+  /**
+   * Last turn's cap, so a change is logged once rather than every turn.
+   * @type {number|null}
+   */
   let previousCap = null;
   let ownInjection = Boolean(own);
-  /** The report the observer logs, from the plan made earlier this turn. */
+  /**
+   * The report the observer logs, from the plan made earlier this turn.
+   * @type {Record<string, any>|null}
+   */
   let latest = null;
   /**
    * The newest message whose canon batch the block has admitted. Advances only on a
@@ -166,6 +177,7 @@ export function createAssembler(
   /**
    * When the admitted pick was written. A pick asked again over the same records lands
    * on the same message, so the message alone cannot say a newer one is waiting (D-0104).
+   * @type {string|null}
    */
   let admittedAt = null;
   /**
@@ -173,6 +185,7 @@ export function createAssembler(
    * guard tracks `stepTokens`, which moves every turn, so applying a live cap
    * re-trims the block's head mid-cycle — the break the mark above exists to avoid
    * (docs/decisions.md D-0059).
+   * @type {number|null}
    */
   let admittedCap = null;
   /**
@@ -181,6 +194,7 @@ export function createAssembler(
    * records are written, and a split that moved mid-cycle would demote a summary on an
    * ordinary turn — the one thing the tier must never do, because a demotion rewrites
    * the block's head.
+   * @type {number|null}
    */
   let heldCompactCap = null;
   /**
@@ -189,13 +203,19 @@ export function createAssembler(
    * a reload, which is a rebuild anyway.
    */
   let forceNext = false;
-  /** This turn's compaction pass, for the summarizer. Never reaches the log. */
+  /**
+   * This turn's compaction pass, for the summarizer. Never reaches the log.
+   * @type {PendingPass|null}
+   */
   let pendingPass = null;
-  /** Canon's text for the inspector. Never reaches the log, which carries counts only. */
+  /**
+   * Canon's text for the inspector. Never reaches the log, which carries counts only.
+   * @type {{inPrompt: string[], spilled: string[], waiting: string[], slots: number}|null}
+   */
   let canonView = null;
 
   /**
-   * @returns {Promise<{report: object, text: string, blank: number[],
+   * @returns {Promise<{report: Record<string, any>, text: string, blank: number[],
    *                    placement: object, writing: boolean}>}
    *          `report` is what the inspector and the disk log see — counts and
    *          offsets, never the chat's own words. `text` and `blank` are for
@@ -260,6 +280,7 @@ export function createAssembler(
     const candidateTokens = candidateText ? await countTokens(context, candidateText) : 0;
     const charsPerToken = candidateTokens > 0 ? candidateText.length / candidateTokens : 1;
     const tokensOf = (list) => Math.ceil(blockChars(list) / charsPerToken);
+    /** @param {Array<{chars: number}>} list */
     const canonTokensOf = (list) => Math.ceil(blockChars(list, CANON_RENDERING) / charsPerToken);
 
     // What the next step will add, from what this block costs per scene. One
@@ -319,7 +340,7 @@ export function createAssembler(
     const records = indexRecords(chat, { readIndex });
     const recordAt = new Map(records.map((entry) => [entry.index, entry.record]));
     const compactOf = (scene) => compactLine(recordAt.get(scene.index));
-    const lines = covered.map(compactOf).filter(Boolean);
+    const lines = covered.map(compactOf).filter((line) => line !== null);
     const available = lines.length ? tokensOf(withChars(lines.map((text) => ({ text })))) : 0;
     const split = (sceneCap) =>
       tierSplit({ sceneCap, available, fraction: config.compactFraction }).compactCap;
@@ -367,7 +388,8 @@ export function createAssembler(
     if (rebuilt) {
       admittedCap = canonBudget.cap;
       if (allFacts.length) {
-        admittedThrough = Math.max(admittedThrough, currentCanon.index);
+        // Facts come from a batch, so the fold has the message it lives on.
+        admittedThrough = Math.max(admittedThrough, /** @type {number} */ (currentCanon.index));
         admittedAt = currentCanon.at;
         canon = admitCanon({ facts: allFacts, cap: canonBudget.cap, tokensOf: canonTokensOf });
       }
@@ -664,7 +686,11 @@ function kindTally(records) {
   return kinds;
 }
 
-/** Canon facts sized the way scenes are, so `blockChars` can price a candidate list. */
+/**
+ * Canon facts sized the way scenes are, so `blockChars` can price a candidate list.
+ * @template {{text: string}} F
+ * @param {F[]} facts
+ */
 function withChars(facts) {
   return facts.map((fact) => ({ ...fact, chars: fact.text.length }));
 }

@@ -63,6 +63,13 @@ tasks:
     cmds:
       - "{{.BIN}}/oxfmt"
 
+  # The shipped code's JSDoc, checked by TypeScript 7; nothing is emitted (D-0109).
+  # Scope lives in tsconfig.json. Whole-program, so it never takes a file list.
+  lint-typing:
+    desc: Type-check the shipped JavaScript with tsc
+    cmds:
+      - "{{.BIN}}/tsc -p ."
+
   # A clone of an unstaged file is still a clone, so this scans everything in scope.
   lint-dupes:
     desc: Check shipped code and scripts for copy-pasted logic (jscpd)
@@ -76,13 +83,15 @@ tasks:
     cmds:
       - task: lint-check
       - task: lint-format
+      - task: lint-typing
       - task: lint-dupes
 
   test-lint:
-    desc: Check lint, format and duplication without modifying files (CI mode)
+    desc: Check lint, format, types and duplication without modifying files (CI mode)
     cmds:
       - "{{.BIN}}/oxlint --deny-warnings"
       - "{{.BIN}}/oxfmt --check"
+      - "{{.BIN}}/tsc -p ."
       - "{{.BIN}}/jscpd --no-tips --config .jscpd.json"
 
   # ---- Testing ----

@@ -15,7 +15,7 @@ export const STORE_VERSION = 4;
  * are never written back on their own: the next write to the message stores the
  * current shape.
  *
- * @type {Record<number, (store: object) => object>}
+ * @type {Record<number, (store: CairnStore) => CairnStore>}
  */
 export const STORE_MIGRATIONS = {
   // v2 adds `state` (docs/decisions.md D-0045). A v1 store has none, so it is already a v2 one.
@@ -32,25 +32,21 @@ export const STORE_MIGRATIONS = {
  * Bring a stored `extra.cairn` up to the current version. Pure; never mutates input.
  *
  * @param {unknown} stored
- * @param {Record<number, (store: object) => object>} [migrations] Injected for tests.
+ * @param {Record<number, (store: CairnStore) => CairnStore>} [migrations] Injected for tests.
  * @param {number} [targetVersion]
- * @returns {{status: 'none'|'invalid'|'future'|'ok', store: object|null}}
+ * @returns {{status: 'ok', store: CairnStore} | {status: 'none'|'invalid'|'future', store: null}}
  */
 export function migrateStore(stored, migrations = STORE_MIGRATIONS, targetVersion = STORE_VERSION) {
   if (stored === undefined) return { status: "none", store: null };
-  if (
-    typeof stored !== "object" ||
-    stored === null ||
-    Array.isArray(stored) ||
-    !Number.isInteger(stored.v) ||
-    stored.v < 1
-  ) {
+  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
     return { status: "invalid", store: null };
   }
+  // A candidate until its version checks out; each reader checks its own key's shape.
+  let store = /** @type {CairnStore} */ (stored);
+  if (!Number.isInteger(store.v) || store.v < 1) return { status: "invalid", store: null };
   // A newer Cairn's shape is not ours to interpret, and not ours to overwrite.
-  if (stored.v > targetVersion) return { status: "future", store: null };
+  if (store.v > targetVersion) return { status: "future", store: null };
 
-  let store = stored;
   while (store.v < targetVersion) {
     const migrate = migrations[store.v];
     // Unlike settings there is nothing to merge a gap into: an unreadable store

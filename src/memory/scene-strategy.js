@@ -55,7 +55,7 @@ export const perMessage = {
 
   /**
    * @param {object} request
-   * @param {object} request.message The chat message to summarise.
+   * @param {StMessage} request.message The chat message to summarise.
    * @param {Array<string|{text: string}>} request.history The scenes just before it, oldest first.
    * @param {string} [request.template] The `summaryPrompt` setting, raw.
    * @param {(text: string) => string} [request.expand] ST's `substituteParams`
@@ -100,7 +100,7 @@ const FINISHED = /[.!?…。！？]["'”’»)\]*]*$/;
  * truncation check. A refusal worded in a way `looksLikeRefusal` misses is stored — the
  * known weakness in docs/decisions.md D-0037.
  *
- * @param {string} content
+ * @param {unknown} content The reply's `content`, as the model sent it.
  * @returns {{ok: true, text: string} | {ok: false, reason: 'empty'|'refusal'|'format'|'too-long'|'truncated'}}
  */
 export function parseSummary(content) {

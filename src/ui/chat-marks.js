@@ -26,8 +26,8 @@ import { escapeHtml } from "./html.js";
  * work in progress. A stale Cairn summary hides qvink's on the same message too,
  * because the block reads neither (memory/scenes.js).
  *
- * @param {Array<object>} chat
- * @param {object|null} status The summarizer's `status`.
+ * @param {StMessage[]} chat
+ * @param {SummarizerStatus|null} status The summarizer's `status`.
  * @param {{showQvink?: boolean}} [options] `showQvink` while qvink isn't drawing its own.
  * @returns {Map<number, {state: 'written'|'qvink'|'writing'|'waiting'|'failed'|'given-up',
  *          text?: string, excluded?: boolean, reason?: string, attempts?: number}>}
@@ -60,7 +60,7 @@ export function markMessages(chat, status, { showQvink = false } = {}) {
  * carries it. A state with nothing recorded has nothing to show. Only the newest is
  * `editable`, since the next update builds on it (D-0100).
  *
- * @param {Array<object>} chat
+ * @param {StMessage[]} chat
  * @returns {Map<number, {lines: Array<{text: string, character?: string}>, edited: boolean, editable: boolean}>}
  */
 export function stateMarks(chat) {
@@ -69,7 +69,7 @@ export function stateMarks(chat) {
   (chat ?? []).forEach((_, index) => {
     const found = usableState(chat, index);
     const lines = found ? stateLines(found.state.value) : [];
-    if (lines.length)
+    if (found && lines.length)
       marks.set(index, { lines, edited: found.state.edited === true, editable: index === newest });
   });
   return marks;
@@ -101,7 +101,7 @@ export function renderStateBody({ lines, editable }) {
  * The message a world state is being written for right now, or null. One at a time, so
  * there is no queue to show: the state is brought up to date after each reply.
  *
- * @param {object|null} status The summarizer's `status`.
+ * @param {SummarizerStatus|null} status The summarizer's `status`.
  * @returns {number|null}
  */
 export function stateWriting(status) {
@@ -154,8 +154,8 @@ export function renderMark(mark) {
 }
 
 /**
- * @param {() => object} getContext
- * @param {{status: () => (object|null),
+ * @param {() => StContext} getContext
+ * @param {{status: () => (SummarizerStatus|null),
  *          settings?: () => {worldState?: boolean, keepCanon?: boolean, collapseSummaries?: boolean}}} options
  */
 export function createChatMarks(getContext, { status, settings }) {
@@ -163,6 +163,7 @@ export function createChatMarks(getContext, { status, settings }) {
   /** What each mark element last drew, so an unchanged mark is not rewritten. */
   const drawn = new WeakMap();
   /** The fold the summaries were last given, so a change of setting reaches those already drawn. */
+  /** @type {boolean|null} */
   let folded = null;
 
   /** Never throws: a mark that cannot be drawn costs the mark (CLAUDE.md §4.17). */
@@ -186,7 +187,10 @@ export function createChatMarks(getContext, { status, settings }) {
       const facts = showCanon ? canonTexts(context.chat) : new Map();
       const fold = settings?.()?.collapseSummaries === true;
       if (folded !== null && folded !== fold) {
-        for (const node of root.querySelectorAll(`details.${SLUG}-scene`)) node.open = !fold;
+        const scenes = /** @type {NodeListOf<HTMLDetailsElement>} */ (
+          root.querySelectorAll(`details.${SLUG}-scene`)
+        );
+        for (const node of scenes) node.open = !fold;
       }
       folded = fold;
       for (const element of root.querySelectorAll(".mes[mesid]")) {

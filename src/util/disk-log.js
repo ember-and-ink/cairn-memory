@@ -45,6 +45,7 @@ export function createDiskLog({ delayMs = WRITE_DELAY_MS } = {}) {
   /** File name → `{base, entries}`: what the file held, and what is still to be added. */
   const files = new Map();
   let enabled = false;
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let timer = null;
   let lastPath = null;
   /** Writes run one after another, so two flushes never race on one file. */
@@ -92,7 +93,7 @@ export function createDiskLog({ delayMs = WRITE_DELAY_MS } = {}) {
     const name = logFilename(chatId);
     if (!files.has(name)) files.set(name, { base: null, entries: [] });
     files.get(name).entries.push({ ...entry, chat_id: chatId, session });
-    clearTimeout(timer);
+    if (timer !== null) clearTimeout(timer);
     timer = setTimeout(() => {
       writing = writing.then(() => flush(getContext));
     }, delayMs);

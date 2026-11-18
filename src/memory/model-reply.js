@@ -6,7 +6,12 @@
  * Pure: text in, text out.
  */
 
-/** A parser's refusal of a reply: why it could not be read. */
+/**
+ * A parser's refusal of a reply: why it could not be read.
+ * @template {string} R
+ * @param {R} reason
+ * @returns {{ok: false, reason: R}}
+ */
 export function reject(reason) {
   return { ok: false, reason };
 }
@@ -74,16 +79,20 @@ export function firstJson(text) {
   return { parsed: false, unclosed: false };
 }
 
+/**
+ * @param {string} span
+ * @returns {{parsed: true, value: unknown} | {parsed: false}}
+ */
 function parseOrRepair(span) {
   for (const candidate of [span, repairJson(span)]) {
     if (candidate === null) continue;
     try {
-      return { parsed: true, value: JSON.parse(candidate) };
+      return { parsed: /** @type {const} */ (true), value: JSON.parse(candidate) };
     } catch {
       // Try the next candidate.
     }
   }
-  return { parsed: false };
+  return { parsed: /** @type {const} */ (false) };
 }
 
 /** Full-width punctuation a model writes in place of JSON's own, outside a string. */
@@ -212,6 +221,7 @@ export function describeReply(content, span = 80) {
     return { error: null, at: null, near: text.slice(start, start + 2 * span), tail };
 
   const body = text.slice(start);
+  /** @type {string|null} */
   let error = null;
   try {
     JSON.parse(body);

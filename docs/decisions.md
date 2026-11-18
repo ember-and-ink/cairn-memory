@@ -8,6 +8,45 @@ what we believed and why it changed.
 
 ---
 
+## D-0109 — TypeScript checks the JSDoc, with strictNullChecks and nothing emitted
+
+**2026-11-18.** The shipped code already carried a few hundred JSDoc annotations that nothing
+read. Loose ones (`{object} context`) hid what each function expects; the other repos on this
+shape have a type checker in the gate (ty on Python, tsc on TypeScript).
+
+**Decided.**
+
+1. **TypeScript 7 (`tsc -p .`), `checkJs` over `index.js` and `src/`, `noEmit`.** The extension
+   still ships the `.js` files ST loads; there is no build step and no `.ts` source.
+2. **`strictNullChecks` on, the rest of `strict` off.** Cairn's results are unions on `ok` or
+   `status` (`{ok: true, value} | {ok: false, reason}`), and without strictNullChecks a check
+   on them does not narrow, so every one would need a cast. The rest of `strict` is mostly
+   `noImplicitAny`, which in JS is noise.
+3. **Shared shapes live in `src/types.d.ts`, ambient and type-only** — never listed in
+   manifest.json. The ST shapes are the subset Cairn depends on, the same subset
+   `test/mocks/sillytavern.js` mirrors, and are cited in `docs/st-api-surface.md` rather than
+   twice. A factory's product is named from the factory (`ReturnType<typeof createSummarizer>`),
+   so a type cannot drift from what the code builds.
+4. **`tsconfig.json` carries no comments:** prek's `check-json` refuses them, so the reasons
+   are here.
+5. Tests and scripts are not type-checked yet.
+
+**What it found.** No bug that reached the chat. Two places where the declared type and the
+code had drifted: `reserves.read` documented a `stripExamples` option its type left out, and
+the injector clears its prompts with `setExtensionPrompt(key, "")`, which stores `NaN` for
+`position` and `depth` where ST's own clears pass NONE and a depth
+(public/scripts/authors-note.js:352). Harmless — an empty value is never injected — and left
+as it is. Two state-refusal toasts now skip a null message, as the summary path already did;
+neither call site can produce one.
+
+**The cost:** JSDoc types are noisier than ty is on Python. A handful of `/** @type */` casts
+mark places where the code knows more than the checker, each with the reason beside it.
+
+**Would reopen it:** a check that costs more to satisfy than it catches, or ST shipping its own
+types.
+
+---
+
 ## D-0108 — oxfmt formats everything, at its defaults
 
 **2026-11-18.** D-0107 left formatting for its own PR. The code had a hand style (4-space indent,

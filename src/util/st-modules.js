@@ -11,8 +11,19 @@
  * caller takes its loader as an option, since neither URL exists outside the browser.
  */
 
-/** Where `getMaxPromptTokens` lives (util/context-size.js). */
-export const loadScript = () => import(/* @vite-ignore */ "/script.js");
+/**
+ * Where `getMaxPromptTokens` lives (util/context-size.js).
+ * @type {() => Promise<StScriptModule>}
+ */
+export const loadScript = () =>
+  // @ts-expect-error ST's own URL, which resolves only in the browser.
+  import(/* @vite-ignore */ "/script.js");
 
-/** Where the World Info budget, its cap and `getSortedEntries` live (prompt/reserves.js, prompt/lore-cap.js). */
-export const loadWorldInfo = () => import(/* @vite-ignore */ "/scripts/world-info.js");
+/**
+ * Where the World Info budget, its cap and `getSortedEntries` live (prompt/reserves.js, prompt/lore-cap.js).
+ *
+ * @type {() => Promise<StWorldInfoModule>}
+ */
+export const loadWorldInfo = () =>
+  // @ts-expect-error ST's own URL, which resolves only in the browser.
+  import(/* @vite-ignore */ "/scripts/world-info.js");

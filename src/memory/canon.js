@@ -58,9 +58,9 @@ export const MAX_ENTITY_CHARS = 32;
 /**
  * The canon in force, resolved against the records it was picked from.
  *
- * @param {Array<object>} chat The live chat. Read only.
- * @param {{readCanon: (message: object) => {status: string, canon: object|null},
- *          readIndex: (message: object) => {status: string}}} readers
+ * @param {StMessage[]} chat The live chat. Read only.
+ * @param {{readCanon: typeof import("../store/chat-store.js").readCanon,
+ *          readIndex: typeof import("../store/chat-store.js").readIndex}} readers
  *        The store's readers (store/chat-store.js).
  * @param {{through?: number}} [options] The newest message whose batch may be read.
  *        The assembler passes the mark it last admitted at, so a pick written between
@@ -76,7 +76,9 @@ export const MAX_ENTITY_CHARS = 32;
 export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } = {}) {
   const list = chat ?? [];
   let batches = 0;
+  /** @type {CairnCanon|null} */
   let newest = null;
+  /** @type {number|null} */
   let at = null;
 
   for (let index = 0; index < list.length; index++) {
@@ -147,8 +149,9 @@ export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } 
  * on a rebuild turn only, so a dropped tail costs the head-change that turn was
  * already paying (D-0067).
  *
- * @param {{facts: Array<object>, cap: number, tokensOf: (facts: Array<object>) => number}} input
- * @returns {{facts: Array<object>, tokens: number, dropped: number}}
+ * @template F
+ * @param {{facts?: F[], cap?: number, tokensOf: (facts: NoInfer<F>[]) => number}} input
+ * @returns {{facts: F[], tokens: number, dropped: number}}
  */
 export function admitCanon({ facts = [], cap = 0, tokensOf }) {
   const limit = Math.max(0, Math.floor(cap));

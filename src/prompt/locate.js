@@ -34,10 +34,10 @@ const UNLOCATED = Object.freeze({
  * prompt body never ends up retained in a snapshot or written to the log.
  *
  * @param {string} flat The flattened prompt, as the stability meter sees it.
- * @param {Array<{key: string}>} inventory From buildInventory().
+ * @param {InventoryEntry[]} inventory From buildInventory().
  * @param {Record<string, string>} [texts] Raw injection values, keyed as in ST's bag.
  * @param {{minProbe?: number}} [options]
- * @returns {Array<object>} Copies of the entries, each with placement fields added.
+ * @returns {LocatedInjection[]} Copies of the entries, each with placement fields added.
  */
 export function locateInjections(flat, inventory, texts = {}, { minProbe = MIN_PROBE } = {}) {
   const prompt = String(flat ?? "");
@@ -61,15 +61,19 @@ export function locateInjections(flat, inventory, texts = {}, { minProbe = MIN_P
  *   `none`   — nothing we can see starts at or before it: the offset is above
  *              every injection, in the card, persona or story string body.
  *
- * @param {number} offset
- * @param {Array<object>} located From locateInjections().
- * @returns {object|null} null when there is no offset to attribute.
+ * @param {number|undefined} offset
+ * @param {LocatedInjection[]} located From locateInjections().
+ * @returns {{key: string|null, owner: string|null, label: string, offsetInEntry: number|null,
+ *            precision: string}|null} null when there is no offset to attribute.
  */
 export function attributeOffset(offset, located) {
   if (!Number.isFinite(offset)) return null;
 
   const candidates = (located ?? [])
-    .filter((entry) => Number.isFinite(entry.offset) && entry.offset <= offset)
+    .filter(
+      /** @returns {entry is LocatedInjection & {offset: number}} */
+      (entry) => Number.isFinite(entry.offset) && entry.offset <= offset,
+    )
     .sort((a, b) => a.offset - b.offset);
 
   const entry = candidates[candidates.length - 1];

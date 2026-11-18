@@ -121,7 +121,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
  * existing key changes meaning, type, or name, and then register the migration
  * here in the same change.
  *
- * @type {Record<number, (settings: object) => object>}
+ * @type {Record<number, (settings: Record<string, any>) => Record<string, any>>}
  */
 const SETTINGS_MIGRATIONS = {
   /**
@@ -145,7 +145,7 @@ const SETTINGS_MIGRATIONS = {
  * Bring a stored settings object up to the current version, filling in any
  * defaults it is missing. Pure: safe to call on undefined, never mutates input.
  * @param {object} [stored]
- * @returns {object}
+ * @returns {CairnSettings}
  */
 export function migrateSettings(stored) {
   return applyMigrations(stored, SETTINGS_MIGRATIONS, SETTINGS_VERSION);
@@ -158,15 +158,17 @@ export function migrateSettings(stored) {
  * table, a chain of several steps — can be tested today instead of the first
  * time a real user's settings hit them.
  *
- * @param {object} [stored]
- * @param {Record<number, (settings: object) => object>} migrations
+ * @param {object|undefined} stored
+ * @param {Record<number, (settings: Record<string, any>) => Record<string, any>>} migrations
  * @param {number} targetVersion
+ * @returns {CairnSettings}
  */
 export function applyMigrations(stored, migrations, targetVersion) {
   if (!stored || typeof stored !== "object") {
     return { ...DEFAULT_SETTINGS };
   }
 
+  /** @type {Record<string, any>} */
   let settings = { ...stored };
   let version = Number.isInteger(settings.version) ? settings.version : 0;
 
@@ -193,7 +195,7 @@ export function applyMigrations(stored, migrations, targetVersion) {
 
   // Unknown future version: leave it alone, let the user downgrade cleanly.
   if (version > targetVersion) {
-    return settings;
+    return /** @type {CairnSettings} */ (settings);
   }
 
   return { ...DEFAULT_SETTINGS, ...settings, version: targetVersion };

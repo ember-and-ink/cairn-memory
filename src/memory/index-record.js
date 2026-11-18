@@ -205,7 +205,7 @@ export function kindRank(kind) {
  * more than the slots they name once there are 159 of them, so `INDEX_HEADER` says what
  * the columns are once and each line is content. The kind is left out (`INDEX_HEADER`).
  *
- * @param {object} record A record `validRecord` accepts.
+ * @param {IndexRecord} record A record `validRecord` accepts.
  * @param {number} n The record's 1-based position in the rendered index.
  */
 export function renderRecord(record, n) {
@@ -226,7 +226,7 @@ export function renderRecord(record, n) {
  * exactly as the block does today (D-0075), so a record written before the line existed,
  * or one whose line came back too long, costs the horizon one line and nothing else.
  *
- * @param {object|null} record
+ * @param {IndexRecord|null|undefined} record
  */
 export function compactLine(record) {
   const line = typeof record?.line === "string" ? record.line.trim() : "";
@@ -237,7 +237,7 @@ export function compactLine(record) {
  * The whole index, header first, numbered from 1. This is the deriver's entire input
  * — the story at a fifth of the tokens with the structure made explicit (D-0070).
  *
- * @param {Array<object>} records Records `validRecord` accepts, oldest first.
+ * @param {IndexRecord[]} records Records `validRecord` accepts, oldest first.
  */
 export function renderIndex(records) {
   if (!records?.length) return "";

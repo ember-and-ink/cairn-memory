@@ -19,12 +19,12 @@ const PROMPT_FALLBACK =
   "Cairn's summary prompt has no {{message}}, so the default prompt is being used.";
 
 /**
- * @param {{getContext: () => object, send: Function, save: Function, clock: () => number,
- *          strategy?: object}} machinery The summarizer's transport and shared helpers.
+ * @param {{getContext: () => StContext, send: SendMemory, save: Function, clock: () => number,
+ *          strategy?: typeof perMessage}} machinery The summarizer's transport and shared helpers.
  */
 export function createSummaryJob({ getContext, send, save, clock, strategy = perMessage }) {
   const job = createJob(
-    {
+    /** @type {JobKind<StMessage>} */ ({
       log: "summary",
       name: "summary",
       article: "a summary",
@@ -33,10 +33,13 @@ export function createSummaryJob({ getContext, send, save, clock, strategy = per
       failed: (_message, at) => `The summary for message #${at}`,
       gaveUp: (_message, at, count) =>
         `Gave up on message #${at} after ${count} failures. The memory step holds before it until the page is reloaded.`,
-    },
+    }),
     { send },
   );
-  /** The message a summary request is out for. */
+  /**
+   * The message a summary request is out for.
+   * @type {StMessage|null}
+   */
   let writing = null;
 
   /** A failure the user asked for toasts every time: it is theirs to retry. */
@@ -75,6 +78,9 @@ export function createSummaryJob({ getContext, send, save, clock, strategy = per
     forget: job.forget,
 
     /**
+     * @param {StContext} context
+     * @param {Partial<CairnSettings>} settings
+     * @param {number} index
      * @param {{asked?: boolean}} [options] `asked` when the user clicked for it: a failure then says so every time.
      * @returns {Promise<boolean>} Whether a scene was written, and the run should go on.
      */

@@ -29,8 +29,8 @@ export const STATE_PLACEMENT = Object.freeze({ position: 1, role: 0, scan: false
  * placed: every message after it is newer than the blanking, so none of them is
  * dropped by the ignore flag before chat completion counts depth (openai.js:584).
  *
- * @param {object} context SillyTavern.getContext()
- * @param {Array<object>} promptChat The interceptor's `chat`. Read only.
+ * @param {StContext} context SillyTavern.getContext()
+ * @param {StMessage[]} promptChat The interceptor's `chat`. Read only.
  * @param {{worldState?: boolean, summarisedThrough?: number, scope?: object}} [options]
  *        `summarisedThrough` is the see-saw's, in live-chat indexes; -1 when unknown.
  * @returns {{reason: 'injected'|'off'|'wtracker-loaded'|'none-yet'|'empty'|'behind-step',
@@ -41,13 +41,19 @@ export function placeState(
   promptChat,
   { worldState, summarisedThrough = -1, scope } = {},
 ) {
+  /**
+   * @param {'injected'|'off'|'wtracker-loaded'|'none-yet'|'empty'|'behind-step'} reason
+   * @param {{index: number, state: CairnState, depth: number}|null} [found]
+   * @param {string} [text] Never set without `found`.
+   * @param {string|null} [tracker]
+   */
   const result = (reason, found = null, text = "", tracker = null) => ({
     reason,
     tracker,
     index: found?.index ?? null,
     depth: found?.depth ?? null,
     text,
-    changed: text ? [...(found.state.changed ?? [])] : [],
+    changed: text ? [...(found?.state.changed ?? [])] : [],
   });
 
   if (worldState === false) return result("off");
@@ -65,20 +71,26 @@ export function placeState(
 /**
  * The per-turn glue: place the state, and report what was placed.
  *
- * @param {() => object} getContext Returns a fresh SillyTavern.getContext()
+ * @param {() => StContext} getContext Returns a fresh SillyTavern.getContext()
  * @param {{settings?: () => {worldState?: boolean}, scope?: object}} [options]
  */
 export function createStatePlacement(getContext, { settings, scope } = {}) {
-  /** Last generation's injected text, '' for none, null before the first. */
+  /**
+   * Last generation's injected text, '' for none, null before the first.
+   * @type {string|null}
+   */
   let previousText = null;
   let counted = { text: "", tokens: 0 };
-  /** This turn's report, for the observer's snapshot. */
+  /**
+   * This turn's report, for the observer's snapshot.
+   * @type {Record<string, any>|null}
+   */
   let latest = null;
 
   /**
-   * @param {Array<object>} promptChat The interceptor's `chat`. Read only.
+   * @param {StMessage[]} promptChat The interceptor's `chat`. Read only.
    * @param {{summarisedThrough?: number}} [step]
-   * @returns {Promise<{text: string, depth: number|null, placement: object}>}
+   * @returns {Promise<{text: string, depth: number|null, placement: typeof STATE_PLACEMENT}>}
    */
   async function plan(promptChat, { summarisedThrough = -1 } = {}) {
     const context = getContext();

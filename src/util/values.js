@@ -2,7 +2,11 @@
  * Small value checks and roundings that several modules need alike. Pure.
  */
 
-/** A plain object: not null, not an array. What every stored and parsed shape is checked against. */
+/**
+ * A plain object: not null, not an array. What every stored and parsed shape is checked against.
+ * @param {unknown} value
+ * @returns {value is Record<string, any>}
+ */
 export function isObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

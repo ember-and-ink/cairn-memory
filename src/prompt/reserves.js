@@ -166,7 +166,7 @@ export async function loreReserve({ entries, budget, sizeOf }) {
  * otherwise the instruct system prompt while that is enabled, and nothing at all
  * on chat completion (public/script.js:4686-4696).
  *
- * @param {{powerUser?: object, cardSystem?: string, mainApi?: string}} input
+ * @param {{powerUser?: Record<string, any>, cardSystem?: string, mainApi?: string}} input
  */
 export function systemPromptText({ powerUser, cardSystem, mainApi }) {
   if (mainApi === "openai") return "";
@@ -199,8 +199,8 @@ export function cardText(fields, systemPrompt = "", { stripExamples = false } = 
  * The per-turn glue. Takes a *getter*, not a context
  * (docs/st-api-surface.md, Hazards).
  *
- * @param {() => object} getContext Returns a fresh SillyTavern.getContext()
- * @param {{load?: () => Promise<object>, settings?: () => object,
+ * @param {() => StContext} getContext Returns a fresh SillyTavern.getContext()
+ * @param {{load?: () => Promise<StWorldInfoModule>, settings?: (() => Partial<CairnSettings>)|null,
  *          scope?: object, runLength?: number}} [options]
  *        `load` is injected in tests; there is no `/scripts/world-info.js`
  *        outside the browser.
@@ -223,7 +223,7 @@ export function createReserves(
   /**
    * @param {number} maxPromptTokens What the cap is a share of, and what ST
    *        works its own World Info budget out from.
-   * @param {{runLength?: number, since?: number}} [options] `runLength` is the
+   * @param {{runLength?: number, since?: number, stripExamples?: boolean}} [options] `runLength` is the
    *        see-saw's own widest window, so a changed `RAW_WINDOW` or `STEP`
    *        cannot leave this reading a number the scheduler no longer uses.
    *        `since` is the threshold: messages after it go to the model raw.

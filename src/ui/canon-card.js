@@ -31,7 +31,7 @@ const REFUSED = Object.freeze({
  *
  * @param {{inPrompt: string[], spilled: string[], waiting: string[], slots: number}|null} planned
  *        The assembler's `canonView`, or null.
- * @param {{chat?: Array<object>, chatId?: string|null}} context
+ * @param {{chat?: StMessage[], chatId?: string|null}} context
  * @param {{keepCanon?: boolean}} settings
  * @param {{forcing?: boolean}} [assembler] `forcing`: the next turn is a forced rebuild.
  * @returns {{kind: 'no-chat'|'off'|'planned'|'unplanned', facts: string[], spilled: string[],
@@ -100,11 +100,11 @@ export function rebuildText(result) {
 }
 
 /**
- * @param {() => object} getContext
+ * @param {() => StContext} getContext
  * @param {{rebuildCanon: () => Promise<{ok: boolean, reason?: string}>, adopting: boolean,
  *          rebuildingCanon: boolean}} summarizer
- * @param {{canonView: object|null, forcing: boolean, forceRebuild: () => void}} assembler
- * @param {{settings: () => object}} options
+ * @param {Pick<Assembler, "canonView" | "forcing" | "forceRebuild">} assembler
+ * @param {{settings: () => CairnSettings}} options
  * @returns {{refresh: () => void, reset: () => void}}
  */
 export function installCanonCard(getContext, summarizer, assembler, { settings }) {

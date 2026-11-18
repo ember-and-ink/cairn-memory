@@ -82,7 +82,7 @@ const STATE_KEYS = [...Object.keys(TEXT_FIELDS), "characters"];
  * nothing: the record only holds who is present, so a character who leaves and
  * returns would otherwise lose a hair colour or an outfit no later message restates.
  *
- * @param {object} current A state `validState` accepts; `{}` on a cold start.
+ * @param {WorldState} current A state `validState` accepts; `{}` on a cold start.
  * @param {object} reply The parsed reply: the whole record, as the prompt asks.
  * @param {{known?: Record<string, object>}} [options] `known` is the last-seen fields
  *        of characters not in `current` (`lastSeen` in memory/state.js), by name.
@@ -140,12 +140,13 @@ export function renderState(value) {
  * chat can put an edit pencil after it (D-0100). Who is present is the `Present:`
  * heading and one line each, so a name is written once.
  *
- * @param {object} value
+ * @param {WorldState} value
  * @returns {Array<{text: string, character?: string}>} Empty when there is nothing to say.
  */
 export function stateLines(value) {
   if (!validState(value) || !Object.keys(value).length) return [];
 
+  /** @type {Array<{text: string, character?: string}>} */
   const lines = Object.keys(TEXT_FIELDS).map((field) => ({
     text: `${LABELS[field]}: ${shown(value[field])}`,
   }));
@@ -317,8 +318,8 @@ function readText(entry, cap) {
 /**
  * What changed between two valid states, as `changed` records it: kinds, never content.
  *
- * @param {object} before
- * @param {object} after
+ * @param {WorldState} before
+ * @param {WorldState} after
  * @returns {string[]} In CHANGE_KINDS order.
  */
 export function changedKinds(before, after) {
@@ -345,9 +346,9 @@ export function changedKinds(before, after) {
  * (ignoring case) keeps their fields and takes the spelling typed; any other name joins
  * with none; anyone in no box has left. A repeated name counts once.
  *
- * @param {object} current The valid state the editor opened on.
+ * @param {WorldState} current The valid state the editor opened on.
  * @param {{location?: string, weather?: string, people?: string[]}} form
- * @returns {{ok: true, value: object} | {ok: false, reason: 'too-long'|'bad-name'|'too-many', name?: string}}
+ * @returns {{ok: true, value: WorldState} | {ok: false, reason: 'too-long'|'bad-name'|'too-many', name?: string}}
  */
 export function applySceneEdit(current, { location, weather, people = [] }) {
   const value = {};
@@ -376,10 +377,10 @@ export function applySceneEdit(current, { location, weather, people = [] }) {
  * The state with one character's hair and outfit replaced by the editor's (D-0100).
  * A blank or a placeholder unsets the field.
  *
- * @param {object} current The valid state the editor opened on.
+ * @param {WorldState} current The valid state the editor opened on.
  * @param {string} name Exactly as stored.
  * @param {{hair?: string, outfit?: string}} form
- * @returns {{ok: true, value: object} | {ok: false, reason: 'gone'|'too-long'}}
+ * @returns {{ok: true, value: WorldState} | {ok: false, reason: 'gone'|'too-long'}}
  */
 export function applyCharacterEdit(current, name, form) {
   if (!isObject(current.characters) || !Object.hasOwn(current.characters, name))
@@ -401,6 +402,11 @@ export function applyCharacterEdit(current, name, form) {
 }
 
 /** A hand-typed value: whitespace collapsed, and blank or a placeholder meaning unset. */
+/**
+ * @param {unknown} entry
+ * @param {number} cap
+ * @returns {{ok: true, text: string|undefined} | {ok: false, reason: 'too-long'}}
+ */
 function editedText(entry, cap) {
   const text = oneLine(typeof entry === "string" ? entry : "");
   if (text === "" || isPlaceholder(text)) return { ok: true, text: undefined };

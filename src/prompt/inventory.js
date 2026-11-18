@@ -65,7 +65,7 @@ export function classifySource(key) {
  *
  * @param {Record<string, {value: string, position: number, depth: number, role: number}>} extensionPrompts
  * @param {{countTokens?: (text: string) => number | Promise<number>}} [options]
- * @returns {Promise<Array<object>>}
+ * @returns {Promise<InventoryEntry[]>}
  */
 export async function buildInventory(extensionPrompts, { countTokens = estimateTokens } = {}) {
   const entries = [];

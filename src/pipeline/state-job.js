@@ -21,12 +21,12 @@ import { MAX_ATTEMPTS } from "./tally.js";
 export const READ_CHANGED = "read-changed";
 
 /**
- * @param {{getContext: () => object, send: Function, save: Function, clock: () => number,
- *          strategy?: object}} machinery The summarizer's transport and shared helpers.
+ * @param {{getContext: () => StContext, send: SendMemory, save: Function, clock: () => number,
+ *          strategy?: typeof stateRecord}} machinery The summarizer's transport and shared helpers.
  */
 export function createStateJob({ getContext, send, save, clock, strategy = stateRecord }) {
   const job = createJob(
-    {
+    /** @type {JobKind<StateWork, {dropped: number}>} */ ({
       log: "state",
       name: "state",
       article: "a state update",
@@ -36,7 +36,7 @@ export function createStateJob({ getContext, send, save, clock, strategy = state
       failed: (work, at = work.index) => `The world state update through message #${at}`,
       gaveUp: (work, at = work.index, count) =>
         `Gave up on the world state through message #${at} after ${count} failures. The previous state stays in the prompt until a new message arrives.`,
-    },
+    }),
     { send },
   );
   const states = job.tally;
@@ -53,7 +53,12 @@ export function createStateJob({ getContext, send, save, clock, strategy = state
     /** Forget a job's failures, so a rebuild the user asked for is tried at all. */
     forget: job.forget,
 
-    /** One update. Its outcome is only recorded: a failing state must not starve summaries. */
+    /**
+     * One update. Its outcome is only recorded: a failing state must not starve summaries.
+     *
+     * @param {StContext} context
+     * @param {Partial<CairnSettings>} settings
+     */
     async run(context, { memoryProfileId, statePrompt }, work) {
       const { chatId } = context;
       const sent = await job.request(context, memoryProfileId, work, work.index, () =>
@@ -125,7 +130,7 @@ export function createStateJob({ getContext, send, save, clock, strategy = state
           const work = pendingStateJob(chat);
           status.pending = Boolean(work);
           const record = work ? job.record(chatId, work) : undefined;
-          if (record) {
+          if (record && work) {
             status.failed = { index: work.index, attempts: record.count, reason: record.reason };
             status.givenUp = record.count >= MAX_ATTEMPTS;
           }

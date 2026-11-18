@@ -31,7 +31,8 @@ edit — do not quietly work around it.**
 3. Pure logic must be importable and runnable without a browser, without ST, and without a
    network. If a module cannot be tested that way, the ST coupling is in the wrong place.
 4. **Zero runtime dependencies.** ST loads our files directly. Dev dependencies only
-   (oxlint, oxfmt, vitest, jscpd; Task and prek to run them), and each one earns its place.
+   (oxlint, oxfmt, TypeScript, vitest, jscpd; Task and prek to run them), and each one earns
+   its place. TypeScript only checks the JSDoc; nothing is compiled (D-0109).
    The formatter's output is the style: nothing about layout is a house rule (D-0108).
 
 ## 2. SillyTavern first

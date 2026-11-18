@@ -19,9 +19,9 @@ import { loadScript } from "./st-modules.js";
 export const FALLBACK_RESERVE_FRACTION = 0.125;
 
 /**
- * @param {{load?: () => Promise<object>}} [options] Injected in tests; there is
+ * @param {{load?: () => Promise<StScriptModule>}} [options] Injected in tests; there is
  *        no `/script.js` outside the browser.
- * @returns {(context: object) => Promise<number>}
+ * @returns {(context: StContext) => Promise<number>}
  */
 export function createMaxPromptTokens({ load = loadScript } = {}) {
   /** undefined = not tried yet, null = tried and unavailable. */

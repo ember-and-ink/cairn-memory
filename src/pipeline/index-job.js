@@ -28,12 +28,12 @@ import { MAX_ATTEMPTS } from "./tally.js";
 const span = (work) => `#${work[0].index}–#${work[work.length - 1].index}`;
 
 /**
- * @param {{getContext: () => object, send: Function, save: Function, clock: () => number,
- *          strategy?: object}} machinery The summarizer's transport and shared helpers.
+ * @param {{getContext: () => StContext, send: SendMemory, save: Function, clock: () => number,
+ *          strategy?: typeof indexBatch}} machinery The summarizer's transport and shared helpers.
  */
 export function createIndexJob({ getContext, send, save, clock, strategy = indexBatch }) {
   const job = createJob(
-    {
+    /** @type {JobKind<Array<{index: number, text: string}>, {records: number, dropped: number, clipped: number, missed: number}>} */ ({
       log: "index",
       name: "index batch",
       article: "an index batch",
@@ -46,7 +46,7 @@ export function createIndexJob({ getContext, send, save, clock, strategy = index
       failed: (work) => `Indexing summaries ${span(work)}`,
       gaveUp: (work, _at, count) =>
         `Gave up on indexing summaries ${span(work)} after ${count} failures. Those summaries keep no compact line, so they evict rather than demote.`,
-    },
+    }),
     { send },
   );
   const batches = job.tally;
@@ -68,6 +68,9 @@ export function createIndexJob({ getContext, send, save, clock, strategy = index
      * One batch. Each record is written on its own message, found by identity: a
      * branch, a deletion or a chat change while the request was out means those
      * indexes belong to a chat that no longer exists.
+     *
+     * @param {StContext} context
+     * @param {Partial<CairnSettings>} settings
      */
     async run(context, { memoryProfileId, indexPrompt }, work) {
       const { chatId } = context;

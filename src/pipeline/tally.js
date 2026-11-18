@@ -11,9 +11,11 @@
 export const MAX_ATTEMPTS = 3;
 
 /**
- * @param {object} [counters] Running totals this kind reports beyond the shared ones, at zero.
+ * @template {Record<string, number>} [C={}]
+ * @param {C} [counters] Running totals this kind reports beyond the shared ones, at zero.
  */
-export function createTally(counters = {}) {
+export function createTally(counters = /** @type {C} */ ({})) {
+  /** @returns {TallyStats & C} */
   const fresh = () => ({
     calls: 0,
     written: 0,
@@ -42,10 +44,16 @@ export function createTally(counters = {}) {
       return streak;
     },
 
-    /** The message a request is out for, or null. */
+    /**
+     * The message a request is out for, or null.
+     * @type {number|null}
+     */
     inFlight: null,
 
-    /** Told of every outcome, so each call gets a line in the chat's log (D-0093). */
+    /**
+     * Told of every outcome, so each call gets a line in the chat's log (D-0093).
+     * @type {((outcome: {outcome: string, reason?: string, attempt?: number}) => void) | null}
+     */
     onOutcome: null,
 
     /** Counts start again in another chat; attempts and the streak do not. */

@@ -54,6 +54,7 @@ export const STEP_TURN = "step";
  */
 export function createSeeSaw({ rawWindow = RAW_WINDOW, step = STEP } = {}) {
   /** Highest message index whose summary may be in the block. null = no turn yet. */
+  /** @type {number|null} */
   let summarisedThrough = null;
 
   return {

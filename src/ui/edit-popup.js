@@ -36,12 +36,12 @@ const REFUSED = Object.freeze({
 
 /**
  * @param {number} index
- * @param {string} reason The summarizer's `editSummary` reason.
+ * @param {string|undefined} reason The summarizer's `editSummary` reason.
  * @returns {string|null} Null when there is nothing to tell the user.
  */
 export function editRefusalMessage(index, reason) {
   if (reason === "unchanged") return null;
-  return `Cairn didn't save the summary of message #${index}: ${REFUSED[reason] ?? reason}.`;
+  return `Cairn didn't save the summary of message #${index}: ${REFUSED[String(reason)] ?? reason}.`;
 }
 
 /** The popup's text above the box. Plain, so nothing in it needs escaping. */
@@ -68,12 +68,12 @@ const STATE_REFUSED = Object.freeze({
 
 /**
  * @param {number} index
- * @param {string} reason
+ * @param {string|null} reason
  * @returns {string|null} Null when there is nothing to tell the user.
  */
 export function stateRefusalMessage(index, reason) {
   if (reason === "unchanged") return null;
-  return `Cairn didn't save the world state on message #${index}: ${STATE_REFUSED[reason] ?? reason}.`;
+  return `Cairn didn't save the world state on message #${index}: ${STATE_REFUSED[String(reason)] ?? reason}.`;
 }
 
 /** ST's ids are document-wide, so every input id carries the slug. */
@@ -93,7 +93,7 @@ const field = (name, label, value, cap) => ({
  * The scene popup's inputs: location, weather and one box per place in the cast, filled
  * with the state as it stands. ST draws them as a plain list (public/scripts/popup.js:355-400).
  *
- * @param {object} value A valid state.
+ * @param {WorldState} value A valid state.
  * @returns {Array<{id: string, label: string, type: string, rows: number, defaultState: string, cap: number}>}
  */
 export function sceneInputs(value) {
@@ -145,10 +145,8 @@ export function characterEditHtml(name) {
 /**
  * Answers the pencils from the chat: a click, or Enter or Space when one has focus.
  *
- * @param {() => object} getContext
- * @param {{editSummary: (index: number, text: string) => Promise<{written: boolean, reason?: string}>,
- *          stateEditable: (index: number) => ({ok: true, state: object} | {ok: false, reason: string}),
- *          editState: (index: number, value: object, at: string) => Promise<{written: boolean, reason?: string}>}} summarizer
+ * @param {() => StContext} getContext
+ * @param {Pick<Summarizer, "editSummary" | "stateEditable" | "editState">} summarizer
  */
 export function installEditPopup(getContext, summarizer) {
   try {
@@ -186,11 +184,13 @@ export function installEditPopup(getContext, summarizer) {
     async function editState(index, html, inputs, build) {
       const editable = summarizer.stateEditable(index);
       if (!editable.ok) {
-        toast(stateRefusalMessage(index, editable.reason));
+        const message = stateRefusalMessage(index, editable.reason);
+        if (message) toast(message);
         return;
       }
       const { at, value: current } = editable.state;
       const { Popup, POPUP_TYPE, POPUP_RESULT } = getContext();
+      /** @type {ReturnType<typeof build>|null} */
       let built = null;
       const popup = new Popup(html, POPUP_TYPE.CONFIRM, "", {
         okButton: "Save",
@@ -236,7 +236,8 @@ export function installEditPopup(getContext, summarizer) {
         ? Object.keys(editable.state.value.characters ?? {})[place]
         : undefined;
       if (name === undefined) {
-        toast(stateRefusalMessage(index, editable.ok ? "gone" : editable.reason));
+        const message = stateRefusalMessage(index, editable.ok ? "gone" : editable.reason);
+        if (message) toast(message);
         return;
       }
       await editState(

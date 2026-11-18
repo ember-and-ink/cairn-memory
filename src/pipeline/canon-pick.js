@@ -44,25 +44,33 @@ export const MIN_INDEX_RECORDS = 3;
  * the batch records how many slots were asked for, so a story with four durable facts
  * and ten slots is not re-derived every turn forever.
  *
- * @param {{records: Array<{index: number}>, canon?: {coveredThrough: number|null,
- *          slots: number|null, dropped: number}, slots: number, growth?: number}} input
+ * @param {{records?: IndexedRecord[], canon?: {coveredThrough: number|null,
+ *          slots: number|null, dropped: number}|null, slots?: number, growth?: number}} [input]
  *        `records` is every valid index record in the chat, oldest first;
  *        `canon` is the fold in force (`canonFor`); `growth` the see-saw step, where
  *        0 or less asks again on any new record.
- * @returns {{due: boolean, reason: string, records: Array<object>, covers: number[]|null,
+ * @returns {CanonPickWork | {due: false, reason: string, records: IndexedRecord[], covers: null,
  *            slots: number}} `reason` is a stable string the log and the inspector record.
  */
 export function pendingPick({ records = [], canon = null, slots = 0, growth = 0 } = {}) {
-  const refuse = (reason) => ({ due: false, reason, records: [], covers: null, slots });
+  /** @param {string} reason */
+  const refuse = (reason) => ({
+    due: /** @type {const} */ (false),
+    reason,
+    records: /** @type {IndexedRecord[]} */ ([]),
+    covers: null,
+    slots,
+  });
 
   if (!(slots >= 1)) return refuse("no-slots");
   if (records.length < MIN_INDEX_RECORDS) return refuse("too-few");
 
+  /** @type {[number, number]} */
   const covers = [records[0].index, records[records.length - 1].index];
   const reason = pickReason(canon, covers[1], slots, growth);
   if (reason === "growing" || !reason) return refuse(reason ?? "covered");
 
-  return { due: true, reason, records, covers, slots };
+  return { due: /** @type {const} */ (true), reason, records, covers, slots };
 }
 
 /**
@@ -95,7 +103,7 @@ export function carriedCanon(facts = [], records = []) {
   const rowOf = new Map(records.map((entry, at) => [entry.index, at + 1]));
   return facts.map((fact) => ({
     text: fact.text,
-    rows: (fact.from ?? []).map((index) => rowOf.get(index)).filter(Boolean),
+    rows: (fact.from ?? []).map((index) => rowOf.get(index)).filter((row) => row !== undefined),
   }));
 }
 
@@ -111,9 +119,9 @@ export function carriedCanon(facts = [], records = []) {
  * outside that list loses its grounding, so it is dropped rather than stored uncited:
  * an uncitable fact is a permanent one, which is what a pick exists not to be.
  *
- * @param {{picked: Array<object>, dropped?: Array<object>, records: Array<{index: number}>,
- *          covers: number[], slots: number, prompt: string, at: string}} input
- * @returns {{batch: {facts: Array<object>, covers: number[], slots: number,
+ * @param {{picked: CanonFact[], dropped?: Array<object>, records: Array<{index: number}>,
+ *          covers: [number, number], slots: number, prompt: string, at: string}} input
+ * @returns {{batch: {facts: CanonFact[], covers: [number, number], slots: number,
  *            prompt: string, at: string}, picked: number, duplicates: number,
  *            dropped: number, uncited: number}}
  */

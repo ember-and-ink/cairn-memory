@@ -27,13 +27,12 @@ export function reportFailure({ first, reason }, detail, err) {
 }
 
 /**
- * @param {{log: string, name: string, article: string, counters?: object,
- *          key: (chatId: string, work: object) => string,
- *          failed: (work: object, at: number) => string,
- *          gaveUp: (work: object, at: number, count: number) => string}} kind
- *        `log` is the kind as the chat's log records it (D-0093), `name` and `article` as
- *        the debug log says it. `failed` names what failed; `gaveUp` is the whole warning.
- * @param {{send: Function}} machinery The summarizer's transport.
+ * @template W
+ * @template {Record<string, number>} [C={}]
+ * @param {JobKind<W, C>} kind `log` is the kind as the chat's log records it (D-0093),
+ *        `name` and `article` as the debug log says it. `failed` names what failed;
+ *        `gaveUp` is the whole warning. `W` is one job's work.
+ * @param {{send: SendMemory}} machinery The summarizer's transport.
  */
 export function createJob(kind, { send }) {
   const tally = createTally(kind.counters);
@@ -72,9 +71,15 @@ export function createJob(kind, { send }) {
      * Build a request and send it. A build that throws, an abort and a transport error
      * are already recorded when this returns null.
      *
+     * @template {MemoryRequest} Q
+     * @param {StContext} context
+     * @param {string|undefined} memoryProfileId Checked by the gates before any run.
+     * @param {W} work
+     * @param {number|undefined} at
+     * @param {() => Q} build
      * @param {{fail?: (reason: string, err: unknown) => false}} [options] In place of
      *        `job.fail`, for a kind whose failures depend on who asked.
-     * @returns {Promise<{request: object, reply: object}|null>}
+     * @returns {Promise<{request: Q, reply: MemoryReply|undefined}|null>}
      */
     async request(
       context,

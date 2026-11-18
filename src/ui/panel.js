@@ -16,7 +16,7 @@ import { escapeHtml } from "./html.js";
 
 /**
  * Render the panel into ST's extension settings column and bind its controls.
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  * @param {{onEnabledChange?: (enabled: boolean) => void,
  *           onCollapseSummariesChange?: (collapsed: boolean) => void,
  *           onLogToDiskChange?: (enabled: boolean) => void,
@@ -30,9 +30,14 @@ import { escapeHtml } from "./html.js";
  * @returns {Promise<HTMLElement>} The element the inspector renders into.
  */
 export async function renderSettingsPanel(context, handlers = {}) {
-  const settings = context.extensionSettings[SLUG];
+  // index.js loads and migrates the settings before it draws the panel.
+  const settings = /** @type {CairnSettings} */ (context.extensionSettings[SLUG]);
   const html = await context.renderExtensionTemplateAsync(EXTENSION_PATH, "settings");
-  document.getElementById("extensions_settings").insertAdjacentHTML("beforeend", html);
+  // ST's own extensions drawer, always on the page.
+  /** @type {HTMLElement} */ (document.getElementById("extensions_settings")).insertAdjacentHTML(
+    "beforeend",
+    html,
+  );
 
   // The panel reports the change; index.js decides what it means.
   bind(context, "enabled", CHECKBOX, (value) => handlers.onEnabledChange?.(value));
@@ -70,7 +75,7 @@ export async function renderSettingsPanel(context, handlers = {}) {
   refreshBudget(context);
   // A new choice is a fresh start: what a provider refused before is asked again (D-0088).
   bind(context, "memoryReasoning", SELECT, () => {
-    context.extensionSettings[SLUG].reasoningRefused = {};
+    /** @type {CairnSettings} */ (context.extensionSettings[SLUG]).reasoningRefused = {};
     context.saveSettingsDebounced();
   });
   bindPrompt(context, "summaryPrompt", DEFAULT_SUMMARY_PROMPT);
@@ -79,7 +84,8 @@ export async function renderSettingsPanel(context, handlers = {}) {
   bindPrompt(context, "statePrompt", STATE_PROMPT);
 
   toggleInspector(settings.showInspector);
-  return document.getElementById(`${SLUG}_inspector`);
+  // settings.html carries it, and the template was inserted above.
+  return /** @type {HTMLElement} */ (document.getElementById(`${SLUG}_inspector`));
 }
 
 function toggleInspector(visible) {
@@ -105,10 +111,11 @@ const BUDGET_CELLS = {
  * Fills the budget table's read-only cells: each share's ceiling at this context size
  * (D-0098). Called again when ST switches profile or starts a generation, so a changed
  * context size shows up by the next one.
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  */
 export async function refreshBudget(context) {
   if (!field("budgetMaxPrompt")) return;
+  /** @type {Partial<CairnSettings>} */
   const settings = context.extensionSettings[SLUG] ?? {};
   const ceilings = budgetCeilings({
     maxPromptTokens: await maxPromptTokens(context),
@@ -130,7 +137,7 @@ export async function refreshBudget(context) {
 /**
  * Shows the note under the profile picker when Cairn shares the chat's profile.
  * Called again when ST switches profile, so the note follows the top bar (D-0097).
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  */
 export function noteSharedProfile(context) {
   const note = document.getElementById(`${SLUG}_sharedProfileNote`);
@@ -162,7 +169,7 @@ function populateProfiles(context, selectedId) {
  * stores the default as empty, so an unedited prompt keeps following the default.
  */
 function bindPrompt(context, key, fallback) {
-  const input = field(key);
+  const input = /** @type {HTMLTextAreaElement|null} */ (field(key));
   if (!input) return;
   const store = (value) => {
     context.extensionSettings[SLUG][key] = value.trim() === fallback.trim() ? "" : value;
@@ -183,6 +190,7 @@ function bindPrompt(context, key, fallback) {
  * tells the caller.
  *
  * @param {{show: (input: HTMLElement, value: unknown) => void, read: (input: HTMLElement) => unknown}} kind
+ * @param {(value: any) => void} [onChange] Gets the value as `kind` reads it.
  */
 function bind(context, key, kind, onChange) {
   const input = field(key);

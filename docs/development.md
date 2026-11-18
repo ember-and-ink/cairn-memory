@@ -30,9 +30,10 @@ the tasks below the staged files touch.
 
 | Task                         |                                                                                                                                           |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `task lint`                  | oxlint with `--fix`, then oxfmt, then jscpd                                                                                               |
+| `task lint`                  | oxlint with `--fix`, then oxfmt, tsc and jscpd                                                                                            |
 | `task test-lint`             | The same, check-only — what CI runs                                                                                                       |
 | `task lint-format`           | oxfmt over the whole repo: code, docs, JSON, YAML, HTML and CSS, at its defaults                                                          |
+| `task lint-typing`           | tsc over `index.js` and `src/`'s JSDoc (`tsconfig.json`, types in `src/types.d.ts`); nothing is emitted                                   |
 | `task lint-dupes`            | jscpd over `src/`, `scripts/` and `index.js` (`.jscpd.json`); a deliberate twin is fenced with `jscpd:ignore-start` / `-end` and a reason |
 | `task test`                  | Vitest, once; `task test -- <file> -t <name>` narrows it                                                                                  |
 | `task test-watch`            | Vitest, watching                                                                                                                          |

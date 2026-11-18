@@ -20,7 +20,7 @@ const STABILITY_BANDS = [
 
 /**
  * @param {HTMLElement} host Element to render into.
- * @param {{canon?: () => object|null}} [sources] `canon` is the assembler's `canonView`.
+ * @param {{canon?: () => Assembler["canonView"]}} [sources] `canon` is the assembler's `canonView`.
  */
 export function createInspector(host, { canon = () => null } = {}) {
   // Drawn apart: summaries and states land between generations, and redrawing the
@@ -46,7 +46,7 @@ export function createInspector(host, { canon = () => null } = {}) {
       drawState();
     },
 
-    /** @param {object|null} status The summarizer's `status`. */
+    /** @param {SummarizerStatus|null} status The summarizer's `status`. */
     summaries(status) {
       summariesPart.innerHTML = renderSummaries(status);
       stateStatus = status?.state ?? null;
@@ -119,7 +119,10 @@ function renderStability(stability) {
     return row("Prefix stability", '— <span class="dim">(first turn — no baseline)</span>');
   }
 
-  const band = STABILITY_BANDS.find((b) => percent >= b.min);
+  // The last band starts at 0, and a percent is never below it.
+  const band = /** @type {(typeof STABILITY_BANDS)[number]} */ (
+    STABILITY_BANDS.find((b) => percent >= b.min)
+  );
   return `
         <div class="${SLUG}-meter">
             <div class="${SLUG}-meter-head">

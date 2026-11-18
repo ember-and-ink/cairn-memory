@@ -19,9 +19,9 @@ import { STATE_MAX_EARLIER, STATE_MAX_MESSAGES } from "./state-strategy.js";
  * only while its range hashes the same (store/chat-store.js) and its value is one
  * the schema accepts, since only those can be rendered or patched.
  *
- * @param {Array<object>} chat The live chat. Read only.
+ * @param {StMessage[]} chat The live chat. Read only.
  * @param {number} [through] The newest index to consider; the last message by default.
- * @returns {{index: number, state: object}|null}
+ * @returns {{index: number, state: CairnState}|null}
  */
 export function newestState(chat, through = (chat?.length ?? 0) - 1) {
   for (let index = Math.min(through, (chat?.length ?? 0) - 1); index >= 0; index--) {
@@ -37,7 +37,7 @@ export function newestState(chat, through = (chat?.length ?? 0) - 1) {
  * record, so this is what lets one who comes back keep what no later message restates.
  * Walks back only as far as it must, and a name never seen is simply absent.
  *
- * @param {Array<object>} chat The live chat. Read only.
+ * @param {StMessage[]} chat The live chat. Read only.
  * @param {number} through The newest index to consider.
  * @param {string[]} names As the reply wrote them; matched trimmed and case-insensitively.
  * @returns {Record<string, {hair?: string, outfit?: string}>} Keyed by the stored spelling.
@@ -64,9 +64,9 @@ export function lastSeen(chat, through, names = []) {
  * fresh object sharing `extra` with the live chat (:4525). So messages are matched
  * by `extra` identity, never by index, and a swiped-away reply is simply not there.
  *
- * @param {Array<object>} chat The live chat. Read only.
- * @param {Array<object>} promptChat The interceptor's `chat`. Read only.
- * @returns {{index: number, state: object, depth: number}|null} `index` is the live chat's.
+ * @param {StMessage[]} chat The live chat. Read only.
+ * @param {StMessage[]} promptChat The interceptor's `chat`. Read only.
+ * @returns {{index: number, state: CairnState, depth: number}|null} `index` is the live chat's.
  */
 export function stateForPrompt(chat, promptChat) {
   const indexOf = new Map();
@@ -92,11 +92,9 @@ export function stateForPrompt(chat, promptChat) {
  *
  * The state update includes the last message, unlike summaries (D-0044).
  *
- * @param {Array<object>} chat The live chat. Read only.
- * @returns {null|{
- *     index: number, message: object, read: number, hash: string,
- *     messages: Array<object>, state: object, baseIndex: number|null, earlier: string[],
- * }} `message` and `hash` are what `jobStillCurrent` checks before the write.
+ * @param {StMessage[]} chat The live chat. Read only.
+ * @returns {StateWork|null} `message` and `hash` are what `jobStillCurrent` checks
+ *          before the write.
  */
 export function pendingStateJob(chat) {
   const list = chat ?? [];
@@ -112,7 +110,7 @@ export function pendingStateJob(chat) {
  * so a state already on that message is replaced rather than read. What a manual
  * rebuild asks for (D-0089); the queue asks for it only at the newest message.
  *
- * @param {Array<object>} chat The live chat. Read only.
+ * @param {StMessage[]} chat The live chat. Read only.
  * @param {number} index
  * @returns {ReturnType<typeof pendingStateJob>} Null for a hidden or missing message,
  *          or one a newer Cairn wrote.
@@ -130,7 +128,8 @@ export function stateJobAt(chat, index) {
     if (visible(list[at])) unread.push(at);
   }
   const read = Math.min(unread.length, STATE_MAX_MESSAGES);
-  const messages = readRange(list, index, read);
+  // The message is visible and counts itself, so `read` is at least 1 and a range exists.
+  const messages = /** @type {StMessage[]} */ (readRange(list, index, read));
   const earlier =
     unread.length > read
       ? sceneHistory(list, unread[unread.length - read], { count: STATE_MAX_EARLIER }).map(
@@ -156,8 +155,8 @@ export function stateJobAt(chat, index) {
  * hide, a deletion, or a swipe, which keeps `extra` and replaces `mes`
  * (public/script.js:6671-6684). A message after the range does not matter.
  *
- * @param {Array<object>} chat The live chat, as it is now.
- * @param {{message: object, read: number, hash: string}} job
+ * @param {StMessage[]} chat The live chat, as it is now.
+ * @param {{message: StMessage, read: number, hash: string}} job
  */
 export function jobStillCurrent(chat, job) {
   const index = (chat ?? []).indexOf(job?.message);
@@ -170,7 +169,9 @@ export function jobStillCurrent(chat, job) {
  * The state stored on `chat[index]`, if it is one the reader would use: its range
  * still hashes the same and the schema accepts its value.
  *
- * @returns {{index: number, state: object}|null}
+ * @param {StMessage[]} chat
+ * @param {number} index
+ * @returns {{index: number, state: CairnState}|null}
  */
 export function usableState(chat, index) {
   const { status, state } = readState(chat, index);

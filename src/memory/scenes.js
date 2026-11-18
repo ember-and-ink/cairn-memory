@@ -22,12 +22,12 @@ import { QVINK_KEY } from "../interop/qvink.js";
  * A qvink `text` is its `memory` alone. Its prefill reaches its own block only
  * with `show_prefill` on (its index.js:3521), which is off by default (:113).
  *
- * @param {Array<object>} chat ST's live message array. Read only, never mutated.
+ * @param {StMessage[]} chat ST's live message array. Read only, never mutated.
  * @param {{key?: string}} [options]
- * @returns {Array<object>} `{index, source, text, chars, eligible, remembered,
- *          excluded, include, lagging}`, plus `edited` on Cairn's own (D-0099)
+ * @returns {SceneEntry[]}
  */
 export function readScenes(chat, { key = QVINK_KEY } = {}) {
+  /** @type {SceneEntry[]} */
   const scenes = [];
 
   (chat ?? []).forEach((message, index) => {
@@ -139,7 +139,10 @@ export const SCENE_HISTORY = 5;
  * The scenes just before a message, oldest first: what Matt's qvink profile sends
  * back as context, from either source, and never one the user excluded.
  *
- * @returns {Array<object>} Scenes as `readScenes` returns them.
+ * @param {StMessage[]} chat
+ * @param {number} index
+ * @param {{count?: number, key?: string}} [options]
+ * @returns {SceneEntry[]}
  */
 export function sceneHistory(chat, index, { count = SCENE_HISTORY, key = QVINK_KEY } = {}) {
   return readScenes(chat, { key })

@@ -76,7 +76,7 @@ export function doneText(result) {
 }
 
 /**
- * @param {object} context SillyTavern.getContext()
+ * @param {StContext} context SillyTavern.getContext()
  * @param {{adoptionPreview: Function, adopt: Function, cancelAdoption: Function}} summarizer
  * @param {{onAdopted?: () => void}} [options] Called once it stops, done or not, since
  *        whatever it wrote is new memory the next prompt should be rebuilt from.

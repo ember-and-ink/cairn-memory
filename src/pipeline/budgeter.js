@@ -86,12 +86,13 @@ export const MIN_CAP_FRACTION = 0.1;
  * function of the chat: the same chat and settings always give the same number,
  * and a reload costs nothing (docs/decisions.md D-0033).
  *
- * @param {{maxPromptTokens: number, fraction?: number,
- *          reserves?: {card: number, lore: number, window: number, state: number}|null}} input
+ * @param {{maxPromptTokens?: number, fraction?: number,
+ *          reserves?: {card: number, lore: number, window: number, state: number}|null}} [input]
  *        `reserves` null means a reserve could not be read at all; the cap falls
  *        back to the plain share rather than guessing (CLAUDE.md §4.17).
  * @returns {{cap: number, share: number, room: number|null, margin: number|null,
- *            minimum: number, parts: object|null,
+ *            minimum: number,
+ *            parts: {card: number, lore: number, window: number, state: number}|null,
  *            limitedBy: 'share'|'room'|'starved'|'unknown'}}
  */
 export function deriveCap({ maxPromptTokens, reserves, fraction = CAP_FRACTION } = {}) {
@@ -145,7 +146,7 @@ export function fractionOr(value, fallback) {
  * canon at all, which is the right order of sacrifice — the summaries are the memory,
  * and canon is what is left of the ones already dropped.
  *
- * @param {{cap: number, stepTokens: number, fraction?: number}} input The block's cap and what one
+ * @param {{cap?: number, stepTokens?: number, fraction?: number}} [input] The block's cap and what one
  *        see-saw step adds, both as the assembler works them out.
  * @returns {{cap: number, share: number, guard: number, limitedBy: 'share'|'guard'}}
  */
@@ -201,7 +202,7 @@ export function recoupled({ fullCap, floor, stepTokens }) {
  * assembler holds the result across a see-saw cycle so that a split which moves as lines
  * are written cannot demote a summary on an ordinary turn (D-0059's pattern).
  *
- * @param {{sceneCap: number, available?: number, fraction?: number}} input `available` is the token cost of
+ * @param {{sceneCap?: number, available?: number, fraction?: number}} [input] `available` is the token cost of
  *        the compact texts that could be held, or 0 when there are none.
  * @returns {{fullCap: number, compactCap: number, share: number}}
  */
@@ -220,8 +221,8 @@ export function tierSplit({ sceneCap, available = 0, fraction = COMPACT_FRACTION
  * chat's card, lorebook and messages decide what it actually gets (`deriveCap`), and
  * that is the inspector's to show, not the settings'.
  *
- * @param {{maxPromptTokens: number, memoryFraction?: number, canonFraction?: number,
- *          compactFraction?: number, loreFraction?: number}} input
+ * @param {{maxPromptTokens?: number, memoryFraction?: number, canonFraction?: number,
+ *          compactFraction?: number, loreFraction?: number}} [input]
  * @returns {{maxPrompt: number, memory: number, canon: number, compact: number, full: number,
  *            lore: number, margin: number, rest: number, restShare: number}}
  */
@@ -284,9 +285,9 @@ export function createBudget({ floorFraction = FLOOR_FRACTION } = {}) {
      * With no `compactOf` this is exactly the single-fidelity fit it was before: the
      * compact tier is empty, `fullCap` is the scene cap, and `demoted` is 0.
      *
-     * @param {{scenes: Array<{index: number}>, sceneCap: number,
-     *          tokensOf: (scenes: Array<object>) => number,
-     *          compactCap?: number, compactOf?: ((scene: object) => string|null)|null,
+     * @param {{scenes: SceneEntry[], sceneCap: number,
+     *          tokensOf: (scenes: Array<SceneEntry & {tier: string}>) => number,
+     *          compactCap?: number, compactOf?: ((scene: SceneEntry) => string|null)|null,
      *          rebuild?: boolean}} input
      *        `sceneCap` is the block's cap less canon's share, and `compactCap` the
      *        part of it the compact tier may use (`tierSplit`). `tokensOf` sizes a
@@ -295,7 +296,8 @@ export function createBudget({ floorFraction = FLOOR_FRACTION } = {}) {
      *        `compactOf` returns a summary's compact line, or null when it has none.
      *        `rebuild` means this turn changes the block's head whatever we do — the
      *        first turn of a session — so trimming to the floor now costs nothing.
-     * @returns {{kept: Array<object>, evicted: number, demoted: number, unlined: number,
+     * @returns {{kept: Array<SceneEntry & {tier: string}>, evicted: number, demoted: number,
+     *            unlined: number,
      *            oldest: number, boundary: number|null, tokens: number,
      *            sceneCap: number, fullCap: number, compactCap: number,
      *            full: number, compact: number, floor: number, over: boolean}}

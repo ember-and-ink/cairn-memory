@@ -31,7 +31,7 @@ export const MIN_SUMMARY_TOKENS = 50;
  * does (its index.js:3792): the rule has to be pure and synchronous, and the
  * estimate depends on nothing but `mes`.
  *
- * @param {object} message
+ * @param {StMessage} message
  */
 export function summarisable(message) {
   if (!message || typeof message.mes !== "string") return false;
@@ -40,8 +40,9 @@ export function summarisable(message) {
 }
 
 /**
- * @param {object} message
- * @returns {{status: 'none'|'invalid'|'future'|'stale'|'valid', scene: object|null}}
+ * @param {StMessage} message
+ * @returns {{status: 'valid', scene: CairnScene} |
+ *          {status: 'none'|'invalid'|'future'|'stale', scene: null}}
  *          `scene` is set only when `valid`.
  */
 export function readScene(message) {
@@ -69,7 +70,7 @@ export function readScene(message) {
  * now. The caller checks the message is still the one it summarised before
  * calling; this only refuses what would corrupt the store.
  *
- * @param {object} message The live chat message.
+ * @param {StMessage} message The live chat message.
  * @param {{text: string, prompt: string, at?: string}} scene
  * @returns {boolean} Whether anything was written.
  */
@@ -86,7 +87,7 @@ export function writeScene(message, { text, prompt, at = new Date().toISOString(
  * `edited` marks it as the one thing in the store no backfill can rebuild. Its index record
  * hashes the old text, so it goes stale on its own and the queue re-derives it.
  *
- * @param {object} message The live chat message.
+ * @param {StMessage} message The live chat message.
  * @param {string} text Trimmed here; blank is refused and unchanged writes nothing.
  * @param {string} [at]
  * @returns {{written: boolean, reason?: 'no-summary'|'blank'|'unchanged',
@@ -111,10 +112,10 @@ export function editScene(message, text, at = new Date().toISOString()) {
  * (`coreChat`, public/script.js:4496), so hiding, unhiding or deleting one inside
  * the range pulls a different message in and changes the hash.
  *
- * @param {Array<object>} chat
+ * @param {StMessage[]} chat
  * @param {number} index
  * @param {number} read
- * @returns {Array<object>|null} Null when the message at `index` is hidden or
+ * @returns {StMessage[]|null} Null when the message at `index` is hidden or
  *          there are fewer than `read` visible messages up to it.
  */
 export function readRange(chat, index, read) {
@@ -132,7 +133,7 @@ export function readRange(chat, index, read) {
  * What a state is checked against. Part of the stored shape: changing it is a
  * schema change (CLAUDE.md §8.32).
  *
- * @param {Array<object>} messages
+ * @param {StMessage[]} messages
  */
 export function hashRange(messages) {
   return hashString(messages.map((message) => `${message.name}: ${message.mes}`).join("\n"));
@@ -141,9 +142,10 @@ export function hashRange(messages) {
 /**
  * The state stored on `chat[index]`.
  *
- * @param {Array<object>} chat
+ * @param {StMessage[]} chat
  * @param {number} index
- * @returns {{status: 'none'|'invalid'|'future'|'stale'|'valid', state: object|null}}
+ * @returns {{status: 'valid', state: CairnState} |
+ *          {status: 'none'|'invalid'|'future'|'stale', state: null}}
  *          `state` is set only when `valid`.
  */
 export function readState(chat, index) {
@@ -175,7 +177,7 @@ export function readState(chat, index) {
  * now. The caller checks the range still matches what the request read before
  * calling; this only refuses what would corrupt the store.
  *
- * @param {Array<object>} chat The live chat.
+ * @param {StMessage[]} chat The live chat.
  * @param {number} index The newest message the update read.
  * @param {{value: object, read: number, changed: string[], prompt: string, at?: string}} state
  * @returns {boolean} Whether anything was written.
@@ -206,7 +208,7 @@ export function writeState(
  * caller's diff, so the inspector reports the edit that was applied. The caller checks
  * the value against the schema; this only refuses what would corrupt the store.
  *
- * @param {Array<object>} chat The live chat.
+ * @param {StMessage[]} chat The live chat.
  * @param {number} index
  * @param {{value: object, changed: string[], at?: string}} edit
  * @returns {{written: boolean, reason?: 'no-state'|'unchanged'}}
@@ -229,8 +231,8 @@ export function editState(chat, index, { value, changed, at = new Date().toISOSt
  * An empty `facts` is well-formed and deliberate — a pass that found nothing durable
  * still records the range it read, so it is not asked the same question every turn.
  *
- * @param {object} message
- * @returns {{status: 'none'|'invalid'|'future'|'valid', canon: object|null}}
+ * @param {StMessage} message
+ * @returns {{status: 'valid', canon: CairnCanon} | {status: 'none'|'invalid'|'future', canon: null}}
  *          `canon` is set only when `valid`.
  */
 export function readCanon(message) {
@@ -264,7 +266,7 @@ export function readCanon(message) {
  * four-fact reply to a ten-slot pick is a spine, not work still to do
  * (pipeline/canon-pick.js `pendingPick`).
  *
- * @param {Array<object>} chat The live chat.
+ * @param {StMessage[]} chat The live chat.
  * @param {number} index The newest message the pick read.
  * @param {{facts: Array<{text: string, entities: string[], from: number[]}>,
  *          covers: number[], slots?: number, prompt: string, at?: string}} canon
@@ -330,8 +332,9 @@ function wellFormedFact(fact) {
  * `mes` would have missed. A record therefore never outlives the summary it describes,
  * and `status` is `stale` whenever that summary is gone, stale or was never written.
  *
- * @param {object} message
- * @returns {{status: 'none'|'invalid'|'future'|'stale'|'valid', index: object|null}}
+ * @param {StMessage} message
+ * @returns {{status: 'valid', index: CairnIndexEntry} |
+ *          {status: 'none'|'invalid'|'future'|'stale', index: null}}
  *          `index` is set only when `valid`.
  */
 export function readIndex(message) {
@@ -362,9 +365,9 @@ export function readIndex(message) {
  * The caller enforces the record's caps before calling (memory/index-record.js); this
  * only refuses what would corrupt the store.
  *
- * @param {Array<object>} chat The live chat.
+ * @param {StMessage[]} chat The live chat.
  * @param {number} index The message the record belongs to.
- * @param {{record: object, prompt: string, at?: string}} entry A record `validRecord` accepts.
+ * @param {{record: IndexRecord, prompt: string, at?: string}} entry A record `validRecord` accepts.
  * @returns {boolean} Whether anything was written.
  */
 export function writeIndex(chat, index, { record, prompt, at = new Date().toISOString() }) {
@@ -404,7 +407,7 @@ function wellFormedRecord(record) {
  * Drop a message's index record and canon batch, keeping its summary and state. A redo
  * re-derives both, and an old batch left in place would be carried into its picks (D-0092).
  *
- * @param {object} message The live chat message.
+ * @param {StMessage} message The live chat message.
  * @returns {boolean} Whether anything was removed.
  */
 export function clearDerived(message) {
@@ -414,7 +417,8 @@ export function clearDerived(message) {
   const next = { ...store, v: STORE_VERSION };
   delete next.index;
   delete next.canon;
-  message.extra[SLUG] = next;
+  // `ok` means the store was read from `extra`, so it is there.
+  /** @type {StMessageExtra} */ (message.extra)[SLUG] = next;
   return true;
 }
 
