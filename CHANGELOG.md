@@ -138,6 +138,11 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Fixed
 
+- **Editing a message while a reply streams no longer updates the world state early.**
+  The edit woke Cairn, which read the half-written reply and mostly copied the previous
+  state. The state now waits for the reply to finish; the edit's summary still goes
+  straight away (#39).
+
 - **Established facts under a message wrap and match the world state.** They were drawn
   in a large monospace font that didn't wrap, so on a narrow screen most of each line was
   cut off (#34).

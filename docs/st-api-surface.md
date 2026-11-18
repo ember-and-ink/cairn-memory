@@ -17,6 +17,8 @@ literally against the cited line.
 | `chat` | The live message array; per-message memory lives in `extra` | `public/scripts/st-context.js` | 118 |
 | `saveSettingsDebounced` | Persist settings after a panel edit | `public/scripts/st-context.js` | 132 |
 | `maxContext` | Prompt size as a share of the window | `public/scripts/st-context.js` | 134 |
+| `streamingProcessor` | Whether a streamed reply is still filling the newest message, so the world state waits for it (#39) | `public/scripts/st-context.js` | 137 |
+| `this.isFinished = true;` | Set once the stream's last token is in, before the reply renders | `public/script.js` | 3909 |
 | `eventSource` | Hook registration | `public/scripts/st-context.js` | 138 |
 | `eventTypes` | Event name enum | `public/scripts/st-context.js` | 139 |
 | `getTokenCountAsync` | Prompt token totals, and the estimated size of each summary request and reply | `public/scripts/st-context.js` | 151 |
