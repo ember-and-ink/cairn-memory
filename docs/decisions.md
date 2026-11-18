@@ -8,6 +8,45 @@ what we believed and why it changed.
 
 ---
 
+## D-0106 — Canon keeps a changed relationship and where the story moved to, and states a thing as it stands now
+**2026-11-17.** An 89-message hand-written test chat is a story whose heart is two people learning
+to trust each other, far from where they started, and whose character card still describes the
+heroine collared and captive. Its canon spent three slots on one collar's life, kept no fact for
+the relationship, and left out the journey that put them four moons from home. The prompt told the
+pick to leave out "how anyone felt" and "where the characters are", and each instruction cut away
+something load-bearing along with what it meant to cut.
+
+**Decided** (`canon-pick-v3`):
+1. **Two kinds of fact join the include list:** a change in what two people are to each other that
+   later scenes act on (trust given or broken, a promise to stay, a betrayal, a bond accepted), and
+   where the story has moved for good (a home left, a border crossed, a distance from the start).
+2. **The two exclusions are narrowed to what they meant:** the room or street the scene is in, and
+   a feeling inside one scene. A changed relationship is said not to be a mood.
+3. **Two rules on how to write a fact:** one thing gets one fact, ending on how it stands now; and a
+   standing condition is written as of the newest row, so a later row that ended it is stated.
+4. **The example grows to six rows and four slots**, the new row a relationship that later scenes
+   rest on, with a line on why it counts where a passing feeling does not. Every example stays in
+   the Wren and Aster fiction.
+
+**Measured** with `replay-canon.mjs`, every 8, the index held fixed across arms (`--records`), and
+the old prompt run as `--prompt`. That chat on its own memory model (qwen3.8-27b), 15 slots, three
+runs each, against four checks set before the runs: the collar destroyed and never worn, the
+distance from home, at least two relationship facts, the collar in at most two facts. **v2 passed 6
+of 12 checks and 1 run of 3; v3 passed 11 of 12 and 2 of 3.** v3 gained the distance and the
+relationship every time. Its one miss kept "wears an unbreakable collar" and no destruction, which
+rule 3 exists to stop — so it helps but does not guarantee, and the user's pin (next) is the
+guarantee. Both arms invent a fact now and then on this model ("a hybrid of elf and orc", "the
+King's daughter"). **Esin on GLM-5.3, 10 slots, two runs each: 5 of 5 spine lines in all four**, so
+no regression there; D-0090's 4 of 5 was that run's index, not the prompt. About $0.17 in all.
+
+**Not done:** the pick still does not see the character card, so it cannot tell which facts overturn
+it; pins cover the ones that matter most.
+
+**Would reopen it:** relationship facts crowding out events a story stands on — a spine line lost on
+a chat whose yardstick holds one — or the far-from-home rule pulling in ordinary travel.
+
+---
+
 ## D-0105 — New records make a pick due once a step's worth has accumulated
 **2026-11-17.** With D-0101's carry-forward, a pick every turn is a chain: D-0101's every-2 replay
 ended on one degenerate reply, words found nowhere in the index, which carry-forward hands to the

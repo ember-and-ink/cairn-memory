@@ -94,7 +94,7 @@ describe('building a canon pick', () => {
 
     it('ends on a complete example the parser reads whole, then the index, then the ask (D-0094)', () => {
         const example = CANON_PROMPT.match(/^Reply:\n(\{"canon":\[\n[\s\S]*?\n\]\})$/m)[1];
-        const parsed = parseCanonReply(example, { slots: 3, records: 5 });
+        const parsed = parseCanonReply(example, { slots: 4, records: 6 });
 
         expect(parsed).toMatchObject({ ok: true, dropped: [], short: 0 });
         for (const fact of JSON.parse(example).canon) expect(Object.keys(fact)).toEqual(['fact', 'entities', 'from']);

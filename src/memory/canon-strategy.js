@@ -58,10 +58,12 @@ Pick facts like these:
 - What was permanently won, lost, destroyed, paid or promised.
 - Someone entering the story or leaving it for good.
 - The standing conditions the \`background\` column reports: an origin, an old promise, a debt, who owns what.
+- A change in what two people are to each other that later scenes act on: trust given or broken, a promise to stay, a betrayal, a bond accepted.
+- Where the story has moved for good: a home left behind, a border crossed, a distance that now separates them from where they began.
 
 Leave out:
-- Anything a scene record already carries: where the characters are, the weather, who is present, and each character's hair and outfit.
-- How anyone felt, and how anyone seemed. Moods pass, and the storyteller decides them.
+- Anything a scene record already carries: the room or street the characters are in, the weather, who is present, and each character's hair and outfit.
+- How anyone felt inside one scene, and how anyone seemed. Moods pass, and the storyteller decides them. A change in what two people are to each other is not a mood.
 - What might happen next, what someone intends, or what a scene is building towards.
 - A journey, a meal, a purchase or a conversation that nothing later rests on.
 
@@ -69,7 +71,9 @@ How to choose:
 1. Read every row. A quiet row can hold the fact the whole story turns on, and a loud row can be a battle nothing later refers to. Read \`changed\`, \`because\` and \`background\` as closely as \`what\`.
 2. Chain the causes. Write why it happened as well as what happened: "he destroyed the army to buy her freedom", not "he destroyed an army".
 3. Where two rows say the same thing, write the fact once and cite both rows.
-4. Where you cannot tell whether a fact matters, prefer the one a reader would have to be told to follow the rest of the story.
+4. Give one thing one fact. Where rows follow the same thing through changes — an object made, broken and destroyed; a bond refused and then accepted — write one fact that ends on how it stands now.
+5. Write a standing condition as it stands at the newest row. If a later row ended it, the fact says so: "Aster's boat sank in the storm", never "Aster owns a boat" once a row has sunk it.
+6. Where you cannot tell whether a fact matters, prefer the one a reader would have to be told to follow the rest of the story.
 
 Each fact has three fields:
 - fact — one plain sentence of at most ${MAX_FACT_CHARS} characters, with names rather than pronouns so it stands alone. A much longer one is cut short.
@@ -78,7 +82,7 @@ Each fact has three fields:
 
 Reply format: only a JSON object whose one key, "canon", holds exactly {{slots}} facts, oldest first, one fact per line, with no other text before or after it. Every fact has all three fields. Inside a value, write speech with single quotes, never double quotes.
 
-Example, for a five-row index and three slots.
+Example, for a six-row index and four slots.
 Index:
 ${INDEX_HEADER}
 1 | Wren, Aster | Wren asked Aster about the ferry timetable | | | Wren's brother drowned in the spring flood
@@ -86,13 +90,15 @@ ${INDEX_HEADER}
 3 | Aster, Wren | Aster and Wren waited out the fog in the ferry terminal | | the crossing was posted delayed |
 4 | Aster | Aster rowed Wren across the water before the feast day | Wren is across the water | the ferry never sailed | Aster promised her a crossing
 5 | Wren | Wren walked up from the harbour into the town | | |
+6 | Wren, Aster | Wren forgave Aster for keeping the winter run from her | Wren and Aster crew the ferry together | Aster told her the truth on the crossing |
 Reply:
 {"canon":[
 {"fact":"Wren's brother drowned in the spring flood.","entities":["Wren"],"from":[1]},
 {"fact":"Aster crewed the winter run with Wren's brother the year before he drowned.","entities":["Aster","Wren"],"from":[2]},
-{"fact":"Aster rowed Wren across the water before the feast day, as she had promised, because the ferry never sailed.","entities":["Aster","Wren"],"from":[4]}
+{"fact":"Aster rowed Wren across the water before the feast day, as she had promised, because the ferry never sailed.","entities":["Aster","Wren"],"from":[4]},
+{"fact":"Wren forgave Aster for keeping the winter run from her, and the two now crew the ferry together.","entities":["Wren","Aster"],"from":[6]}
 ]}
-Row 1 is a question about a timetable and is still picked, because its \`background\` carries the death the rest of the story rests on. Rows 3 and 5 are a wait and a walk: nothing later needs them. Nothing says Aster seemed shaken or that Wren doubted her — those are feelings, and they passed with the scene.
+Row 1 is a question about a timetable and is still picked, because its \`background\` carries the death the rest of the story rests on. Rows 3 and 5 are a wait and a walk: nothing later needs them. Nothing says Aster seemed shaken or that Wren doubted her — those are feelings, and they passed with the scene. Row 6 is different: what Wren and Aster are to each other changed, and the scenes after it rest on that.
 
 The index:
 {{index}}
@@ -123,7 +129,7 @@ export function resolveCanonPrompt(setting) {
 }
 
 export const canonPick = {
-    id: 'canon-pick-v2',
+    id: 'canon-pick-v3',
 
     /**
      * @param {object} request
