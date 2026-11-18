@@ -205,6 +205,51 @@ describe('merging a reply', () => {
             expect(validState(value)).toBe(true);
         });
 
+        /**
+         * D-0103. The shape a real chat produced: a character present with hair and an
+         * outfit leaves, comes back six messages later, and the reply that brings them
+         * back restates only the outfit — so a blank start lost the hair for good.
+         */
+        it('starts a returning character from how they were last seen, under what the reply restates', () => {
+            const known = { Brannock: { hair: 'Cropped, grey at the temples', outfit: 'Harbour uniform' } };
+            const { value, changed } = mergeReply(TERMINAL, {
+                characters: cast({ brannock: { outfit: 'Harbour uniform under a wet oilskin' } }),
+            }, { known });
+
+            expect(Object.keys(value.characters)).toEqual(['Aster', 'Wren', 'Brannock']);
+            expect(value.characters.Brannock).toEqual({
+                hair: 'Cropped, grey at the temples', outfit: 'Harbour uniform under a wet oilskin',
+            });
+            expect(changed).toEqual(['characters.arrived']);
+            expect(validState(value)).toBe(true);
+        });
+
+        it('lets a blank or a placeholder in the reply keep the last-seen value, as for anyone present', () => {
+            const known = { Brannock: { hair: 'Cropped', outfit: 'Harbour uniform' } };
+            const { value } = mergeReply(TERMINAL, {
+                characters: cast({ Brannock: { hair: '', outfit: 'not described' } }),
+            }, { known });
+
+            expect(value.characters.Brannock).toEqual({ hair: 'Cropped', outfit: 'Harbour uniform' });
+        });
+
+        it('uses the last-seen fields only for someone not already present, and only where they are valid', () => {
+            const known = {
+                Wren: { hair: 'An older look', outfit: 'An older coat' },
+                Brannock: { hair: x(CHARACTER_FIELDS.hair + 1), outfit: '  ' },
+            };
+            const { value } = mergeReply(TERMINAL, { characters: cast({ Brannock: {} }) }, { known });
+
+            expect(value.characters.Wren).toEqual(TERMINAL.characters.Wren);
+            expect(value.characters.Brannock).toEqual({});
+            expect(validState(value)).toBe(true);
+        });
+
+        it('is today\'s merge exactly when nobody is known', () => {
+            const reply = { characters: cast({ Brannock: { hair: 'Cropped' } }) };
+            expect(mergeReply(TERMINAL, reply, { known: {} })).toEqual(mergeReply(TERMINAL, reply));
+        });
+
         it('removes whoever the reply leaves out, which is how a character leaves (D-0053)', () => {
             const { value, changed } = mergeReply(TERMINAL, { characters: { Wren: { ...TERMINAL.characters.Wren } } });
 

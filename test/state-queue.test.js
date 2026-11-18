@@ -129,6 +129,27 @@ describe('bringing the state up to date', () => {
         });
     });
 
+    /**
+     * D-0103, end to end. Mirrors a real chat's shape: a character described at one
+     * state, gone from the next, back at the one after with only an outfit restated.
+     */
+    it('gives a character who left and came back the hair they were last seen with', async () => {
+        const chat = makeChat(6);
+        putState(chat, 1, { ...PIER, characters: { Wren: PIER.characters.Wren, Aster: { hair: 'Pinned up', outfit: 'Oilskin coat' } } });
+        putState(chat, 3, PIER);
+        putState(chat, 5, PIER);
+        const { context, summarizer } = harness({ chat, responses: [reply(TO_DECK)] });
+        summarizer.start();
+
+        await exchange(context, 6);
+        await summarizer.idle();
+
+        const stored = stateOf(context.chat, 7);
+        expect(stored.value.characters.Aster).toEqual({ hair: 'Pinned up', outfit: 'Oilskin coat' });
+        expect(stored.value.characters.Wren).toEqual(WREN);
+        expect(stored.changed).toContain('characters.arrived');
+    });
+
     it('records a reply of {} as read through, with nothing changed', async () => {
         const { context, summarizer } = harness({ chat: playedChat(), responses: [badStateOutputs.noChange()] });
         summarizer.start();

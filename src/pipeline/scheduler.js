@@ -46,6 +46,9 @@ export const STEP = 8;
 /** The step reason for a cold first turn: no previous block, so the head moves anyway (prompt/rebuild.js). */
 export const FIRST_TURN = 'first-turn';
 
+/** The step reason for an ordinary step: the threshold moved on by `step` messages. */
+export const STEP_TURN = 'step';
+
 /**
  * @param {{rawWindow?: number, step?: number}} [options]
  */
@@ -90,7 +93,7 @@ export function createSeeSaw({ rawWindow = RAW_WINDOW, step = STEP } = {}) {
             const waiting = due && reach < base;
             if (due && reach > summarisedThrough && reach - summarisedThrough >= step) {
                 summarisedThrough = reach;
-                return { summarisedThrough, stepped: true, reason: 'step', waiting };
+                return { summarisedThrough, stepped: true, reason: STEP_TURN, waiting };
             }
 
             return { summarisedThrough, stepped: false, reason: 'held', waiting };

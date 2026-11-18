@@ -15,9 +15,9 @@
  * (`prompt/injector.js` is the first such reader). test/rebuild.test.js asserts
  * both halves: that this is the definition, and that nothing else writes one.
  *
- * Pure: two numbers in, a boolean out.
+ * Pure: plain values in, a boolean out.
  */
-import { FIRST_TURN } from '../pipeline/scheduler.js';
+import { FIRST_TURN, STEP_TURN } from '../pipeline/scheduler.js';
 
 /**
  * Whether this turn rewrites the block's head.
@@ -28,6 +28,14 @@ import { FIRST_TURN } from '../pipeline/scheduler.js';
  * discontinuous work to a turn that has one is the whole of D-0067 (D-0075). A cold
  * first turn is the other half: there is no previous block to be continuous with.
  *
+ * **A step with a newer canon pick is one too** (D-0102). A chat with room to spare
+ * never evicts, so without this canon reached the prompt only on a page load: an
+ * 89-message test chat ran 30 messages on a pick made over its first four. A step already breaks the
+ * prefix part-way down the block, so moving that break up to canon costs one step's
+ * worth of prompt, once a step, and only when there is something new to admit.
+ * **`forced` is the user asking for it** (D-0104): a canon rebuilt by hand goes in on
+ * the next turn, at the one break they chose.
+ *
  * **`rollback` is deliberately not a rebuild.** A branch or a swipe pulls the
  * threshold back (scheduler.js's `rollback`), which does rewrite the head, but it
  * also rolls the *store* back: the records a re-derivation would read are the ones
@@ -35,10 +43,17 @@ import { FIRST_TURN } from '../pipeline/scheduler.js';
  * the fold already gives for free (D-0045). The head-change is paid either way;
  * the discontinuous work is not.
  *
- * @param {{evicted?: number, demoted?: number, stepReason?: string}} turn
+ * @param {{evicted?: number, demoted?: number, stepReason?: string,
+ *          canonMoved?: boolean, forced?: boolean}} turn
+ *        `canonMoved`: the newest pick is not the one the block admitted.
  * @returns {boolean}
  */
-export function isRebuild({ evicted = 0, demoted = 0, stepReason = '' } = {}) {
+export function isRebuild({
+    evicted = 0, demoted = 0, stepReason = '', canonMoved = false, forced = false,
+} = {}) {
     const moved = (Number.isFinite(evicted) ? evicted : 0) + (Number.isFinite(demoted) ? demoted : 0);
-    return moved > 0 || stepReason === FIRST_TURN;
+    return moved > 0
+        || stepReason === FIRST_TURN
+        || (stepReason === STEP_TURN && canonMoved === true)
+        || forced === true;
 }

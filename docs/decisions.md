@@ -8,6 +8,115 @@ what we believed and why it changed.
 
 ---
 
+## D-0104 — A Canon card in the settings, and Rebuild canon goes in on the next message
+**2026-11-17.** Canon was a checkbox and a number under "What Cairn keeps", and the only place to
+read it was the inspector or under the message each pick landed on. A user who raised the slot
+count had no way to ask for a pick, and no way to know when the one they had would reach the prompt.
+
+**Decided.**
+1. **A Canon card** between "What Cairn keeps" and "Advanced settings" holds Keep canon, Canon
+   entries, the open chat's canon and **Rebuild canon**. It shows what the prompt carries once a
+   turn has been planned, says when a newer pick waits for the next step, and before the first
+   turn of a session shows the newest pick, which that turn admits. The canon prompt stays under
+   Advanced.
+2. **Rebuild canon** makes one pick now over the whole index with nothing carried forward — a
+   fresh judgement, unlike the queue's (D-0101) — through the canon job, so it lands where the
+   queue's would and a failed one changes nothing. The queue holds while it is out, a second
+   click is refused, and the log's `during` reads `rebuild`.
+3. **The next turn is a forced rebuild** (`assembler.forceRebuild()`, an `isRebuild` input), so
+   the pick goes in on the next message, at the one break the user asked for, instead of at the
+   next step. The flag is not stored: a reload is a rebuild anyway.
+4. **A pick is identified by its message and its `at`.** A pick asked again over the same records
+   lands on the same message, so the message alone could not say a newer one was waiting.
+5. **It is not on a message.** It is a judgement over the whole story; a button under one
+   message reads as being about that message.
+
+**Not done:** pins and editing canon, with the pick returning runners-up to choose from, are the
+next change and get their own entry.
+
+**Would reopen it:** rebuilds by hand becoming routine, which would mean the queue's cadence is
+wrong rather than that the button is useful.
+
+---
+
+## D-0103 — A character who comes back starts from how they were last seen
+**2026-11-17.** The record holds only who is present (D-0053), so leaving drops a character's hair
+and outfit, and the reply that brings them back seldom restates both. In an 89-message
+hand-written test chat one character's hair went blank at their return and stayed blank for the
+remaining 72 messages, and the other lost her hair colour the same way after a two-message absence.
+
+**Decided.** When a reply lists someone not in the record, the merge starts them from their fields
+in the newest usable state before this one that lists them (`lastSeen`, memory/state.js), and the
+reply's own values apply on top as for anyone present: a blank or a placeholder keeps the last-seen
+value. Only valid stored values are carried, names match as everywhere else (trimmed, any case),
+and the stored spelling is kept. It is a deterministic walk back through states already on disk —
+no new storage, no prompt change, no extra call — and it is what "every field always present"
+(D-0096) needs once someone has left the scene.
+
+**Not done:** a transient condition that sticks ("soaked through" for sixteen messages) is the
+"copy across exactly" rule working as written; the roleplay model rarely notices it, and fixing it
+is prompt tuning with no clear test.
+
+**Would reopen it:** a returning character who has plainly changed keeping a stale outfit because
+the reply did not restate it — a reason to tell the model the last-seen values, not to stop seeding.
+
+---
+
+## D-0102 — A step with a newer canon pick is a rebuild (amends D-0067)
+**2026-11-17.** D-0067 batches everything discontinuous to the rebuild turn, and canon admission is
+one of those things. The rebuild turn was an eviction, a demotion or a cold first turn, on the
+assumption that eviction comes every ~23 messages. A chat with room to spare never evicts: an
+89-message hand-written test chat at 32k peaked at 6.2k of its 10.7k memory share, so every one of
+its nine canon admissions was a page load, and for 30 messages in one sitting the prompt carried a
+pick made over the first four messages. A pick that corrected the collar to "inert" never reached the
+prompt before a later one regressed it.
+
+**Decided.**
+1. **`isRebuild` gains two inputs: `canonMoved` and `forced`** (D-0104). A step turn whose newest pick
+   is not the one admitted is a rebuild; a held turn with a newer pick waits for the step. There is
+   still one definition (`prompt/rebuild.js`), and eviction, World Info reprioritisation and the
+   examples latch ride along on that turn, as D-0067 intends.
+2. **A rebuild for canon alone does not trim the summaries to the floor.** The floor trim buys slack
+   before the next eviction; a canon step is not one, and trimming would demote summaries early every
+   eight messages. Only the budget's own reasons (an eviction, a demotion, a first turn) trim to it.
+3. **On any rebuild the summaries are refitted if the compact split moved**, not only when canon's
+   size did. The split is re-derived on a rebuild; fitting on the old one and holding the new one
+   left the change to the next ordinary turn — possible before on an eviction, and every step now.
+
+**The price.** A step already breaks the prefix part-way down the block (~45% of the prompt in that
+chat); a canon step moves the break up to canon at ~13%, once a step and only when there is a newer
+pick. Staleness goes from "one sitting" to at most a step.
+
+**Would reopen it:** steps that rebuild for canon whose pick barely changed — the sign that the pick
+should be steadier, not that admission should go back to waiting.
+
+---
+
+## D-0101 — The queue's canon pick carries the canon forward (closes D-0090's open question)
+**2026-11-17.** D-0090 left the queue asking afresh while adoption carried forward. In an
+89-message hand-written test chat the queue picked 46 times; no fact's wording survived from one
+pick to the next, and typically only one to four of ten cited sources did. Independent picks
+regress: the pick that went into the prompt at message 73 said the heroine "wears" a collar that an
+earlier pick had already recorded as inert and that the story later destroyed.
+
+**Decided.** The assembler's pending pick carries the canon in force (`carriedCanon`,
+pipeline/canon-pick.js — the same mapping adoption used, now shared), so every queue pick starts from
+it, keeps what still earns its slot, corrects what a newer row changes, and replaces the rest. The
+pick cadence is unchanged: due whenever the index has grown past the last pick.
+
+**Measured** with `scripts/replay-canon.mjs` on that chat's summaries, on the chat's own memory model
+(qwen3.8-27b), 15 slots, one run each. Every 8 summaries (11 picks): once "the collar is inert"
+appeared it held to the end, "the collar was destroyed" held from its first pick, no later pick said
+the collar was worn, and the far-north location reached the final canon, which the live run never
+did. Every 2 summaries (44 picks, the queue's cadence in play): the collar was never worn again
+after the inert finding, but its destruction never held a slot, and the final pick was one
+degenerate reply that carry-forward would hand to the next pick as the canon so far.
+
+**Would reopen it:** more runs showing the every-turn chain worse than independent picks — which
+points at the cadence, not at carrying forward.
+
+---
+
 ## D-0100 — The newest world state can be edited by hand, in two small popups
 **2026-11-04.** The world state half of D-0099, kept out of that change because a state is
 structured and a form for it had to work on a phone, where a table of name, hair and outfit

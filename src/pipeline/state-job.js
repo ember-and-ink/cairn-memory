@@ -8,8 +8,9 @@
  *
  * Its counterparts are summary-job.js, index-job.js and canon-job.js.
  */
-import { jobStillCurrent, pendingStateJob } from '../memory/state.js';
-import { mergeReply } from '../memory/state-schema.js';
+import { jobStillCurrent, lastSeen, pendingStateJob } from '../memory/state.js';
+import { isObject } from '../util/values.js';
+import { foldName, mergeReply } from '../memory/state-schema.js';
 import { stateRecord } from '../memory/state-strategy.js';
 import { writeState } from '../store/chat-store.js';
 import { debug } from '../util/log.js';
@@ -72,7 +73,15 @@ export function createStateJob({ getContext, send, save, clock, strategy = state
 
             const parsed = strategy.parse(sent.reply?.content);
             if (!parsed.ok) return job.fail(chatId, work, parsed.reason, undefined, index);
-            const { value, changed, dropped } = mergeReply(work.state, parsed.record);
+            // Anyone the reply lists who is not in the record starts from how they were
+            // last seen, so leaving and coming back costs no hair or outfit (D-0103).
+            // Read back from just before this message, found by identity above, so a
+            // deletion while the request was out cannot shift where it looks.
+            const present = new Set(Object.keys(work.state.characters ?? {}).map(foldName));
+            const returning = Object.keys(isObject(parsed.record.characters) ? parsed.record.characters : {})
+                .filter((name) => !present.has(foldName(name)));
+            const known = returning.length ? lastSeen(now.chat, index - 1, returning) : {};
+            const { value, changed, dropped } = mergeReply(work.state, parsed.record, { known });
             if (dropped.length) {
                 states.stats.dropped += dropped.length;
                 debug(`Dropped from the state reply: ${dropped.map((drop) => `${drop.field} (${drop.reason})`).join(', ')}.`);

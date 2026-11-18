@@ -73,7 +73,7 @@ export function renderCanonView(view) {
     const spilled = view.spilled.length
         ? `<div class="${SLUG}-hint">Left out for want of room:</div>${list(view.spilled)}` : '';
     const waiting = view.waiting.length
-        ? `<div class="${SLUG}-hint">A newer pick, which goes in at the next rebuild:</div>${list(view.waiting)}` : '';
+        ? `<div class="${SLUG}-hint">A newer pick, which goes in at the next step:</div>${list(view.waiting)}` : '';
 
     return `
         <details class="${SLUG}-details" open>

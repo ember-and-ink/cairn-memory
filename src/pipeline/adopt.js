@@ -20,7 +20,7 @@ import { canonFor, MIN_SLOTS } from '../memory/canon.js';
 import { readScenes } from '../memory/scenes.js';
 import { clearDerived, readCanon, readIndex, readScene, writeScene } from '../store/chat-store.js';
 import { MAX_BATCH } from '../memory/index-strategy.js';
-import { MIN_INDEX_RECORDS } from './canon-pick.js';
+import { MIN_INDEX_RECORDS, carriedCanon } from './canon-pick.js';
 import { indexRecords, pendingIndex } from './index-reads.js';
 import { debug } from '../util/log.js';
 
@@ -131,11 +131,7 @@ export function createAdoption({ getContext, summarise, indexer, canon, save, cl
         const { chat } = getContext();
         const records = indexRecords(chat, readers).filter((entry) => entry.index <= through);
         if (records.length < MIN_INDEX_RECORDS) return;
-        const rowOf = new Map(records.map((entry, at) => [entry.index, at + 1]));
-        const previous = canonFor(chat, readers, { through }).facts.map((fact) => ({
-            text: fact.text,
-            rows: fact.from.map((index) => rowOf.get(index)).filter(Boolean),
-        }));
+        const previous = carriedCanon(canonFor(chat, readers, { through }).facts, records);
         const covers = [records[0].index, records[records.length - 1].index];
         debug(`Adopting: picking canon over ${records.length} records through #${covers[1]}, carrying ${previous.length} fact(s).`);
         await canon.run(getContext(), config, {

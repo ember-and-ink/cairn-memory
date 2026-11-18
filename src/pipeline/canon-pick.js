@@ -72,6 +72,24 @@ function pickReason(canon, newest, slots) {
 }
 
 /**
+ * The canon in force, cited by row in the index a pick is about to read (D-0090, D-0101).
+ * A pick starts from this rather than from nothing, so a fact an earlier pick corrected
+ * stays corrected unless a row changes it again.
+ *
+ * @param {Array<{text: string, from: number[]}>} facts The fold's facts (`canonFor`).
+ * @param {Array<{index: number}>} records The records the pick reads, oldest first;
+ *        row N is `records[N - 1]`.
+ * @returns {Array<{text: string, rows: number[]}>}
+ */
+export function carriedCanon(facts = [], records = []) {
+    const rowOf = new Map(records.map((entry, at) => [entry.index, at + 1]));
+    return facts.map((fact) => ({
+        text: fact.text,
+        rows: (fact.from ?? []).map((index) => rowOf.get(index)).filter(Boolean),
+    }));
+}
+
+/**
  * What a reply becomes: the batch to store, and the counts to report.
  *
  * The counts are of the *applied* change, not the model's claimed output

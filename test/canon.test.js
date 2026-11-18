@@ -12,7 +12,7 @@ import { storeV3Chat, STORE_V3_CANON } from './fixtures/store-v3.js';
 const READERS = { readCanon, readIndex };
 
 const NOTHING = {
-    facts: [], index: null, slots: null, covers: null, coveredThrough: null, batches: 0, dropped: 0,
+    facts: [], index: null, at: null, slots: null, covers: null, coveredThrough: null, batches: 0, dropped: 0,
 };
 
 /** A chat with canon batches at the given indexes. */

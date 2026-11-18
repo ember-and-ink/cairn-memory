@@ -11,6 +11,10 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Added
 
+- **A Canon card** in the settings, between What Cairn keeps and Advanced settings. It
+  holds Keep canon and Canon entries, shows the open chat's canon, and has **Rebuild
+  canon**: one fresh pick from the whole story, which goes in on your next message.
+
 - **Edit the world state**: pencils on the newest World state open the scene
   (location, weather, who is present) and each character's hair and outfit. An empty
   box means "Not described"; the state then reads "(edited)" and the next update
@@ -46,6 +50,11 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
   against the yardstick as 0d was.
 
 ### Changed
+
+- **Canon keeps up with the story.** Each pick now starts from the canon so far, and a
+  newer pick reaches the prompt at the next step instead of waiting for a page reload or
+  for the memory block to fill. In a roomy chat canon could otherwise stay as it was for a
+  whole sitting.
 
 - **The world state lists who is present under a `Present:` heading**, one line per
   character, instead of a `Present:` line of names followed by the same names again.
@@ -119,6 +128,9 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
   summaries, the index and canon), so a missing world state can be explained.
 
 ### Fixed
+
+- **A character who leaves and comes back keeps their hair and outfit.** They start from
+  how they were last seen instead of from nothing.
 
 - **The world state always has the same shape.** Location, weather, and each present
   character's hair and outfit always get a line, reading "Not described" where nothing is

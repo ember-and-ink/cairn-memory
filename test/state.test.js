@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     jobStillCurrent,
+    lastSeen,
     newestState,
     pendingStateJob,
     stateForPrompt,
@@ -111,6 +112,48 @@ describe('the newest valid state wins', () => {
         newestState(chat);
 
         expect(JSON.stringify(chat)).toBe(before);
+    });
+});
+
+describe('how a character was last seen (D-0103)', () => {
+    const BRANNOCK = Object.freeze({ hair: 'Cropped', outfit: 'Harbour uniform' });
+    const WITH = (who) => ({ ...PIER, characters: who });
+
+    it('finds each name in the newest state that lists it, keyed by the stored spelling', () => {
+        const chat = makeChat(10);
+        putState(chat, 1, WITH({ Brannock: { hair: 'Long' }, Wren: { hair: 'Loose' } }));
+        putState(chat, 3, WITH({ Brannock: BRANNOCK }));
+        putState(chat, 5, WITH({ Wren: { hair: 'Tied back' } }));
+
+        expect(lastSeen(chat, 8, ['brannock', 'WREN'])).toEqual({
+            Brannock: BRANNOCK, Wren: { hair: 'Tied back' },
+        });
+    });
+
+    it('stops at `through`, and leaves out a name it never saw', () => {
+        const chat = makeChat(10);
+        putState(chat, 1, WITH({ Brannock: { hair: 'Long' } }));
+        putState(chat, 5, WITH({ Brannock: BRANNOCK }));
+
+        expect(lastSeen(chat, 4, ['Brannock', 'Keeper'])).toEqual({ Brannock: { hair: 'Long' } });
+        expect(lastSeen(chat, 8, [])).toEqual({});
+    });
+
+    it('passes over a state whose messages were edited, as the newest-state walk does', () => {
+        const chat = makeChat(10);
+        putState(chat, 1, WITH({ Brannock: { hair: 'Long' } }));
+        putState(chat, 3, WITH({ Brannock: BRANNOCK }));
+        chat[3].mes = 'Edited after the state read it.';
+
+        expect(lastSeen(chat, 8, ['Brannock'])).toEqual({ Brannock: { hair: 'Long' } });
+    });
+
+    it('never mutates the chat or hands back its objects', () => {
+        const chat = makeChat(6);
+        putState(chat, 3, WITH({ Brannock: { ...BRANNOCK } }));
+        const found = lastSeen(chat, 5, ['Brannock']);
+        found.Brannock.hair = 'Changed';
+        expect(readState(chat, 3).state.value.characters.Brannock.hair).toBe('Cropped');
     });
 });
 

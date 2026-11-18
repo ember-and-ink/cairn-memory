@@ -387,7 +387,9 @@ point of the tier — an empty one lets the character card's original wording wi
 again — and nothing here can stop being true: a character always has hair, and is
 either wearing something or isn't. What the reply *does* decide is who is in the
 scene: the characters it lists are the characters present, so leaving someone out
-is how they leave. A reply that lists nobody at all is ignored.
+is how they leave. A reply that lists nobody at all is ignored. Someone who comes back
+starts from how they were last seen, so a hair colour or an outfit the returning
+message doesn't restate is not lost (D-0103).
 
 The
 state is stored on the newest message it read, in `message.extra.cairn.state`,
@@ -559,13 +561,22 @@ branch away from a scene and the facts resting on it go with it, and the next pi
 fills the slots again over the index as it now stands. Nothing has to be rolled back,
 because nothing was ever stored except the answer.
 
-**Canon changes only at a rebuild.** Canon sits above every summary, so changing it
-rewrites the block's head — the expensive break. A rebuild rewrites the head anyway,
-so a pick written between rebuilds is held back until the turn eviction fires, and
-the two head-changes cost one break instead of two. Between rebuilds the canon text is
-byte-identical. The pick itself is the lowest-priority memory call: behind the world
-state, which the very next prompt carries, behind the summaries, one of which can hold
-the see-saw step, and behind the index records the pick reads.
+**Each pick starts from the last one** (D-0101). The pick is shown the canon in force,
+cited by row, and asked to keep what still earns its slot, correct what a newer row
+changes and replace the rest, so a fact a pick corrected stays corrected.
+
+**Canon changes only at a rebuild, and a step with a newer pick is one** (D-0102).
+Canon sits above every summary, so changing it rewrites the block's head — the
+expensive break. A pick written between steps is held back until the next step, which
+already breaks the prefix part-way down the block; that turn moves the break up to
+canon, once a step and only when there is something new. Eviction and a cold first turn
+admit it too. Between those turns the canon text is byte-identical. The pick itself is
+the lowest-priority memory call: behind the world state, which the very next prompt
+carries, behind the summaries, one of which can hold the see-saw step, and behind the
+index records the pick reads.
+
+**Rebuild canon**, on the Canon card in the settings, makes one fresh pick over the
+whole index with nothing carried forward and puts it in on your next message (D-0104).
 
 **How many lines is the one knob, and it is a count rather than a budget.** The spine
 of a story does not grow as the story does — someone arriving or leaving, something
