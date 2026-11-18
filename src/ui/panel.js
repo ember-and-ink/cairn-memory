@@ -24,6 +24,7 @@ import { escapeHtml } from './html.js';
  *           onOwnMemoryBlockChange?: (enabled: boolean) => void,
  *           onWorldStateChange?: (enabled: boolean) => void,
  *           onKeepCanonChange?: (enabled: boolean) => void,
+ *           onCanonSlotsChange?: (slots: number) => void,
  *           onMemoryProfileChange?: (profileId: string) => void}} [handlers]
  * @returns {Promise<HTMLElement>} The element the inspector renders into.
  */
@@ -42,7 +43,7 @@ export async function renderSettingsPanel(context, handlers = {}) {
     bind(context, 'keepCanon', CHECKBOX, (value) => handlers.onKeepCanonChange?.(value));
     // The budget, the pick and the examples latch are planned afresh every generation, so
     // these need no handler: a changed slot count makes the next plan's pick due (pipeline/canon-pick.js).
-    bind(context, 'canonSlots', wholeNumber());
+    bind(context, 'canonSlots', wholeNumber(), (value) => handlers.onCanonSlotsChange?.(value));
     bind(context, 'dropExamples', CHECKBOX);
     bind(context, 'fictionFrame', CHECKBOX);
     for (const key of ['memoryFraction', 'canonFraction', 'compactFraction']) {

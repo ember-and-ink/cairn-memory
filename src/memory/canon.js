@@ -66,10 +66,12 @@ export const MAX_ENTITY_CHARS = 32;
  *        The assembler passes the mark it last admitted at, so a pick written between
  *        rebuilds does not change the block until one (docs/decisions.md D-0059, D-0067).
  * @returns {{facts: Array<{text: string, entities: string[], from: number[], index: number}>,
- *            index: number|null, slots: number|null, covers: number[]|null,
+ *            index: number|null, at: string|null, slots: number|null, covers: number[]|null,
  *            coveredThrough: number|null, batches: number, dropped: number}}
- *          `index` is the message the batch lives on; `dropped` counts facts whose
- *          every cited record is gone, which is what makes a re-derivation due.
+ *          `index` is the message the batch lives on and `at` when it was written, which
+ *          together say which pick this is: a pick asked again over the same records lands
+ *          on the same message (D-0104). `dropped` counts facts whose every cited record is
+ *          gone, which is what makes a re-derivation due.
  */
 export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } = {}) {
     const list = chat ?? [];
@@ -89,7 +91,7 @@ export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } 
 
     if (!newest) {
         return {
-            facts: [], index: null, slots: null, covers: null, coveredThrough: null, batches, dropped: 0,
+            facts: [], index: null, at: null, slots: null, covers: null, coveredThrough: null, batches, dropped: 0,
         };
     }
 
@@ -115,6 +117,7 @@ export function canonFor(chat, { readCanon, readIndex }, { through = Infinity } 
     return {
         facts,
         index: at,
+        at: typeof newest.at === 'string' ? newest.at : null,
         slots: Number.isInteger(newest.slots) ? newest.slots : null,
         covers: [...newest.covers],
         coveredThrough: newest.covers[1],

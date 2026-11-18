@@ -22,10 +22,19 @@ Every setting has a default that works, and the only one you have to set is
 |---|---|---|
 | Replace old messages with summaries | On | Cairn puts the summaries in the prompt and takes out the messages they cover. While Qvink Memory is still injecting its own block, Cairn waits, and the inspector says what it is waiting for. See [Coming from Qvink Memory](qvink-handover.md). |
 | Track the world state | On | Where the scene is, who is there, the weather, and each character's hair and outfit, placed just above your newest message. Waits while WTracker or WTrackerLite is loaded. |
-| Keep canon | On | Picks the few facts the whole story depends on (a death, a promise, a debt) and keeps them at the top of memory. The pick is redone as the story grows. |
-| Canon entries | 10 | How many canon facts to pick, from 1 to 16. |
 | Drop example dialogue once summarised | On | Drops the card's example dialogue once summaries cover the early chat. Off leaves SillyTavern's own setting alone. |
 | Hold lorebook entries | On | Once a lorebook entry triggers, it stays in the prompt until the budget pushes it out, instead of dropping when a keyword misses. Off restores stock SillyTavern behaviour. |
+
+## Canon
+
+| Setting | Default | What it does |
+|---|---|---|
+| Keep canon | On | Picks the few facts the whole story depends on (a death, a promise, a debt) and keeps them at the top of memory. The pick is redone as the story grows, starting from the canon so far, and reaches the prompt at the next step. |
+| Canon entries | 10 | How many canon facts to pick, from 1 to 16. |
+
+The card shows the open chat's canon: what the prompt carries now, and a newer pick
+when one is waiting for the next step. **Rebuild canon** picks it fresh from the whole
+story in one memory call and puts it in on your next message.
 
 ## Advanced settings
 

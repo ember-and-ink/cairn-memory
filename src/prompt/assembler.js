@@ -37,7 +37,7 @@ import { compactLine } from '../memory/index-record.js';
 import { readCanon, readIndex } from '../store/chat-store.js';
 import { admitCanon, canonFor, slotsFor } from '../memory/canon.js';
 import { canonCap, createBudget, deriveCap, recoupled, tierSplit } from '../pipeline/budgeter.js';
-import { pendingPick } from '../pipeline/canon-pick.js';
+import { carriedCanon, pendingPick } from '../pipeline/canon-pick.js';
 import { indexRecords } from '../pipeline/index-reads.js';
 import { FIRST_TURN, createSeeSaw } from '../pipeline/scheduler.js';
 import { createExamplesLatch, examplesSuperseded } from '../memory/examples.js';
@@ -161,6 +161,11 @@ export function createAssembler(getContext, {
      */
     let admittedThrough = -Infinity;
     /**
+     * When the admitted pick was written. A pick asked again over the same records lands
+     * on the same message, so the message alone cannot say a newer one is waiting (D-0104).
+     */
+    let admittedAt = null;
+    /**
      * The canon cap in force at the last rebuild, held for the cycle. `canonCap`'s
      * guard tracks `stepTokens`, which moves every turn, so applying a live cap
      * re-trims the block's head mid-cycle — the break the mark above exists to avoid
@@ -175,6 +180,12 @@ export function createAssembler(getContext, {
      * the block's head.
      */
     let heldCompactCap = null;
+    /**
+     * The next turn is a rebuild whatever else it is (D-0104): the user rebuilt canon by
+     * hand and asked for it now. Cleared by the turn that honours it, and not kept across
+     * a reload, which is a rebuild anyway.
+     */
+    let forceNext = false;
     /** This turn's compaction pass, for the summarizer. Never reaches the log. */
     let pendingPass = null;
     /** Canon's text for the inspector. Never reaches the log, which carries counts only. */
@@ -265,7 +276,7 @@ export function createAssembler(getContext, {
         // rebuilds leaves the block byte-identical until one (D-0059, D-0067). With a
         // bag this fell out of filtering one list; with a replacement it cannot, because
         // the newest batch would otherwise admit itself by being the only one there is.
-        const empty = { facts: [], index: null, slots: null, covers: null, coveredThrough: null, batches: 0, dropped: 0 };
+        const empty = { facts: [], index: null, at: null, slots: null, covers: null, coveredThrough: null, batches: 0, dropped: 0 };
         const readers = { readCanon, readIndex };
         const currentCanon = keepCanon ? canonFor(chat, readers) : empty;
         const heldCanon = keepCanon ? canonFor(chat, readers, { through: admittedThrough }) : empty;
@@ -309,37 +320,51 @@ export function createAssembler(getContext, {
         // A rebuild changes the block's head whatever we do, so this is the turn a
         // new batch costs nothing extra. Admitting it shrinks the scene budget, so
         // the summaries are fitted again — to the floor of the budget they actually
-        // have, not the one they had before canon grew.
-        const rebuilt = isRebuild({ evicted: fit.evicted, demoted: fit.demoted, stepReason: step.reason });
+        // have, not the one they had before canon grew. A step with a newer pick is a
+        // rebuild too, and so is a turn the user forced (D-0102, D-0104).
+        const canonMoved = currentCanon.index !== null
+            && (currentCanon.index !== heldCanon.index || currentCanon.at !== admittedAt);
+        const forced = forceNext;
+        forceNext = false;
+        const rebuilt = isRebuild({
+            evicted: fit.evicted, demoted: fit.demoted, stepReason: step.reason, canonMoved, forced,
+        });
+        // Only the budget's own reasons trim to the floor. A rebuild for canon alone
+        // admits the pick and fits to the cap it leaves, without demoting summaries
+        // early to buy slack a step no longer needs (D-0102).
+        const toFloor = isRebuild({ evicted: fit.evicted, demoted: fit.demoted, stepReason: step.reason });
         let evicted = fit.evicted;
         let demoted = fit.demoted;
-        if (rebuilt) {
-            admittedCap = canonBudget.cap;
-            // The split is re-derived here and nowhere else, so between rebuilds the two
-            // tiers' caps hold still and no summary can demote on an ordinary turn.
-            heldCompactCap = split(Math.max(0, cap - canon.tokens));
-        }
         // A rebuild admits whatever pick is current, which is how canon changes on a
         // rebuild turn and only there (D-0067). `rederived` says it actually moved.
-        const rederived = rebuilt && currentCanon.index !== null && currentCanon.index !== heldCanon.index;
-        if (rebuilt && allFacts.length) {
-            admittedThrough = Math.max(admittedThrough, currentCanon.index);
-            const admitted = admitCanon({ facts: allFacts, cap: canonBudget.cap, tokensOf: canonTokensOf });
-            if (admitted.tokens !== canon.tokens) {
-                canon = admitted;
-                const sceneCap = Math.max(0, cap - canon.tokens);
-                heldCompactCap = split(sceneCap);
+        const rederived = rebuilt && canonMoved;
+        if (rebuilt) {
+            admittedCap = canonBudget.cap;
+            if (allFacts.length) {
+                admittedThrough = Math.max(admittedThrough, currentCanon.index);
+                admittedAt = currentCanon.at;
+                canon = admitCanon({ facts: allFacts, cap: canonBudget.cap, tokensOf: canonTokensOf });
+            }
+            // The split is re-derived here and nowhere else, so between rebuilds the two
+            // tiers' caps hold still and no summary can demote on an ordinary turn. If
+            // either moved, the summaries are fitted again now, on the turn that pays for
+            // it — fitting on the old split and holding the new one would leave the
+            // change to the next ordinary turn.
+            const sceneCap = Math.max(0, cap - canon.tokens);
+            const nextSplit = split(sceneCap);
+            if (sceneCap !== fit.sceneCap || nextSplit !== fit.compactCap) {
                 fit = budget.fit({
                     scenes: covered,
                     sceneCap,
-                    compactCap: heldCompactCap,
+                    compactCap: nextSplit,
                     compactOf,
                     tokensOf,
-                    rebuild: true,
+                    rebuild: toFloor,
                 });
                 evicted += fit.evicted;
                 demoted += fit.demoted;
             }
+            heldCompactCap = nextSplit;
         }
 
         const sceneText = renderBlock(fit.kept);
@@ -363,7 +388,9 @@ export function createAssembler(getContext, {
         // With canon switched off there are no slots to fill, so nothing is ever due —
         // the gate would refuse the call anyway (pipeline/gates.js), and a log saying a
         // pick is due when it can never run reads as a stuck queue.
-        const due = pendingPick({ records, canon: currentCanon, slots: keepCanon ? slots : 0 });
+        const due = pendingPick({
+            records, canon: currentCanon, slots: keepCanon ? slots : 0, growth: seeSaw.step,
+        });
         // What the prompt carries, and what a pick has written that waits for a rebuild —
         // the one place a wrong fact can be seen before it has been read for long.
         const admittedNow = rebuilt && allFacts.length > 0;
@@ -373,8 +400,8 @@ export function createAssembler(getContext, {
             inPrompt: canon.facts.map((fact) => fact.text),
             // Held facts the cap left out.
             spilled: inForce.filter((text) => !inPrompt.has(text)),
-            // A newer pick than the one in force, which the next rebuild admits.
-            waiting: !admittedNow && currentCanon.index !== heldCanon.index
+            // A newer pick than the one in force, which the next step admits.
+            waiting: !admittedNow && canonMoved
                 ? allFacts.map((fact) => fact.text) : [],
             slots,
         } : null;
@@ -383,6 +410,9 @@ export function createAssembler(getContext, {
             writing: gate.writing,
             records: due.records.map((entry) => ({ ...entry, message: chat[entry.index] })),
             message: due.due ? chat[due.covers[1]] : null,
+            // The queue starts from the canon in force, as an adoption does (D-0101): a
+            // pick from nothing every turn forgot what the last one had corrected.
+            previous: due.due ? carriedCanon(currentCanon.facts, due.records) : [],
         };
 
         // The cap is meant to hold still between a card edit, a book edit, a
@@ -444,8 +474,8 @@ export function createAssembler(getContext, {
             overCap: fit.over,
             cap,
             // Canon (docs/decisions.md D-0056). `canonAdmitted` is the check the run reads: it
-            // may change only on a turn where `evicted > 0` or the step reason is
-            // `first-turn`. Any other turn where it moves is decision 3 failing.
+            // may change only on a turn where `rebuilt` is true — an eviction, a first turn,
+            // a step with a newer pick (D-0102) or a forced turn (D-0104).
             canonFacts: allFacts.length,
             canonAdmitted: canon.facts.length,
             // The pick (docs/decisions.md D-0071). `canonSlots` is what is asked for,
@@ -536,8 +566,22 @@ export function createAssembler(getContext, {
             debug(`Memory block writing ${ownInjection ? 'on' : 'off'}.`);
         },
 
+        /**
+         * Make the next turn a rebuild, so a canon the user rebuilt by hand goes in then
+         * rather than at the next step (D-0104).
+         */
+        forceRebuild() {
+            forceNext = true;
+        },
+
+        /** Whether the next turn is a rebuild the user asked for (D-0104). */
+        get forcing() {
+            return forceNext;
+        },
+
         /** A new chat is a new block, a new see-saw and a new baseline. */
         reset() {
+            forceNext = false;
             seeSaw.reset();
             budget.reset();
             reserves.reset();
@@ -545,6 +589,7 @@ export function createAssembler(getContext, {
             previousBlock = null;
             previousCap = null;
             admittedThrough = -Infinity;
+            admittedAt = null;
             admittedCap = null;
             heldCompactCap = null;
             pendingPass = null;

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { FIRST_TURN } from '../src/pipeline/scheduler.js';
+import { FIRST_TURN, STEP_TURN } from '../src/pipeline/scheduler.js';
 import { isRebuild } from '../src/prompt/rebuild.js';
 
 /**
@@ -14,12 +14,28 @@ import { isRebuild } from '../src/prompt/rebuild.js';
  * it should not, which is invisible in play and is exactly what D-0019 was about.
  */
 describe('the rebuild turn (docs/decisions.md D-0067)', () => {
-    it('is an eviction or a cold first turn, and nothing else', () => {
+    it('is an eviction or a cold first turn when canon has nothing new and nobody forced it', () => {
         expect(isRebuild({ evicted: 1, stepReason: 'held' })).toBe(true);
         expect(isRebuild({ evicted: 0, stepReason: FIRST_TURN })).toBe(true);
         expect(isRebuild({ evicted: 4, stepReason: FIRST_TURN })).toBe(true);
         expect(isRebuild({ evicted: 0, stepReason: 'step' })).toBe(false);
         expect(isRebuild({ evicted: 0, stepReason: 'held' })).toBe(false);
+    });
+
+    it('counts a step with a newer canon pick (D-0102), and a step without one still is not', () => {
+        expect(isRebuild({ stepReason: STEP_TURN, canonMoved: true })).toBe(true);
+        expect(isRebuild({ stepReason: STEP_TURN, canonMoved: false })).toBe(false);
+        // Only a step: a held turn with a newer pick waits for the step.
+        expect(isRebuild({ stepReason: 'held', canonMoved: true })).toBe(false);
+        expect(isRebuild({ stepReason: 'rollback', canonMoved: true })).toBe(false);
+        // Truthy is not enough; the assembler passes a boolean.
+        expect(isRebuild({ stepReason: STEP_TURN, canonMoved: 1 })).toBe(false);
+    });
+
+    it('counts a turn the user forced, whatever else it is (D-0104)', () => {
+        expect(isRebuild({ stepReason: 'held', forced: true })).toBe(true);
+        expect(isRebuild({ stepReason: 'rollback', forced: true })).toBe(true);
+        expect(isRebuild({ stepReason: 'held', forced: false })).toBe(false);
     });
 
     it('does not count a branch or a swipe, which rolls the store back too', () => {

@@ -214,14 +214,14 @@ describe('canon as text (docs/decisions.md D-0085)', () => {
         expect(html).toContain('<details class="cairn-details" open>');
         expect(html).toContain('Canon in the prompt (1 of 10 lines)');
         expect(html).toContain('<li>Her brother is dead.</li>');
-        expect(html).not.toContain('next rebuild');
+        expect(html).not.toContain('next step');
     });
 
     it('says what is waiting for a rebuild and what the cap left out', () => {
         const html = renderCanonView(view({ spilled: ['The lamp is broken.'], waiting: ['Aster owns a boat.'] }));
         expect(html).toContain('Left out for want of room');
         expect(html).toContain('<li>The lamp is broken.</li>');
-        expect(html).toContain('goes in at the next rebuild');
+        expect(html).toContain('goes in at the next step');
         expect(html).toContain('<li>Aster owns a boat.</li>');
     });
 

@@ -58,17 +58,6 @@
                 </label>
                 <div class="cairn-hint">Where the scene is, who is there, the weather, hair and outfits — just above your newest message.</div>
 
-                <label class="checkbox_label" for="cairn_keepCanon">
-                    <input id="cairn_keepCanon" type="checkbox">
-                    <span>Keep canon</span>
-                </label>
-                <div class="cairn-hint">The few facts the whole story depends on — a death, a promise, a debt — kept at the top of memory.</div>
-
-                <div class="cairn-field cairn-indent">
-                    <label for="cairn_canonSlots">Canon entries</label>
-                    <input id="cairn_canonSlots" type="number" class="text_pole" min="1" max="16" step="1">
-                </div>
-
                 <label class="checkbox_label" for="cairn_dropExamples">
                     <input id="cairn_dropExamples" type="checkbox">
                     <span>Drop example dialogue once summarised</span>
@@ -80,6 +69,32 @@
                     <span>Hold lorebook entries</span>
                 </label>
                 <div class="cairn-hint">Keeps an entry in the prompt once it has triggered, so a missed keyword doesn't reshuffle the prompt.</div>
+            </section>
+
+            <section class="cairn-card">
+                <h4 class="cairn-section">Canon</h4>
+
+                <label class="checkbox_label" for="cairn_keepCanon">
+                    <input id="cairn_keepCanon" type="checkbox">
+                    <span>Keep canon</span>
+                </label>
+                <div class="cairn-hint">The few facts the whole story depends on — a death, a promise, a debt — kept at the top of memory.</div>
+
+                <div class="cairn-field cairn-indent">
+                    <label for="cairn_canonSlots">Canon entries</label>
+                    <input id="cairn_canonSlots" type="number" class="text_pole" min="1" max="16" step="1">
+                </div>
+
+                <div id="cairn_canonView" class="cairn-canon-card"></div>
+
+                <div class="cairn-buttons">
+                    <div id="cairn_canonRebuild" class="menu_button menu_button_icon">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Rebuild canon</span>
+                    </div>
+                </div>
+                <div class="cairn-hint">Canon is picked again as the story grows and reaches the prompt at the next step. Rebuild picks it fresh from the whole story, in one memory call, and puts it in on your next message.</div>
+                <div id="cairn_canonStatus" class="cairn-hint"></div>
             </section>
 
             <details class="cairn-card cairn-group">

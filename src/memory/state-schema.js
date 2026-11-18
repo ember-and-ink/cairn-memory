@@ -75,11 +75,17 @@ const STATE_KEYS = [...Object.keys(TEXT_FIELDS), 'characters'];
  * worked out from the state before and after, so a reply repeating current values
  * records nothing (CLAUDE.md §4.18).
  *
+ * **Someone coming back starts from how they were last seen** (D-0103), not from
+ * nothing: the record only holds who is present, so a character who leaves and
+ * returns would otherwise lose a hair colour or an outfit no later message restates.
+ *
  * @param {object} current A state `validState` accepts; `{}` on a cold start.
  * @param {object} reply The parsed reply: the whole record, as the prompt asks.
+ * @param {{known?: Record<string, object>}} [options] `known` is the last-seen fields
+ *        of characters not in `current` (`lastSeen` in memory/state.js), by name.
  * @returns {{value: object, changed: string[], dropped: Array<{field: string, reason: string}>}}
  */
-export function mergeReply(current, reply) {
+export function mergeReply(current, reply, { known = {} } = {}) {
     if (!validState(current)) throw new TypeError('mergeReply needs a valid current state');
     if (!isObject(reply)) throw new TypeError('A state reply must be an object');
 
@@ -88,7 +94,7 @@ export function mergeReply(current, reply) {
     const value = mergeTexts(current, keys, TEXT_FIELDS, '', dropped);
 
     const characters = keys.has('characters')
-        ? mergeCharacters(current.characters, keys.get('characters'), dropped)
+        ? mergeCharacters(current.characters, keys.get('characters'), dropped, known)
         : copyCharacters(current.characters);
     if (characters) value.characters = characters;
 
@@ -201,22 +207,25 @@ function mergeTexts(before, keys, caps, prefix, dropped) {
  * the stored cast stands. That is the one guard replacement needs: an empty
  * `Present:` line nudges nothing, and the next reply puts the cast back.
  */
-function mergeCharacters(before, reply, dropped) {
+function mergeCharacters(before, reply, dropped, known = {}) {
     const stored = new Map(Object.entries(copyCharacters(before) ?? {}));
+    const seen = new Map(Object.entries(isObject(known) ? known : {}).map(([name, fields]) => [fold(name), { name, fields }]));
     if (!isObject(reply)) {
         dropped.push({ field: 'characters', reason: 'wrong-type' });
         return copyCharacters(before);
     }
 
     const cast = new Map();
-    const seen = new Set();
+    const listed = new Set();
     for (const [written, entry] of Object.entries(reply)) {
-        const name = [...stored.keys()].find((known) => fold(known) === fold(written)) ?? written;
-        if (seen.has(fold(name))) {
+        const returning = stored.has(written) ? null : seen.get(fold(written));
+        const name = [...stored.keys()].find((present) => fold(present) === fold(written))
+            ?? returning?.name ?? written;
+        if (listed.has(fold(name))) {
             dropped.push({ field: 'characters', reason: 'duplicate-key' });
             continue;
         }
-        seen.add(fold(name));
+        listed.add(fold(name));
 
         // `null` used to mean "remove"; leaving them out now says the same thing.
         if (entry === null) continue;
@@ -235,7 +244,7 @@ function mergeCharacters(before, reply, dropped) {
             continue;
         }
         const keys = foldKeys(entry, Object.keys(CHARACTER_FIELDS), 'characters.', dropped);
-        cast.set(name, mergeTexts(stored.get(name) ?? {}, keys, CHARACTER_FIELDS, 'characters.', dropped));
+        cast.set(name, mergeTexts(stored.get(name) ?? lastFields(returning), keys, CHARACTER_FIELDS, 'characters.', dropped));
     }
 
     if (!cast.size) {
@@ -247,6 +256,14 @@ function mergeCharacters(before, reply, dropped) {
     const order = [...stored.keys()].filter((name) => cast.has(name))
         .concat([...cast.keys()].filter((name) => !stored.has(name)));
     return Object.fromEntries(order.map((name) => [name, cast.get(name)]));
+}
+
+/** A returning character's last-seen fields, kept only where they are still valid values. */
+function lastFields(returning) {
+    if (!returning || !isObject(returning.fields)) return {};
+    return Object.fromEntries(Object.entries(CHARACTER_FIELDS)
+        .filter(([field, cap]) => validText(returning.fields[field], cap))
+        .map(([field]) => [field, returning.fields[field]]));
 }
 
 function copyCharacters(characters) {
@@ -375,6 +392,11 @@ function validName(name) {
 
 function validText(text, cap) {
     return typeof text === 'string' && text.trim() !== '' && text.length <= cap;
+}
+
+/** How character names are compared: trimmed, case-insensitive. */
+export function foldName(name) {
+    return fold(name);
 }
 
 function fold(name) {

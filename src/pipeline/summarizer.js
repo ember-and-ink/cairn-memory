@@ -20,7 +20,7 @@ import { newestState, stateJobAt } from '../memory/state.js';
 import { changedKinds, validState } from '../memory/state-schema.js';
 import { wtrackerLoaded } from '../interop/wtracker.js';
 import { describeReply } from '../memory/model-reply.js';
-import { editScene, editState as writeEditedState, readScene, summarisable } from '../store/chat-store.js';
+import { editScene, editState as writeEditedState, readIndex, readScene, summarisable } from '../store/chat-store.js';
 import { MAX_SUMMARY_CHARS } from '../memory/scene-strategy.js';
 import { countTokens } from '../util/tokens.js';
 import { debug, error, toastOnce, warn } from '../util/log.js';
@@ -30,7 +30,9 @@ import { createIndexJob } from './index-job.js';
 import { READ_CHANGED, createStateJob } from './state-job.js';
 import { createSummaryJob } from './summary-job.js';
 import { adoptionPlan, createAdoption } from './adopt.js';
-import { DEFAULT_SLOTS } from '../memory/canon.js';
+import { DEFAULT_SLOTS, slotsFor } from '../memory/canon.js';
+import { MIN_INDEX_RECORDS } from './canon-pick.js';
+import { indexRecords } from './index-reads.js';
 import { STEP } from './scheduler.js';
 import { framedMessages, isBadRequest, memoryProfile, refusalKey, requestOverrides } from './request-options.js';
 
@@ -122,6 +124,8 @@ export function createSummarizer(getContext, {
     let call = null;
     /** The adoption under way, or null. The queue holds while it runs (D-0090). */
     let adopting = null;
+    /** A canon pick the user asked for is out (D-0104). The queue holds while it is. */
+    let rebuildingCanon = false;
 
     /**
      * Start a run, or fold this trigger into the one under way. Never rejects.
@@ -131,8 +135,8 @@ export function createSummarizer(getContext, {
      */
     function drain(why = 'asked') {
         if (!running) return Promise.resolve();
-        if (adopting) {
-            debug(`Queue: ${why} — waiting for the adoption to finish.`);
+        if (adopting || rebuildingCanon) {
+            debug(`Queue: ${why} — waiting for the ${adopting ? 'adoption' : 'canon rebuild'} to finish.`);
             return Promise.resolve();
         }
         if (activeIn === null || activeIn !== getContext().chatId) {
@@ -359,7 +363,7 @@ export function createSummarizer(getContext, {
                 at: sent?.at ?? new Date(clock()).toISOString(),
                 job: job.kind.log,
                 message: sent?.message ?? null,
-                during: adopting ? (adopting.redo ? 'redo' : 'adopt') : 'queue',
+                during: duringNow(),
                 outcome,
                 reason,
                 attempt,
@@ -662,6 +666,64 @@ export function createSummarizer(getContext, {
         }
     }
 
+    /** What a memory call was made for, as the log's `during` says it (D-0093). */
+    function duringNow() {
+        if (adopting) return adopting.redo ? 'redo' : 'adopt';
+        return rebuildingCanon ? 'rebuild' : 'queue';
+    }
+
+    /**
+     * Pick canon again now, from nothing, on the user's word (D-0104). The pick reads the
+     * whole index as the queue's does but carries nothing forward, so it is a fresh
+     * judgement; it lands where the queue's would, and the caller makes the next turn a
+     * rebuild so it goes into the prompt then rather than at the next step.
+     *
+     * @returns {Promise<{ok: boolean, reason?: string}>} `reason` is a canon gate's, or
+     *          `disabled`, `adopting`, `rebuilding`, `too-few` or `failed`.
+     */
+    async function rebuildCanon() {
+        if (!running) return { ok: false, reason: 'disabled' };
+        if (adopting) return { ok: false, reason: 'adopting' };
+        if (rebuildingCanon) return { ok: false, reason: 'rebuilding' };
+        const context = getContext();
+        const config = readSettings();
+        const gate = assessCompaction(context, config, { writing: memory?.()?.writing });
+        if (!gate.ready) return { ok: false, reason: gate.reason };
+        const { chatId } = context;
+        if (indexRecords(context.chat ?? [], { readIndex }).length < MIN_INDEX_RECORDS) {
+            return { ok: false, reason: 'too-few' };
+        }
+
+        rebuildingCanon = true;
+        activeIn = chatId;
+        notify();
+        try {
+            await (active ?? Promise.resolve());
+            const now = getContext();
+            if (now.chatId !== chatId) return { ok: false, reason: 'failed' };
+            const chat = now.chat ?? [];
+            const records = indexRecords(chat, { readIndex });
+            const covers = [records[0].index, records[records.length - 1].index];
+            debug(`Rebuilding canon over ${records.length} records through #${covers[1]}, from nothing.`);
+            const written = await canon.run(now, readSettings(), {
+                due: true,
+                reason: 'rebuild',
+                records: records.map((entry) => ({ ...entry, message: chat[entry.index] })),
+                covers,
+                slots: slotsFor(config.canonSlots),
+                message: chat[covers[1]],
+            });
+            return written ? { ok: true } : { ok: false, reason: 'failed' };
+        } catch (err) {
+            error('Rebuilding canon failed.', err);
+            return { ok: false, reason: 'failed' };
+        } finally {
+            rebuildingCanon = false;
+            notify();
+            drain('the canon rebuild finishing');
+        }
+    }
+
     /** A request for the chat being left is abandoned; the new chat's queue starts. */
     function onChatChanged() {
         if (adopting) adopting.cancelled = true;
@@ -719,6 +781,13 @@ export function createSummarizer(getContext, {
         adoptionPreview,
 
         adopt,
+
+        rebuildCanon,
+
+        /** A canon pick the user asked for is out (D-0104). */
+        get rebuildingCanon() {
+            return rebuildingCanon;
+        },
 
         /** Stop an adoption between calls; what it has written stays. */
         cancelAdoption() {

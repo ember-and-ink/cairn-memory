@@ -16,6 +16,7 @@ import { createInspector } from './src/ui/inspector.js';
 import { noteSharedProfile, refreshBudget, renderSettingsPanel } from './src/ui/panel.js';
 import { installResummariseButton } from './src/ui/resummarise-button.js';
 import { installAdoptControls } from './src/ui/adopt-panel.js';
+import { installCanonCard } from './src/ui/canon-card.js';
 import { installEditPopup } from './src/ui/edit-popup.js';
 import { error, info, setDebugEnabled, warn } from './src/util/log.js';
 
@@ -62,6 +63,7 @@ import { error, info, setDebugEnabled, warn } from './src/util/log.js';
         // Writes Cairn's own summaries and world state after each reply. Each kind gates
         // itself (src/pipeline/gates.js), so only `enabled` starts and stops it here.
         let inspector;
+        let canonCard;
         const summarizer = createSummarizer(getContext, {
             settings: () => settings,
             // The budget a compaction pass needs lives in the assembler, so the pass it
@@ -73,6 +75,7 @@ import { error, info, setDebugEnabled, warn } from './src/util/log.js';
             onUpdate: () => {
                 inspector?.summaries(summarizer.status);
                 marks.refresh();
+                canonCard?.refresh();
             },
         });
         // The summaries and states under their messages, and the only in-chat sign one is being written.
@@ -83,6 +86,7 @@ import { error, info, setDebugEnabled, warn } from './src/util/log.js';
         const observer = createObserver(getContext, {
             onSnapshot: (snapshot) => {
                 inspector?.render(snapshot);
+                canonCard?.refresh();
                 diskLog.append(snapshot, getContext);
             },
             holding: () => (settings.holdWorldInfo ? injector.remembered.size : null),
@@ -119,7 +123,11 @@ import { error, info, setDebugEnabled, warn } from './src/util/log.js';
                 marks.refresh();
             },
             // Off takes effect at the next generation; on waits for the next pressure.
-            onKeepCanonChange: () => summarizer.drain('the keep canon setting'),
+            onKeepCanonChange: () => {
+                summarizer.drain('the keep canon setting');
+                canonCard?.refresh();
+            },
+            onCanonSlotsChange: () => canonCard?.refresh(),
             // A newly chosen profile may have a backlog waiting for it.
             onMemoryProfileChange: () => summarizer.drain('the memory profile setting'),
         }), { canon: () => assembler.canonView });
@@ -127,6 +135,7 @@ import { error, info, setDebugEnabled, warn } from './src/util/log.js';
         inspector.summaries(summarizer.status);
         // An adopted chat has new memory throughout, so the next prompt is a rebuild (D-0090).
         installAdoptControls(context, summarizer, { onAdopted: () => assembler.reset() });
+        canonCard = installCanonCard(getContext, summarizer, assembler, { settings: () => settings });
 
         // Both follow `enabled` alone: observing is free, and holding degrades
         // to ST's own scan rather than to a broken prompt (CLAUDE.md §4.17).
@@ -145,6 +154,7 @@ import { error, info, setDebugEnabled, warn } from './src/util/log.js';
             statePlacement.reset();
             inspector.render(null);
             inspector.summaries(summarizer.status);
+            canonCard.reset();
         });
         // Switching the chat's profile can make Cairn's the same one, or change the context size.
         context.eventSource.on(context.eventTypes.CONNECTION_PROFILE_LOADED, () => {

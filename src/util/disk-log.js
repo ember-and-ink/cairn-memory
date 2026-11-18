@@ -264,7 +264,7 @@ function memoryFields(memory) {
         // Non-zero makes the next pick due, so it should clear itself rather than persist.
         memory_canon_lost_sources: memory.canonLostSources ?? null,
         // Why a pick is or is not due: no-canon, new-records, lost-facts, slots-changed,
-        // covered, too-few, no-slots (pipeline/canon-pick.js).
+        // growing, covered, too-few, no-slots (pipeline/canon-pick.js).
         memory_canon_reason: memory.canonReason ?? null,
         memory_canon_tokens: memory.canonTokens ?? null,
         memory_canon_cap: memory.canonCap ?? null,
@@ -394,8 +394,8 @@ function compactionFields(status) {
         compaction_gate: status.gate ?? null,
         compaction_in_flight: status.inFlight != null,
         // Why a pick is or is not due (pipeline/canon-pick.js): no-canon, new-records,
-        // lost-facts, slots-changed, covered, too-few or no-slots. `covered` on every
-        // turn after the first pick is the steady state.
+        // lost-facts, slots-changed, growing, covered, too-few or no-slots. `growing` or
+        // `covered` between picks is the steady state.
         compaction_reason: status.reason ?? null,
         // The index a due pick would read, or null when none is due.
         compaction_pending: status.pending?.covers ?? null,

@@ -11,7 +11,7 @@
  */
 import { hashRange, readRange, readState, visible } from '../store/chat-store.js';
 import { sceneHistory } from './scenes.js';
-import { validState } from './state-schema.js';
+import { foldName, validState } from './state-schema.js';
 import { STATE_MAX_EARLIER, STATE_MAX_MESSAGES } from './state-strategy.js';
 
 /**
@@ -29,6 +29,30 @@ export function newestState(chat, through = (chat?.length ?? 0) - 1) {
         if (found) return found;
     }
     return null;
+}
+
+/**
+ * How each of `names` was last seen: their fields in the newest usable state at or
+ * before `through` that lists them (D-0103). A character who leaves drops out of the
+ * record, so this is what lets one who comes back keep what no later message restates.
+ * Walks back only as far as it must, and a name never seen is simply absent.
+ *
+ * @param {Array<object>} chat The live chat. Read only.
+ * @param {number} through The newest index to consider.
+ * @param {string[]} names As the reply wrote them; matched trimmed and case-insensitively.
+ * @returns {Record<string, {hair?: string, outfit?: string}>} Keyed by the stored spelling.
+ */
+export function lastSeen(chat, through, names = []) {
+    const wanted = new Set(names.filter((name) => typeof name === 'string').map(foldName));
+    const found = {};
+    for (let index = Math.min(through, (chat?.length ?? 0) - 1); index >= 0 && wanted.size; index--) {
+        const characters = usableState(chat, index)?.state.value.characters;
+        for (const [name, fields] of Object.entries(characters ?? {})) {
+            if (!wanted.delete(foldName(name))) continue;
+            found[name] = { ...fields };
+        }
+    }
+    return found;
 }
 
 /**
