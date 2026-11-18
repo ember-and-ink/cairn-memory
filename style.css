@@ -331,20 +331,23 @@
     opacity: 0.5;
 }
 
-/* The world state on its message, collapsed (src/ui/chat-marks.js). */
+/* The world state and Established facts on their messages, collapsed (src/ui/chat-marks.js). */
 
-.cairn-state {
+.cairn-state,
+.cairn-canon {
     margin: 0 0 5px 0;
     font-size: small;
     opacity: 0.85;
 }
 
-.cairn-state > summary {
+.cairn-state > summary,
+.cairn-canon > summary {
     cursor: pointer;
     font-weight: bold;
 }
 
-.cairn-state > pre {
+.cairn-state > pre,
+.cairn-canon > pre {
     margin: 4px 0 0 0;
     white-space: pre-wrap;
     font-family: inherit;
