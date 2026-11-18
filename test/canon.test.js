@@ -20,6 +20,8 @@ const READERS = { readCanon, readIndex };
 
 const NOTHING = {
   facts: [],
+  runnersUp: [],
+  picked: 0,
   index: null,
   at: null,
   slots: null,
@@ -315,5 +317,89 @@ describe("what counts as the same fact", () => {
     expect(normaliseFact("...")).toBe("");
     expect(normaliseFact(undefined)).toBe("");
     expect(normaliseFact(42)).toBe("");
+  });
+});
+
+/**
+ * Pins (docs/decisions.md D-0110): the user's facts, on the chat rather than on a message,
+ * so no fold drops them and they head the canon in pin order.
+ */
+describe("the canon fold with pins", () => {
+  const pin = (text, from = []) => ({ text, from });
+
+  it("puts the pins first, in pin order, and leaves out a picked fact that repeats one", () => {
+    const chat = chatWithCanon([
+      [9, ["Aster owns a green boat.", "Her brother is dead."], [0, 9], { slots: 8 }],
+    ]);
+    const fold = canonFor(chat, READERS, {
+      pins: [pin("The collar was destroyed."), pin("her brother is DEAD")],
+      slots: 10,
+    });
+
+    expect(fold.facts.map((fact) => fact.text)).toEqual([
+      "The collar was destroyed.",
+      "her brother is DEAD",
+      "Aster owns a green boat.",
+    ]);
+    expect(fold.facts.map((fact) => fact.pinned ?? false)).toEqual([true, true, false]);
+    expect(fold.picked).toBe(1);
+  });
+
+  it("keeps a pin whose records are gone, where a picked fact would be dropped", () => {
+    // Message 5 has no index record, so a fact citing it alone is dead.
+    const chat = chatWithCanon([[9, [{ text: "Picked.", from: [5] }], [0, 9]]], { indexed: [9] });
+    const fold = canonFor(chat, READERS, { pins: [pin("Pinned.", [5])], slots: 10 });
+
+    expect(fold.facts.map((fact) => fact.text)).toEqual(["Pinned."]);
+    expect(fold.dropped).toBe(1);
+  });
+
+  it("reads none of the pick once the pins fill every slot", () => {
+    const chat = chatWithCanon([[9, ["Picked."], [0, 9]]]);
+    const fold = canonFor(chat, READERS, { pins: [pin("One."), pin("Two.")], slots: 2 });
+
+    expect(fold.facts.map((fact) => fact.text)).toEqual(["One.", "Two."]);
+    expect(fold.picked).toBe(0);
+  });
+
+  it("holds the pins when a branch has taken every pick away", () => {
+    const fold = canonFor(makeQvinkChat({ length: 12 }), READERS, {
+      pins: [pin("Still here.")],
+      slots: 10,
+    });
+    expect(fold).toMatchObject({ index: null, picked: 0 });
+    expect(fold.facts.map((fact) => fact.text)).toEqual(["Still here."]);
+  });
+
+  it("gives the runners-up still standing, less any that repeat canon or a pin", () => {
+    const chat = chatWithCanon(
+      [
+        [
+          9,
+          [{ text: "Picked.", from: [9] }],
+          [0, 9],
+          {
+            runnersUp: [
+              { text: "Close.", from: [9] },
+              { text: "picked", from: [9] },
+              { text: "Pinned.", from: [9] },
+              { text: "Gone.", from: [5] },
+            ],
+          },
+        ],
+      ],
+      { indexed: [9] },
+    );
+    const fold = canonFor(chat, READERS, { pins: [pin("Pinned.")], slots: 10 });
+
+    expect(fold.runnersUp).toEqual([{ text: "Close.", from: [9] }]);
+  });
+
+  it("carries a fact's edited mark, so the next pick can be told", () => {
+    const chat = chatWithCanon([[9, [{ text: "Corrected.", edited: true }, "Plain."], [0, 9]]]);
+    expect(canonFor(chat, READERS).facts.map((fact) => fact.edited ?? false)).toEqual([
+      true,
+      false,
+    ]);
   });
 });

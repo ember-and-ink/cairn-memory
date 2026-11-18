@@ -34,6 +34,7 @@ import {
   MAX_ENTITIES,
   MAX_ENTITY_CHARS,
   MAX_FACT_CHARS,
+  MAX_RUNNERS_UP,
   MAX_SLOTS,
   MAX_SOURCES,
   MIN_SLOTS,
@@ -46,10 +47,11 @@ import { isObject } from "../util/values.js";
 
 /**
  * Room for a reasoning model's thinking over a long index before a short list. The
- * reply is at most sixteen one-sentence facts; the thinking is the part that needs
- * the room, because this is the one pass that reasons over the whole story.
+ * reply is at most sixteen one-sentence facts and ten runners-up; the thinking is the
+ * part that needs the room, because this is the one pass that reasons over the whole
+ * story. Runners-up come last, so a reply cut short loses them before any canon.
  */
-export const CANON_MAX_TOKENS = 4096;
+export const CANON_MAX_TOKENS = 6144;
 
 /** Where a fact is cut rather than kept; the prompt states `MAX_FACT_CHARS` (D-0085). */
 export const HARD_FACT_CHARS = hardCap(MAX_FACT_CHARS);
@@ -85,7 +87,7 @@ Each fact has three fields:
 - entities — a list of who or what the fact is about: at most ${MAX_ENTITIES}, each at most ${MAX_ENTITY_CHARS} characters.
 - from — a list of the row numbers the fact comes from: at least one, at most ${MAX_SOURCES}.
 
-Reply format: only a JSON object whose one key, "canon", holds exactly {{slots}} facts, oldest first, one fact per line, with no other text before or after it. Every fact has all three fields. Inside a value, write speech with single quotes, never double quotes.
+Reply format: only a JSON object with two keys, and no other text before or after it. "canon" holds exactly {{slots}} facts, oldest first. "runnersUp" holds up to ${MAX_RUNNERS_UP} more facts that came closest to a slot and missed, closest first; the user sees them and may keep one. Write one fact per line. Every fact has all three fields. Inside a value, write speech with single quotes, never double quotes.
 
 Example, for a six-row index and four slots.
 Index:
@@ -102,31 +104,57 @@ Reply:
 {"fact":"Aster crewed the winter run with Wren's brother the year before he drowned.","entities":["Aster","Wren"],"from":[2]},
 {"fact":"Aster rowed Wren across the water before the feast day, as she had promised, because the ferry never sailed.","entities":["Aster","Wren"],"from":[4]},
 {"fact":"Wren forgave Aster for keeping the winter run from her, and the two now crew the ferry together.","entities":["Wren","Aster"],"from":[6]}
+],
+"runnersUp":[
+{"fact":"Fog delayed the crossing, and Wren and Aster waited it out in the ferry terminal.","entities":["Wren","Aster"],"from":[3]},
+{"fact":"Wren walked up from the harbour into the town.","entities":["Wren"],"from":[5]}
 ]}
-Row 1 is a question about a timetable and is still picked, because its \`background\` carries the death the rest of the story rests on. Rows 3 and 5 are a wait and a walk: nothing later needs them. Nothing says Aster seemed shaken or that Wren doubted her — those are feelings, and they passed with the scene. Row 6 is different: what Wren and Aster are to each other changed, and the scenes after it rest on that.
+Row 1 is a question about a timetable and is still picked, because its \`background\` carries the death the rest of the story rests on. Rows 3 and 5 are a wait and a walk: nothing later needs them, so they are only runners-up. Nothing says Aster seemed shaken or that Wren doubted her — those are feelings, and they passed with the scene. Row 6 is different: what Wren and Aster are to each other changed, and the scenes after it rest on that.
 
 The index:
 {{index}}
 
-Now reply with the JSON object: exactly {{slots}} facts from the index above.`;
+Now reply with the JSON object: exactly {{slots}} facts from the index above, then the runners-up.`;
 
 /**
  * The canon so far, shown after the index when a pick carries forward (D-0090): each fact
  * with the rows it cites *in this index*, so keeping one is citing it again. Appended to
  * `{{index}}` rather than a macro of its own, so an edited prompt carries it too.
  *
- * @param {Array<{text: string, rows: number[]}>} previous
+ * A fact the user rewrote is marked as theirs (D-0110), which makes it likelier to be
+ * kept as written, not certain to: only a pin is that.
+ *
+ * @param {CarriedFact[]} previous
  * @returns {string}
  */
 export function renderCarriedCanon(previous) {
   const lines = previous.map(
-    (fact) => `- ${fact.text}${fact.rows.length ? ` (rows ${fact.rows.join(", ")})` : ""}`,
+    (fact) =>
+      `- ${fact.text}${fact.rows.length ? ` (rows ${fact.rows.join(", ")})` : ""}` +
+      `${fact.edited ? " (corrected by the user)" : ""}`,
   );
+  const corrected = previous.some((fact) => fact.edited)
+    ? " A fact corrected by the user is in the user's words: keep those words unless a newer row changes it."
+    : "";
   return [
     "The canon as it stood before the newest rows were added:",
     ...lines,
     "",
-    "Start from it. Keep a fact that still holds and still earns its slot, citing its rows again; correct one a later row changes; replace one when a newer fact matters more, since the slots are fixed. Reply with the whole canon, not the changes.",
+    `Start from it. Keep a fact that still holds and still earns its slot, citing its rows again; correct one a later row changes; replace one when a newer fact matters more, since the slots are fixed.${corrected} Reply with the whole canon, not the changes.`,
+  ].join("\n");
+}
+
+/**
+ * The facts the user pinned, shown after the index (D-0110). They are canon whatever the
+ * pick says and do not take its slots, so the pick is told not to spend one repeating them.
+ *
+ * @param {string[]} pinned
+ * @returns {string}
+ */
+export function renderPinned(pinned) {
+  return [
+    "The user has pinned these facts. They are already canon and are not among your slots, so do not repeat them or pick a fact that says the same thing:",
+    ...pinned.map((text) => `- ${text}`),
   ].join("\n");
 }
 
@@ -136,7 +164,7 @@ export function resolveCanonPrompt(setting) {
 }
 
 export const canonPick = {
-  id: "canon-pick-v3",
+  id: "canon-pick-v4",
 
   /**
    * @param {object} request
@@ -147,14 +175,15 @@ export const canonPick = {
    * @param {string} [request.template] The `canonPrompt` setting, raw.
    * @param {(text: string) => string} [request.expand] ST's `substituteParams`
    *        (public/scripts/st-context.js:163), applied to the template only.
-   * @param {Array<{text: string, rows: number[]}>} [request.previous] The canon to carry
-   *        forward, cited by row in this index (D-0090). Empty or absent asks from scratch,
-   *        which is what the queue does.
+   * @param {CarriedFact[]} [request.previous] The canon to carry forward, cited by row in
+   *        this index (D-0090). Empty or absent asks from scratch, which is what a rebuild
+   *        by hand does.
+   * @param {string[]} [request.pinned] The user's pins, which the pick does not fill (D-0110).
    * @returns {{messages: Array<{role: string, content: string}>, maxTokens: number,
    *            prompt: string, slots: number, records: number, fallback: boolean}}
    *          `prompt` is stored as `canon.prompt`.
    */
-  build({ records, slots, template, expand, previous = [] }) {
+  build({ records, slots, template, expand, previous = [], pinned = [] }) {
     if (!Array.isArray(records) || records.length < 1) {
       throw new RangeError("A canon pick reads at least one index record");
     }
@@ -167,9 +196,11 @@ export const canonPick = {
       resolved.template,
       {
         slots: String(slots),
-        index: previous.length
-          ? `${renderIndex(records)}\n\n${renderCarriedCanon(previous)}`
-          : renderIndex(records),
+        index: [
+          renderIndex(records),
+          ...(pinned.length ? [renderPinned(pinned)] : []),
+          ...(previous.length ? [renderCarriedCanon(previous)] : []),
+        ].join("\n\n"),
       },
       { expand },
     );
@@ -202,14 +233,26 @@ export const canonPick = {
  * chat indexes is the caller's, because only it knows which records it sent.
  *
  * @param {unknown} content The reply's `content`, as the model sent it.
+ * `runnersUp` is read the same way and is optional: an edited prompt that never asks for
+ * it still gives a pick (D-0110). A bad runner-up is skipped, not counted, because it never
+ * reaches the prompt.
+ *
  * @param {{slots?: number, records?: number}} [limits] What `build` was given.
  * @returns {{ok: true, picked: Array<{text: string, entities: string[], from: number[],
- *            clipped?: true}>,
+ *            clipped?: true}>, runnersUp: Array<{text: string, entities: string[], from: number[]}>,
  *            dropped: Array<{reason: string}>, short: number}
  *          | {ok: false, reason: 'empty'|'refusal'|'format'|'truncated'|'no-facts'}}
  */
 export function parseCanonReply(content, { slots = MAX_SLOTS, records = Infinity } = {}) {
-  const found = readJsonReply(content);
+  let found = readJsonReply(content);
+  // Runners-up come last, so a reply broken or cut short inside them still holds a whole
+  // canon: read it without them rather than lose the pick (D-0110). One replay lost fifteen
+  // good facts to a missing quote in a runner-up's tags.
+  if (!found.ok) {
+    const canonOnly = withoutRunnersUp(content);
+    const retry = canonOnly === null ? null : readJsonReply(canonOnly);
+    if (retry?.ok) found = retry;
+  }
   if (!found.ok) return found;
   // A bare array is a model dropping the envelope, which is a shape we can still read.
   const value = Array.isArray(found.value) ? { canon: found.value } : found.value;
@@ -229,7 +272,28 @@ export function parseCanonReply(content, { slots = MAX_SLOTS, records = Infinity
   }
 
   if (!picked.length) return reject("no-facts");
-  return { ok: true, picked, dropped, short: Math.max(0, allowed - picked.length) };
+
+  const runnersUp = [];
+  for (const entry of Array.isArray(value.runnersUp) ? value.runnersUp : []) {
+    if (runnersUp.length >= MAX_RUNNERS_UP) break;
+    const fact = readFact(entry, [], records);
+    if (fact) runnersUp.push(fact);
+  }
+
+  return {
+    ok: true,
+    picked,
+    runnersUp,
+    dropped,
+    short: Math.max(0, allowed - picked.length),
+  };
+}
+
+/** The reply up to its `runnersUp` key, closed as an object, or null when it has none. */
+function withoutRunnersUp(content) {
+  if (typeof content !== "string") return null;
+  const at = content.search(/,\s*"runnersUp"\s*:/);
+  return at < 0 ? null : `${content.slice(0, at)}}`;
 }
 
 /** One entry of `canon`, or null with the reason recorded. */

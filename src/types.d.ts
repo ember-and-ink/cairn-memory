@@ -228,10 +228,20 @@ interface CanonFact {
   entities: string[];
   from: number[];
   clipped?: true;
+  /** The user rewrote it (D-0110). */
+  edited?: boolean;
+}
+
+/** A fact the user pinned, on the chat's metadata (store/chat-store.js `readPins`). */
+interface CanonPin {
+  text: string;
+  from: number[];
+  edited?: true;
 }
 
 interface CairnCanon {
   facts: CanonFact[];
+  runnersUp?: CanonFact[];
   covers: [number, number];
   slots?: number;
   prompt: string;
@@ -354,7 +364,15 @@ interface CanonPickWork {
   reason: string;
   records: IndexedRecord[];
   covers: [number, number];
+  /** What the pick is asked to fill: the setting less the pins (D-0110). */
   slots: number;
+}
+
+/** A fact the pick is shown as the canon so far (pipeline/canon-pick.js `carriedCanon`). */
+interface CarriedFact {
+  text: string;
+  rows: number[];
+  edited?: true;
 }
 
 /** The assembler's compaction pass for the turn just planned (prompt/assembler.js `pendingPass`). */
@@ -362,7 +380,7 @@ type PendingPass = (CanonPickWork | { due: false; reason: string; covers: null; 
   writing: boolean;
   records: Array<IndexedRecord & { message: StMessage }>;
   message: StMessage | null;
-  previous: Array<{ text: string; rows: number[] }>;
+  previous: CarriedFact[];
 };
 
 // ---- The prompt (prompt/) ----

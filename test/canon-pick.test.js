@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { MIN_INDEX_RECORDS, applyPick, pendingPick } from "../src/pipeline/canon-pick.js";
+import {
+  MIN_INDEX_RECORDS,
+  applyPick,
+  carriedCanon,
+  pendingPick,
+} from "../src/pipeline/canon-pick.js";
 
 /** An index of `count` records over messages 0, 1, 2 … — the pick's whole input. */
 const records = (count, from = 0) =>
@@ -236,5 +241,87 @@ describe("what a pick becomes", () => {
     mutable[1] = 99;
 
     expect(applied.batch.covers).toEqual([4, 11]);
+  });
+});
+
+/** Pins take slots (docs/decisions.md D-0110): a pick is asked only for what they leave. */
+describe("a pick around the user's pins", () => {
+  it("asks for the slots the pins leave", () => {
+    expect(pendingPick({ records: records(20), canon: null, slots: 10, pinned: 3 })).toMatchObject({
+      due: true,
+      slots: 7,
+    });
+  });
+
+  it("asks nothing once the pins fill every slot", () => {
+    expect(pendingPick({ records: records(20), canon: null, slots: 3, pinned: 3 })).toMatchObject({
+      due: false,
+      reason: "all-pinned",
+      slots: 0,
+    });
+  });
+
+  it("is due at once when a pin or an unpin changes what is left to pick", () => {
+    const last = canon({ coveredThrough: 19, slots: 10, picked: 10 });
+    expect(
+      pendingPick({ records: records(20), canon: last, slots: 10, pinned: 1, growth: 8 }),
+    ).toMatchObject({ due: true, reason: "slots-changed", slots: 9 });
+  });
+
+  it("is due when the pick holds more facts than the slots it may fill", () => {
+    // A pin swapped for an unpin leaves the count alone but hands a fact back.
+    const last = canon({ coveredThrough: 19, slots: 7, picked: 8 });
+    expect(
+      pendingPick({ records: records(20), canon: last, slots: 10, pinned: 3, growth: 8 }),
+    ).toMatchObject({ due: true, reason: "slots-changed" });
+  });
+
+  it("carries the picked facts forward without the pins, and says which the user edited", () => {
+    const facts = [
+      { text: "Pinned.", from: [2], pinned: true },
+      { text: "Corrected.", from: [4], edited: true },
+      { text: "Plain.", from: [6] },
+    ];
+    expect(carriedCanon(facts, records(10))).toEqual([
+      { text: "Corrected.", rows: [5], edited: true },
+      { text: "Plain.", rows: [7] },
+    ]);
+  });
+
+  it("keeps the edited mark on a fact the pick kept in the user's words", () => {
+    const applied = applyPick({
+      picked: [
+        { text: "Corrected.", entities: [], from: [1] },
+        { text: "Reworded by the pick.", entities: [], from: [2] },
+      ],
+      previous: [
+        { text: "corrected", rows: [1], edited: true },
+        { text: "Reworded.", rows: [2], edited: true },
+      ],
+      records: records(3),
+      covers: [0, 2],
+      slots: 2,
+      prompt: "h:1",
+      at: "2026-11-18T00:00:00.000Z",
+    });
+    expect(applied.batch.facts.map((fact) => fact.edited ?? false)).toEqual([true, false]);
+  });
+
+  it("maps the runners-up to messages, dropping repeats of canon and uncited ones quietly", () => {
+    const applied = applyPick({
+      picked: [{ text: "Canon.", entities: [], from: [1] }],
+      runnersUp: [
+        { text: "Close.", entities: ["Wren"], from: [2] },
+        { text: "canon", entities: [], from: [3] },
+        { text: "Off the end.", entities: [], from: [9] },
+      ],
+      records: records(3, 10),
+      covers: [10, 12],
+      slots: 1,
+      prompt: "h:1",
+      at: "2026-11-18T00:00:00.000Z",
+    });
+    expect(applied.batch.runnersUp).toEqual([{ text: "Close.", entities: ["Wren"], from: [11] }]);
+    expect(applied).toMatchObject({ picked: 1, uncited: 0 });
   });
 });

@@ -34,7 +34,7 @@
 import { pendingScenes, readScenes } from "../memory/scenes.js";
 import { qvinkExcluding, qvinkInjecting } from "../interop/qvink.js";
 import { compactLine } from "../memory/index-record.js";
-import { readCanon, readIndex } from "../store/chat-store.js";
+import { readCanon, readIndex, readPins } from "../store/chat-store.js";
 import { admitCanon, canonFor, slotsFor } from "../memory/canon.js";
 import { canonCap, createBudget, deriveCap, recoupled, tierSplit } from "../pipeline/budgeter.js";
 import { carriedCanon, pendingPick } from "../pipeline/canon-pick.js";
@@ -210,7 +210,8 @@ export function createAssembler(
   let pendingPass = null;
   /**
    * Canon's text for the inspector. Never reaches the log, which carries counts only.
-   * @type {{inPrompt: string[], spilled: string[], waiting: string[], slots: number}|null}
+   * @type {{inPrompt: string[], pinned: string[], spilled: string[], waiting: string[],
+   *         slots: number}|null}
    */
   let canonView = null;
 
@@ -306,6 +307,8 @@ export function createAssembler(
     // the newest batch would otherwise admit itself by being the only one there is.
     const empty = {
       facts: [],
+      runnersUp: [],
+      picked: 0,
       index: null,
       at: null,
       slots: null,
@@ -315,8 +318,14 @@ export function createAssembler(
       dropped: 0,
     };
     const readers = { readCanon, readIndex };
-    const currentCanon = keepCanon ? canonFor(chat, readers) : empty;
-    const heldCanon = keepCanon ? canonFor(chat, readers, { through: admittedThrough }) : empty;
+    // The user's pins head both folds (D-0110). They, and an edit to a pick, change only
+    // from the canon editor, which forces the next turn to be a rebuild: no ordinary turn
+    // ever sees them move, so they are read live like the batches.
+    const pins = keepCanon ? readPins(context.chatMetadata) : [];
+    const currentCanon = keepCanon ? canonFor(chat, readers, { pins, slots }) : empty;
+    const heldCanon = keepCanon
+      ? canonFor(chat, readers, { through: admittedThrough, pins, slots })
+      : empty;
     const allFacts = withChars(currentCanon.facts);
     const canonBudget = canonCap({ cap, stepTokens, fraction: config.canonFraction });
     // Last turn's admitted set, since the fit is what says whether this turn may
@@ -388,8 +397,10 @@ export function createAssembler(
     if (rebuilt) {
       admittedCap = canonBudget.cap;
       if (allFacts.length) {
-        // Facts come from a batch, so the fold has the message it lives on.
-        admittedThrough = Math.max(admittedThrough, /** @type {number} */ (currentCanon.index));
+        // Only pins and no batch is a branch taken back past every pick: nothing to mark.
+        if (currentCanon.index !== null) {
+          admittedThrough = Math.max(admittedThrough, currentCanon.index);
+        }
         admittedAt = currentCanon.at;
         canon = admitCanon({ facts: allFacts, cap: canonBudget.cap, tokensOf: canonTokensOf });
       }
@@ -439,6 +450,7 @@ export function createAssembler(
       records,
       canon: currentCanon,
       slots: keepCanon ? slots : 0,
+      pinned: pins.length,
       growth: seeSaw.step,
     });
     // What the prompt carries, and what a pick has written that waits for a rebuild —
@@ -449,6 +461,8 @@ export function createAssembler(
     canonView = keepCanon
       ? {
           inPrompt: canon.facts.map((fact) => fact.text),
+          // The pins among them, which head the list (D-0110).
+          pinned: canon.facts.filter((fact) => fact.pinned).map((fact) => fact.text),
           // Held facts the cap left out.
           spilled: inForce.filter((text) => !inPrompt.has(text)),
           // A newer pick than the one in force, which the next step admits.
@@ -540,7 +554,9 @@ export function createAssembler(
       // the check the run reads: it may be true only on a turn where `rebuilt` is,
       // and any other turn where canon's text moves is decision 1 failing.
       canonSlots: slots,
-      canonPicked: currentCanon.facts.length,
+      canonPicked: currentCanon.picked,
+      // The user's pins, which take slots ahead of the pick (D-0110).
+      canonPinned: pins.length,
       canonRederived: rederived,
       // Facts whose every cited record is gone — an edit, a resummarise or a
       // branch. Non-zero makes the next pick due (`pendingPick`), so it should

@@ -23,9 +23,13 @@ import { describeReply } from "../memory/model-reply.js";
 import {
   editScene,
   editState as writeEditedState,
+  readCanon,
   readIndex,
+  readPins,
   readScene,
   summarisable,
+  writeCanon,
+  writePins,
 } from "../store/chat-store.js";
 import { MAX_SUMMARY_CHARS } from "../memory/scene-strategy.js";
 import { countTokens } from "../util/tokens.js";
@@ -41,7 +45,8 @@ import { createIndexJob } from "./index-job.js";
 import { READ_CHANGED, createStateJob } from "./state-job.js";
 import { createSummaryJob } from "./summary-job.js";
 import { adoptionPlan, createAdoption } from "./adopt.js";
-import { DEFAULT_SLOTS, slotsFor } from "../memory/canon.js";
+import { DEFAULT_SLOTS, MIN_SLOTS, freeSlots, slotsFor } from "../memory/canon.js";
+import { applyCanonEditor, canonEditor } from "../memory/canon-edit.js";
 import { MIN_INDEX_RECORDS } from "./canon-pick.js";
 import { indexRecords } from "./index-reads.js";
 import { STEP } from "./scheduler.js";
@@ -759,7 +764,14 @@ export function createSummarizer(
       const config = readSettings();
       const result = await adoption.run(config, {
         every: preview.every,
-        slots: config.keepCanon === false ? 0 : config.canonSlots || DEFAULT_SLOTS,
+        // Pins take slots, so an adoption picks around them as the queue does (D-0110).
+        slots:
+          config.keepCanon === false
+            ? 0
+            : freeSlots(
+                config.canonSlots || DEFAULT_SLOTS,
+                readPins(getContext().chatMetadata).length,
+              ),
         pending: () => (redo ? redoScenes : pendingScenes)(getContext().chat),
         redo,
         cancelled: () => run.cancelled || getContext().chatId !== chatId,
@@ -796,8 +808,10 @@ export function createSummarizer(
    * judgement; it lands where the queue's would, and the caller makes the next turn a
    * rebuild so it goes into the prompt then rather than at the next step.
    *
+   * The user's pins stay, and the pick fills the slots they leave (D-0110).
+   *
    * @returns {Promise<{ok: boolean, reason?: string}>} `reason` is a canon gate's, or
-   *          `disabled`, `adopting`, `rebuilding`, `too-few` or `failed`.
+   *          `disabled`, `adopting`, `rebuilding`, `too-few`, `all-pinned` or `failed`.
    */
   async function rebuildCanon() {
     if (!running) return { ok: false, reason: "disabled" };
@@ -811,6 +825,8 @@ export function createSummarizer(
     if (indexRecords(context.chat ?? [], { readIndex }).length < MIN_INDEX_RECORDS) {
       return { ok: false, reason: "too-few" };
     }
+    const slots = freeSlots(slotsFor(config.canonSlots), readPins(context.chatMetadata).length);
+    if (slots < MIN_SLOTS) return { ok: false, reason: "all-pinned" };
 
     rebuildingCanon = true;
     activeIn = chatId;
@@ -828,7 +844,7 @@ export function createSummarizer(
         reason: "rebuild",
         records: records.map((entry) => ({ ...entry, message: chat[entry.index] })),
         covers,
-        slots: slotsFor(config.canonSlots),
+        slots,
         message: chat[covers[1]],
       });
       return written ? { ok: true } : { ok: false, reason: "failed" };
@@ -840,6 +856,92 @@ export function createSummarizer(
       notify();
       drain("the canon rebuild finishing");
     }
+  }
+
+  /**
+   * Whether canon may be pinned and edited by hand now (D-0110), and what the editor opens
+   * on. Never while a pick is out or about to be: it would land on top of the edit. No
+   * model call, so no connection gate.
+   *
+   * @returns {{ok: true, model: import("../memory/canon-edit.js").EditorModel}
+   *          | {ok: false, reason: string}}
+   */
+  function canonEditable() {
+    const refused = (reason) => /** @type {const} */ ({ ok: false, reason });
+    if (!running) return refused("disabled");
+    const config = readSettings();
+    if (config.keepCanon === false) return refused("off");
+    if (adopting) return refused("adopting");
+    if (rebuildingCanon || canon.tally.inFlight !== null) return refused("picking");
+    const context = getContext();
+    const model = canonEditor(
+      context.chat ?? [],
+      readPins(context.chatMetadata),
+      slotsFor(config.canonSlots),
+      { readCanon, readIndex },
+    );
+    if (!model.rows.length) return refused("empty");
+    return { ok: true, model };
+  }
+
+  /**
+   * Apply one visit of the canon editor (D-0110): the pins go on the chat, and edits and
+   * moves rewrite the newest pick in place. Refused whole if the pick changed while the
+   * editor was open, so nothing typed lands on a pick it was not written against. The
+   * caller makes the next turn a rebuild, so it all goes in at once.
+   *
+   * @param {import("../memory/canon-edit.js").EditorModel} model What the editor opened on.
+   * @param {Map<string, {text?: string, pinned?: boolean}>} answers
+   * @returns {Promise<{written: boolean, reason?: string}>}
+   */
+  async function editCanon(model, answers) {
+    const editable = canonEditable();
+    if (!editable.ok) return { written: false, reason: editable.reason };
+    const now = editable.model.batch;
+    if (now?.index !== model.batch?.index || now?.at !== model.batch?.at) {
+      return { written: false, reason: "changed" };
+    }
+    const result = applyCanonEditor(model, answers);
+    if (!result.changed) return { written: false, reason: "unchanged" };
+
+    const context = getContext();
+    const stored = model.batch ? readCanon(context.chat[model.batch.index]).canon : null;
+    // A fact unpinned with no pick to go back to would simply vanish, and nothing in canon
+    // is deleted by hand.
+    if (!stored && result.facts.length) return { written: false, reason: "no-pick" };
+    if (!writePins(context.chatMetadata, result.pins)) return { written: false, reason: "write" };
+    if (
+      stored &&
+      model.batch &&
+      !writeCanon(context.chat, model.batch.index, {
+        ...stored,
+        facts: result.facts,
+        runnersUp: result.runnersUp,
+      })
+    ) {
+      return { written: false, reason: "write" };
+    }
+
+    const at = new Date(clock()).toISOString();
+    try {
+      // Counts only: the log never carries the words (D-0093).
+      onCall?.({
+        kind: "edit",
+        at,
+        job: "canon",
+        message: model.batch?.index ?? null,
+        pinned: result.pinned,
+        unpinned: result.unpinned,
+        edited: result.edited,
+        pins: result.pins.length,
+        chat_id: context.chatId ?? null,
+      });
+    } catch (err) {
+      warn("Could not log a canon edit.", err);
+    }
+    await save(context, "pinned and edited canon");
+    notify();
+    return { written: true };
   }
 
   /** A request for the chat being left is abandoned; the new chat's queue starts. */
@@ -903,6 +1005,10 @@ export function createSummarizer(
     adopt,
 
     rebuildCanon,
+
+    canonEditable,
+
+    editCanon,
 
     /** A canon pick the user asked for is out (D-0104). */
     get rebuildingCanon() {

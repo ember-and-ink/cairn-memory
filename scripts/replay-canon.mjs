@@ -162,6 +162,7 @@ async function main() {
     }
     const applied = applyPick({
       picked: pick.picked,
+      runnersUp: pick.runnersUp,
       dropped: pick.dropped,
       records: records.map((entry) => ({ index: entry.n })),
       covers: [records[0].n, records[records.length - 1].n],
@@ -181,6 +182,12 @@ async function main() {
       evolution.push(
         `- ${before.has(fact.text) ? "" : "**new** "}${fact.text} *(summaries ${fact.from.join(", ")})*`,
       );
+    // What came closest, as the canon editor would offer it to pin (D-0110).
+    if (applied.batch.runnersUp.length) {
+      evolution.push("", "Runners-up:");
+      for (const fact of applied.batch.runnersUp)
+        evolution.push(`- ${fact.text} *(summaries ${fact.from.join(", ")})*`);
+    }
     evolution.push("");
   }
 

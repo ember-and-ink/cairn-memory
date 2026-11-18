@@ -17,8 +17,9 @@
  * lowest-priority kind for that reason: canon changes only at a rebuild anyway, which is
  * ~23 messages away, against a summary that holds the see-saw step.
  */
+import { normaliseFact } from "../memory/canon.js";
 import { canonPick } from "../memory/canon-strategy.js";
-import { writeCanon } from "../store/chat-store.js";
+import { readPins, writeCanon } from "../store/chat-store.js";
 import { debug } from "../util/log.js";
 import { applyPick } from "./canon-pick.js";
 import { createJob } from "./job.js";
@@ -71,14 +72,21 @@ export function createCanonJob({ getContext, send, save, clock, pending, strateg
      */
     async run(context, { memoryProfileId, canonPrompt }, work) {
       const { chatId } = context;
+      // The pins are read as the pick goes out, so it is shown the ones in force. A fact
+      // the user has since pinned is not carried as well: it would cost a slot twice.
+      const pinned = readPins(context.chatMetadata).map((pin) => pin.text);
+      const fixed = new Set(pinned.map(normaliseFact));
+      const previous = (work.previous ?? []).filter((fact) => !fixed.has(normaliseFact(fact.text)));
       const sent = await job.request(context, memoryProfileId, work, work.covers[1], () =>
         strategy.build({
           records: work.records.map((entry) => entry.record),
           slots: work.slots,
           template: canonPrompt,
           expand: (text) => context.substituteParams(text),
-          // Only an adoption carries the canon forward; the queue asks afresh (D-0090).
-          ...(work.previous?.length ? { previous: work.previous } : {}),
+          // The queue and an adoption carry the canon forward; a rebuild by hand does not
+          // (D-0090, D-0101, D-0104).
+          ...(previous.length ? { previous } : {}),
+          ...(pinned.length ? { pinned } : {}),
         }),
       );
       if (!sent) return false;
@@ -98,7 +106,9 @@ export function createCanonJob({ getContext, send, save, clock, pending, strateg
 
       const applied = applyPick({
         picked: parsed.picked,
+        runnersUp: parsed.runnersUp ?? [],
         dropped: parsed.dropped,
+        previous,
         records: work.records.map((entry) => ({
           index: now.chat?.indexOf(entry.message) ?? -1,
         })),

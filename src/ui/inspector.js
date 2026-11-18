@@ -375,8 +375,9 @@ function renderCanon(memory) {
       ? ` <span class="${SLUG}-fair">\u2014 share is now ${fmt(memory.canonCap)}, held until the next rebuild</span>`
       : "";
 
+  const pinned = memory.canonPinned ? `, ${fmt(memory.canonPinned)} pinned` : "";
   const slots = memory.canonSlots
-    ? ` <span class="dim">(${fmt(memory.canonPicked)} of ${fmt(memory.canonSlots)} slots filled)</span>`
+    ? ` <span class="dim">(${fmt(memory.canonPicked)} of ${fmt(memory.canonSlots)} slots filled${pinned})</span>`
     : "";
   const lost = memory.canonLostSources
     ? ` <span class="${SLUG}-fair">\u2014 ${fmt(memory.canonLostSources)} lost the summary behind it, so canon is chosen again</span>`
@@ -632,6 +633,7 @@ function describeCompaction(status) {
   if (status.reason === "covered") return "chosen, and up to date with the index";
   if (status.reason === "growing")
     return "chosen \u2014 picked again once the story has moved on a step";
+  if (status.reason === "all-pinned") return "every slot is pinned, so nothing is picked";
   return "nothing to choose from yet";
 }
 

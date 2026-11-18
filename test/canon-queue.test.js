@@ -371,3 +371,36 @@ describe("when the chat moves while a pick is out", () => {
     expect(readCanon(target).canon.covers).toEqual([0, 2]);
   });
 });
+
+/** The queue's pick around the user's pins (docs/decisions.md D-0110). */
+describe("a queued pick with pins", () => {
+  it("shows the pick the pins, and does not carry a pinned fact as well", async () => {
+    const chat = makeChat(12);
+    const run = harness({
+      chat,
+      responses: [reply()],
+      context: {
+        chatMetadata: { cairn: { pins: [{ text: "The collar was destroyed.", from: [] }] } },
+      },
+      memory: () => {
+        const covered = canonFor(chat, READERS).coveredThrough;
+        return {
+          ...pass(chat, { due: covered === null || covered < 3 }),
+          previous: [
+            { text: "the collar was destroyed", rows: [1] },
+            { text: "Aster owns a boat.", rows: [2], edited: true },
+          ],
+        };
+      },
+    });
+    run.summarizer.start();
+    await run.summarizer.idle();
+
+    const [call] = run.service.calls.filter(isCanonCall);
+    const content = call.prompt[0].content;
+    expect(content).toContain("The user has pinned these facts");
+    expect(content).toContain("- The collar was destroyed.\n");
+    expect(content).not.toContain("- the collar was destroyed");
+    expect(content).toContain("- Aster owns a boat. (rows 2) (corrected by the user)");
+  });
+});
