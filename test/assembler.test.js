@@ -1262,8 +1262,13 @@ describe('canon at the head of the block', () => {
         await run.plan();
         expect(run.assembler.pendingPass).toMatchObject({ due: false, reason: 'covered' });
 
-        // A new record past it, and the question is open again.
+        // A new record past it is not yet a step's worth (D-0105)...
         chat[8].extra.cairn = cairnIndexStore(chat[8], readScenes(chat)[8].text);
+        await run.plan();
+        expect(run.assembler.pendingPass).toMatchObject({ due: false, reason: 'growing' });
+
+        // ...and one a step past the last pick opens the question again.
+        chat[14].extra.cairn = cairnIndexStore(chat[14], readScenes(chat)[14].text);
         await run.plan();
         expect(run.assembler.pendingPass).toMatchObject({ due: true, reason: 'new-records' });
     });
@@ -1283,7 +1288,7 @@ describe('canon at the head of the block', () => {
             ...chat[6].extra.cairn,
             ...cairnCanonStore([{ text: 'Her brother is dead.', from: [2] }, { text: 'The boat is green.', from: [4, 6] }], [2, 6], { slots: 10 }),
         };
-        chat[8].extra.cairn = cairnIndexStore(chat[8], readScenes(chat)[8].text);
+        chat[14].extra.cairn = cairnIndexStore(chat[14], readScenes(chat)[14].text);
         run.context.chat = chat;
         await run.plan();
 

@@ -388,7 +388,9 @@ export function createAssembler(getContext, {
         // With canon switched off there are no slots to fill, so nothing is ever due —
         // the gate would refuse the call anyway (pipeline/gates.js), and a log saying a
         // pick is due when it can never run reads as a stuck queue.
-        const due = pendingPick({ records, canon: currentCanon, slots: keepCanon ? slots : 0 });
+        const due = pendingPick({
+            records, canon: currentCanon, slots: keepCanon ? slots : 0, growth: seeSaw.step,
+        });
         // What the prompt carries, and what a pick has written that waits for a rebuild —
         // the one place a wrong fact can be seen before it has been read for long.
         const admittedNow = rebuilt && allFacts.length > 0;

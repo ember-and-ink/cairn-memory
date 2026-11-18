@@ -561,6 +561,7 @@ function describeCompaction(status) {
     // The reasons a pick is not due, in the queue's own words (pipeline/canon-pick.js).
     if (status.reason === 'too-few') return 'waiting \u2014 too few records to rank yet';
     if (status.reason === 'covered') return 'chosen, and up to date with the index';
+    if (status.reason === 'growing') return 'chosen \u2014 picked again once the story has moved on a step';
     return 'nothing to choose from yet';
 }
 

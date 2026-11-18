@@ -51,10 +51,10 @@ about your accumulated memory, not our internals (CLAUDE.md §8.32).
 
 ### Changed
 
-- **Canon keeps up with the story.** Each pick now starts from the canon so far, and a
-  newer pick reaches the prompt at the next step instead of waiting for a page reload or
-  for the memory block to fill. In a roomy chat canon could otherwise stay as it was for a
-  whole sitting.
+- **Canon keeps up with the story.** Canon is picked again about once a step, each pick
+  starting from the canon so far, and a newer pick reaches the prompt at the next step
+  instead of waiting for a page reload or for the memory block to fill. In a roomy chat
+  canon could otherwise stay as it was for a whole sitting. Rebuild canon asks sooner.
 
 - **The world state lists who is present under a `Present:` heading**, one line per
   character, instead of a `Present:` line of names followed by the same names again.

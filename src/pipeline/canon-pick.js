@@ -33,7 +33,9 @@ export const MIN_INDEX_RECORDS = 3;
  * than about pressure:
  *
  *   `no-canon`     nothing has ever been picked in this chat.
- *   `new-records`  the index has grown past what the last pick read.
+ *   `new-records`  the index has grown at least `growth` messages past what the last
+ *                  pick read — a step's worth, so a pick runs about once a step and the
+ *                  step admits it (D-0105). Less than that is `growing`, not due.
  *   `lost-facts`   a fact's records are gone — edited, resummarised or branched away
  *                  (memory/canon.js) — so the pick in force is missing a slot.
  *   `slots-changed` the user moved the slot count, so the question itself changed.
@@ -43,31 +45,39 @@ export const MIN_INDEX_RECORDS = 3;
  * and ten slots is not re-derived every turn forever.
  *
  * @param {{records: Array<{index: number}>, canon?: {coveredThrough: number|null,
- *          slots: number|null, dropped: number}, slots: number}} input
+ *          slots: number|null, dropped: number}, slots: number, growth?: number}} input
  *        `records` is every valid index record in the chat, oldest first;
- *        `canon` is the fold in force (`canonFor`).
+ *        `canon` is the fold in force (`canonFor`); `growth` the see-saw step, where
+ *        0 or less asks again on any new record.
  * @returns {{due: boolean, reason: string, records: Array<object>, covers: number[]|null,
  *            slots: number}} `reason` is a stable string the log and the inspector record.
  */
-export function pendingPick({ records = [], canon = null, slots = 0 } = {}) {
+export function pendingPick({ records = [], canon = null, slots = 0, growth = 0 } = {}) {
     const refuse = (reason) => ({ due: false, reason, records: [], covers: null, slots });
 
     if (!(slots >= 1)) return refuse('no-slots');
     if (records.length < MIN_INDEX_RECORDS) return refuse('too-few');
 
     const covers = [records[0].index, records[records.length - 1].index];
-    const reason = pickReason(canon, covers[1], slots);
-    if (!reason) return refuse('covered');
+    const reason = pickReason(canon, covers[1], slots, growth);
+    if (reason === 'growing' || !reason) return refuse(reason ?? 'covered');
 
     return { due: true, reason, records, covers, slots };
 }
 
-/** Why a pick is due, or null when the one in force still answers. */
-function pickReason(canon, newest, slots) {
+/**
+ * Why a pick is due, `growing` when only new records are waiting and too few of them, or
+ * null when the one in force still answers. A lost fact or a changed question is answered
+ * at once; new records wait for a step's worth, because a pick every turn chained one bad
+ * reply into the next (D-0105).
+ */
+function pickReason(canon, newest, slots, growth) {
     if (!canon || canon.coveredThrough === null) return 'no-canon';
-    if (newest > canon.coveredThrough) return 'new-records';
     if (canon.dropped > 0) return 'lost-facts';
     if (canon.slots !== null && canon.slots !== slots) return 'slots-changed';
+    if (newest > canon.coveredThrough) {
+        return newest - canon.coveredThrough >= growth ? 'new-records' : 'growing';
+    }
     return null;
 }
 

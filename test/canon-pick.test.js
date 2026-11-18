@@ -23,6 +23,43 @@ describe('when a canon pick is due', () => {
             .toMatchObject({ due: true, reason: 'new-records', covers: [0, 20] });
     });
 
+    /**
+     * D-0105: new records wait for a step's worth. A pick every turn, carried forward,
+     * chained one degenerate reply into the next; once a step lines the pick up with the
+     * step that admits it, at a quarter of the calls.
+     */
+    it('waits for a step\'s worth of new records, then is due', () => {
+        const last = canon({ coveredThrough: 19 });
+        expect(pendingPick({ records: records(21), canon: last, slots: 10, growth: 8 }))
+            .toMatchObject({ due: false, reason: 'growing', covers: null });
+        expect(pendingPick({ records: records(27), canon: last, slots: 10, growth: 8 }))
+            .toMatchObject({ due: false, reason: 'growing' });
+        expect(pendingPick({ records: records(28), canon: last, slots: 10, growth: 8 }))
+            .toMatchObject({ due: true, reason: 'new-records', covers: [0, 27] });
+    });
+
+    it('measures the growth in messages, so a gap in the index does not slow it down', () => {
+        // Records sit on summarised messages only; a skipped message is still story.
+        const sparse = [...records(20), { index: 28, record: { kind: 'filler' } }];
+        expect(pendingPick({ records: sparse, canon: canon({ coveredThrough: 19 }), slots: 10, growth: 8 }))
+            .toMatchObject({ due: true, reason: 'new-records', covers: [0, 28] });
+    });
+
+    it('answers a lost fact, a changed question and a first pick at once, however little has grown', () => {
+        const growth = 8;
+        expect(pendingPick({ records: records(21), canon: canon({ coveredThrough: 19, dropped: 1 }), slots: 10, growth }))
+            .toMatchObject({ due: true, reason: 'lost-facts' });
+        expect(pendingPick({ records: records(21), canon: canon({ coveredThrough: 19, slots: 6 }), slots: 10, growth }))
+            .toMatchObject({ due: true, reason: 'slots-changed' });
+        expect(pendingPick({ records: records(4), canon: null, slots: 10, growth }))
+            .toMatchObject({ due: true, reason: 'no-canon' });
+    });
+
+    it('asks again on any new record with no step set, which is the control', () => {
+        expect(pendingPick({ records: records(21), canon: canon({ coveredThrough: 19 }), slots: 10, growth: 0 }))
+            .toMatchObject({ due: true, reason: 'new-records' });
+    });
+
     it('is due when a fact lost the records it rested on', () => {
         // An edit, a resummarise or a branch took a record away, so the pick in force
         // is missing a slot and the answer is out of date (memory/canon.js).

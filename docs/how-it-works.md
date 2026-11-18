@@ -563,7 +563,10 @@ because nothing was ever stored except the answer.
 
 **Each pick starts from the last one** (D-0101). The pick is shown the canon in force,
 cited by row, and asked to keep what still earns its slot, correct what a newer row
-changes and replace the rest, so a fact a pick corrected stays corrected.
+changes and replace the rest, so a fact a pick corrected stays corrected. It runs about
+once a step: new records make a pick due once the story has moved on a **Summary step**
+since the last one, while a first pick, a fact whose summary changed, or a new
+**Canon entries** count is answered straight away (D-0105).
 
 **Canon changes only at a rebuild, and a step with a newer pick is one** (D-0102).
 Canon sits above every summary, so changing it rewrites the block's head — the

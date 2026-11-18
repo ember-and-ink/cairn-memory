@@ -8,6 +8,24 @@ what we believed and why it changed.
 
 ---
 
+## D-0105 — New records make a pick due once a step's worth has accumulated
+**2026-11-17.** With D-0101's carry-forward, a pick every turn is a chain: D-0101's every-2 replay
+ended on one degenerate reply, words found nowhere in the index, which carry-forward hands to the
+next pick as the canon so far. The every-8 replay held both collar facts and read cleanly, at a
+quarter of the calls; canon was 38% of that chat's memory-call tokens. And D-0102 admits a pick only
+at a step, so the extra picks in between were never read.
+
+**Decided.** `new-records` is due once the newest record is at least `step` messages past what the
+last pick read; less than that reports `growing`, not due. Measured in messages, not records, so a
+gap in the index does not slow it. A first pick, a lost fact and a changed slot count are answered at
+once, as before. A step of 0, the control, asks on any new record. **Rebuild canon** (D-0104) is the
+way to ask sooner.
+
+**Would reopen it:** more replays showing the every-turn chain as steady as the every-step one, or
+canon visibly lagging a story that turns faster than a step.
+
+---
+
 ## D-0104 — A Canon card in the settings, and Rebuild canon goes in on the next message
 **2026-11-17.** Canon was a checkbox and a number under "What Cairn keeps", and the only place to
 read it was the inspector or under the message each pick landed on. A user who raised the slot
@@ -101,8 +119,8 @@ earlier pick had already recorded as inert and that the story later destroyed.
 
 **Decided.** The assembler's pending pick carries the canon in force (`carriedCanon`,
 pipeline/canon-pick.js — the same mapping adoption used, now shared), so every queue pick starts from
-it, keeps what still earns its slot, corrects what a newer row changes, and replaces the rest. The
-pick cadence is unchanged: due whenever the index has grown past the last pick.
+it, keeps what still earns its slot, corrects what a newer row changes, and replaces the rest. How
+often it picks is D-0105.
 
 **Measured** with `scripts/replay-canon.mjs` on that chat's summaries, on the chat's own memory model
 (qwen3.8-27b), 15 slots, one run each. Every 8 summaries (11 picks): once "the collar is inert"
