@@ -13,5 +13,8 @@
     "oxlint": "^1.94.0",
     "typescript": "~7.0.2",
     "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "get-uri": "8.0.2"
   }
 }
